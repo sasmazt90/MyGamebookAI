@@ -60,7 +60,8 @@ Görsel üretimi (Google Gemini):
    ```
 4. Environment variables gir (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `TEXT_LLM_API_KEY`, `GOOGLE_API_KEY`, ...).
 5. Domain al (ör. `https://mygamebookai-api.up.railway.app`).
-6. İlk migration için bir kez çalıştır:
+6. Uygulama açılışta otomatik migration dener (drizzle klasöründeki SQL'leri uygular).
+   - Yine de istersen manuel tetiklemek için:
    ```bash
    pnpm db:push
    ```
@@ -95,8 +96,17 @@ Görsel üretimi (Google Gemini):
 - [ ] Giriş/kayıt çalışıyor (cookie set ediliyor)
 - [ ] Kitap oluşturma endpoint'leri çalışıyor
 - [ ] Stripe (kullanıyorsan) webhook URL backend'e işaret ediyor
-- [ ] DB migration tamamlandı
+- [ ] DB migration tamamlandı (otomatik ya da manuel)
 
 ---
 
 Sorunsuz ayrışmış yapı için kritik nokta: **Frontend backend'e `VITE_API_BASE_URL` ile gider, backend de sadece bu frontend origin'lerine CORS izni verir.**
+
+
+## 7) Eski Manus DB çıktısını taşıma
+
+Eğer GitHub'a `old_database/` klasörü yüklediysen:
+- Önce backend'i deploy et ve loglarda `[Database]` migration mesajlarını kontrol et.
+- Bu proje artık açılışta tablo/kolon migration'ını otomatik dener; yani Railway tarafında tabloları tek tek elle açman gerekmez.
+- `old_database/` içindeki veri dump dosyalarını (INSERT/CSV) ayrıca import etmen gerekir; şema (table/column) ile veri taşıma iki ayrı adımdır.
+

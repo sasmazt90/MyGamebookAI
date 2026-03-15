@@ -1,5 +1,8 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import {
   users,
   profiles,
@@ -10,6 +13,7 @@ import {
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _schemaInitPromise: Promise<void> | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -20,7 +24,107 @@ export async function getDb() {
       _db = null;
     }
   }
+
+  if (_db && !_schemaInitPromise) {
+    _schemaInitPromise = ensureDatabaseSchema(_db);
+  }
+
+  if (_schemaInitPromise) {
+    await _schemaInitPromise;
+  }
+
   return _db;
+}
+
+async function ensureDatabaseSchema(db: ReturnType<typeof drizzle>) {
+  await runMigrations(db);
+  await ensureLegacyUserColumns(db);
+}
+
+async function runMigrations(db: ReturnType<typeof drizzle>) {
+  const migrationsFolder = resolveMigrationsFolder();
+  if (!migrationsFolder) {
+    console.warn("[Database] Migrations folder not found; skipping auto-migration.");
+    return;
+  }
+
+  try {
+    await migrate(db, { migrationsFolder });
+  } catch (error) {
+    console.warn("[Database] Auto-migration failed:", error);
+  }
+}
+
+function resolveMigrationsFolder() {
+  const cwd = process.cwd();
+  const candidates = [
+    path.resolve(cwd, "drizzle"),
+    path.resolve(cwd, "../drizzle"),
+    path.resolve(cwd, "../../drizzle"),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function ensureLegacyUserColumns(db: ReturnType<typeof drizzle>) {
+  try {
+    const result = await db.execute(
+      sql`SELECT COLUMN_NAME as columnName
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'users'`
+    );
+
+    const existingColumns = new Set(
+      (result as Array<{ columnName?: string }>).map(
+        (row) => row.columnName?.toLowerCase() ?? ""
+      )
+    );
+
+    const requiredColumns: Array<{ name: string; definition: string }> = [
+      { name: "passwordHash", definition: "VARCHAR(255) NULL" },
+      { name: "loginMethod", definition: "VARCHAR(64) NULL" },
+      {
+        name: "role",
+        definition: "ENUM('user','admin') NOT NULL DEFAULT 'user'",
+      },
+      {
+        name: "status",
+        definition:
+          "ENUM('active','suspended','deleted') NOT NULL DEFAULT 'active'",
+      },
+      { name: "accountLocked", definition: "TINYINT(1) NOT NULL DEFAULT 0" },
+      { name: "deletedAt", definition: "TIMESTAMP NULL DEFAULT NULL" },
+      {
+        name: "updatedAt",
+        definition:
+          "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+      },
+      {
+        name: "lastSignedIn",
+        definition: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+      },
+    ];
+
+    for (const column of requiredColumns) {
+      if (!existingColumns.has(column.name.toLowerCase())) {
+        await db.execute(
+          sql.raw(
+            `ALTER TABLE users ADD COLUMN \`${column.name}\` ${column.definition}`
+          )
+        );
+        console.warn(`[Database] Added missing users.${column.name} column`);
+      }
+    }
+  } catch (error) {
+    console.warn("[Database] Could not verify legacy users schema:", error);
+  }
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
