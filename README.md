@@ -106,7 +106,7 @@ Sorunsuz ayrışmış yapı için kritik nokta: **Frontend backend'e `VITE_API_B
 ## 7) Eski Manus DB çıktısını taşıma
 
 Eğer GitHub'a `old_database/` klasörü yüklediysen:
-- Önce backend'i deploy et ve loglarda `[Database]` migration mesajlarını kontrol et.
+- Önce backend'i deploy et ve loglarda `[Database] Connected database: ...` ile `[Database] Schema check after migration ...` mesajlarını kontrol et.
 - Bu proje artık açılışta tablo/kolon migration'ını otomatik dener; yani Railway tarafında tabloları tek tek elle açman gerekmez.
 - `old_database/` içindeki veri dump dosyalarını (INSERT/CSV) ayrıca import etmen gerekir; şema (table/column) ile veri taşıma iki ayrı adımdır.
 

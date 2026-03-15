@@ -37,8 +37,43 @@ export async function getDb() {
 }
 
 async function ensureDatabaseSchema(db: ReturnType<typeof drizzle>) {
+  const before = await inspectDatabaseState(db);
+  if (before) {
+    console.warn(`[Database] Connected database: ${before.databaseName}, existing tables: ${before.tableCount}`);
+  }
+
   await runMigrations(db);
   await ensureLegacyUserColumns(db);
+
+  const after = await inspectDatabaseState(db);
+  if (after) {
+    console.warn(`[Database] Schema check after migration on ${after.databaseName}: tables=${after.tableCount}`);
+    if (after.tableCount === 0) {
+      console.warn(
+        "[Database] No tables found after migration. DATABASE_URL likely points to a different/empty database or migration user lacks privileges."
+      );
+    }
+  }
+}
+
+async function inspectDatabaseState(db: ReturnType<typeof drizzle>) {
+  try {
+    const databaseResult = await db.execute(sql`SELECT DATABASE() AS dbName`);
+    const databaseName = (databaseResult as Array<{ dbName?: string }>)[0]?.dbName ?? "(unknown)";
+
+    const tableCountResult = await db.execute(
+      sql`SELECT COUNT(*) AS tableCount
+          FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()`
+    );
+    const rawCount = (tableCountResult as Array<{ tableCount?: number | string }>)[0]?.tableCount ?? 0;
+    const tableCount = Number(rawCount) || 0;
+
+    return { databaseName, tableCount };
+  } catch (error) {
+    console.warn("[Database] Could not inspect database state:", error);
+    return null;
+  }
 }
 
 async function runMigrations(db: ReturnType<typeof drizzle>) {
