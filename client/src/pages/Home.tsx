@@ -17,13 +17,17 @@ const HOME_JSONLD = JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "Gamebook AI",
-  "url": typeof window !== "undefined" ? window.location.origin : "https://gamebookai-cuorans8.manus.space",
+  "url": typeof window !== "undefined"
+    ? window.location.origin
+    : (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || "https://example.com",
   "description": "Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {
       "@type": "EntryPoint",
-      "urlTemplate": `${typeof window !== "undefined" ? window.location.origin : "https://gamebookai-cuorans8.manus.space"}/store?q={search_term_string}`
+      "urlTemplate": `${typeof window !== "undefined"
+        ? window.location.origin
+        : (import.meta.env.VITE_PUBLIC_APP_URL as string | undefined) || "https://example.com"}/store?q={search_term_string}`
     },
     "query-input": "required name=search_term_string"
   }
