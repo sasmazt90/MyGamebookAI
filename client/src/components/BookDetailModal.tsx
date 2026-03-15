@@ -20,10 +20,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -44,13 +41,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type StackEntry =
   | { type: "book"; id: number }
   | { type: "author"; id: number };
-
-// ─── Star Rating (read-only mini) ─────────────────────────────────────────────
 
 function Stars({ value, max = 5 }: { value: number; max?: number }) {
   return (
@@ -68,8 +61,6 @@ function Stars({ value, max = 5 }: { value: number; max?: number }) {
   );
 }
 
-// ─── Book View ────────────────────────────────────────────────────────────────
-
 function BookView({
   bookId,
   onAuthorClick,
@@ -80,7 +71,7 @@ function BookView({
   onClose: () => void;
 }) {
   const { isAuthenticated, user } = useAuth();
-  const { t } = useLanguage();
+  const { t: _t } = useLanguage();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
@@ -132,9 +123,7 @@ function BookView({
 
   return (
     <div className="space-y-5">
-      {/* Hero */}
       <div className="flex gap-5">
-        {/* Cover */}
         <div className="w-28 flex-shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-[#1A1033] border border-purple-900/30 shadow-xl">
           {book.book.coverImageUrl ? (
             <img src={book.book.coverImageUrl} alt={book.book.title} className="w-full h-full object-cover" />
@@ -145,7 +134,6 @@ function BookView({
           )}
         </div>
 
-        {/* Info */}
         <div className="flex-1 min-w-0 space-y-2">
           {categoryLabel && (
             <Badge className="bg-[#7C3AED]/20 text-purple-300 border border-purple-700/50 capitalize text-xs">
@@ -154,7 +142,6 @@ function BookView({
           )}
           <h2 className="text-xl font-bold text-white leading-tight line-clamp-3">{book.book.title}</h2>
 
-          {/* Author clickable */}
           <button
             onClick={() => book.authorId && onAuthorClick(book.authorId)}
             className="flex items-center gap-2 group"
@@ -170,7 +157,6 @@ function BookView({
             </span>
           </button>
 
-          {/* Rating */}
           {(book.book.averageRating ?? 0) > 0 && (
             <div className="flex items-center gap-2">
               <Stars value={book.book.averageRating ?? 0} />
@@ -179,7 +165,6 @@ function BookView({
             </div>
           )}
 
-          {/* Metadata */}
           <div className="flex flex-wrap gap-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <BookOpen className="w-3 h-3" />
@@ -193,12 +178,10 @@ function BookView({
         </div>
       </div>
 
-      {/* Description */}
       {book.book.description && (
         <p className="text-gray-300 text-sm leading-relaxed line-clamp-4">{book.book.description}</p>
       )}
 
-      {/* Price + CTA */}
       {book.book.storePrice !== null && (
         <div className="bg-[#1A1033] border border-purple-900/30 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -218,7 +201,10 @@ function BookView({
           ) : isOwned ? (
             <Button
               className="w-full bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => { onClose(); navigate(`/reader/${bookId}`); }}
+              onClick={() => {
+                onClose();
+                navigate(`/reader/${bookId}`);
+              }}
             >
               <BookMarked className="w-4 h-4 mr-2" />
               Read Now
@@ -247,14 +233,16 @@ function BookView({
           <Button
             variant="outline"
             className="w-full border-purple-700/50 text-purple-300 hover:bg-purple-900/20"
-            onClick={() => { onClose(); navigate(`/store/${bookId}`); }}
+            onClick={() => {
+              onClose();
+              navigate(`/store/${bookId}`);
+            }}
           >
             View Full Detail Page
           </Button>
         </div>
       )}
 
-      {/* Recent Reviews */}
       {reviewsData && reviewsData.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
@@ -280,15 +268,12 @@ function BookView({
         </div>
       )}
 
-      {/* Report button — only for authenticated non-authors */}
       {isAuthenticated && book.authorId !== user?.id && (
         <ReportButton bookId={bookId} />
       )}
     </div>
   );
 }
-
-// ─── Report Button ────────────────────────────────────────────────────────────
 
 function ReportButton({ bookId }: { bookId: number }) {
   const [open, setOpen] = useState(false);
@@ -344,8 +329,6 @@ function ReportButton({ bookId }: { bookId: number }) {
   );
 }
 
-// ─── Author View ──────────────────────────────────────────────────────────────
-
 function AuthorView({
   authorId,
   onBookClick,
@@ -379,7 +362,6 @@ function AuthorView({
 
   return (
     <div className="space-y-5">
-      {/* Author Hero */}
       <div className="flex items-center gap-4">
         <Avatar className="w-16 h-16 border-2 border-purple-700/50">
           <AvatarImage src={profile.avatarUrl ?? undefined} />
@@ -400,7 +382,6 @@ function AuthorView({
 
       <Separator className="bg-purple-900/30" />
 
-      {/* Standalone profile link */}
       <a
         href={`/author/${authorId}`}
         className="flex items-center justify-center gap-2 w-full py-2 rounded-lg border border-purple-700/40 text-purple-300 hover:bg-purple-900/20 text-sm transition-colors"
@@ -409,7 +390,6 @@ function AuthorView({
         View Full Profile Page
       </a>
 
-      {/* Author's Books */}
       <div>
         <h3 className="text-sm font-semibold text-white mb-3">
           Books by {profile.authorName}
@@ -427,7 +407,6 @@ function AuthorView({
                 onClick={() => onBookClick(item.book.id)}
                 className="w-full flex items-center gap-3 bg-[#0D0B1A] border border-purple-900/20 rounded-lg p-3 hover:border-purple-500/50 transition-all text-left group"
               >
-                {/* Mini cover */}
                 <div className="w-10 h-14 bg-[#1A1033] rounded overflow-hidden flex-shrink-0">
                   {item.book.coverImageUrl ? (
                     <img src={item.book.coverImageUrl} alt={item.book.title} className="w-full h-full object-cover" />
@@ -437,7 +416,6 @@ function AuthorView({
                     </div>
                   )}
                 </div>
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-medium line-clamp-2 group-hover:text-purple-300 transition-colors">
                     {item.book.title}
@@ -470,18 +448,13 @@ function AuthorView({
   );
 }
 
-// ─── Main Modal ───────────────────────────────────────────────────────────────
-
 interface BookDetailModalProps {
-  /** Open with a specific book */
   bookId?: number;
-  /** Open with a specific author */
   authorId?: number;
   onClose: () => void;
 }
 
 export function BookDetailModal({ bookId, authorId, onClose }: BookDetailModalProps) {
-  // Navigation stack — starts with the initial entry
   const [stack, setStack] = useState<StackEntry[]>(() => {
     if (bookId != null) return [{ type: "book", id: bookId }];
     if (authorId != null) return [{ type: "author", id: authorId }];
@@ -508,7 +481,6 @@ export function BookDetailModal({ bookId, authorId, onClose }: BookDetailModalPr
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
       <DialogContent className="bg-[#0D0B1A] border border-purple-900/40 text-white max-w-lg w-full max-h-[90vh] overflow-y-auto p-0">
-        {/* Header bar */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-purple-900/30 sticky top-0 bg-[#0D0B1A] z-10">
           {canGoBack ? (
             <button
@@ -534,7 +506,6 @@ export function BookDetailModal({ bookId, authorId, onClose }: BookDetailModalPr
           </button>
         </div>
 
-        {/* Content */}
         <div className="px-5 py-5">
           {current.type === "book" ? (
             <BookView
@@ -553,8 +524,6 @@ export function BookDetailModal({ bookId, authorId, onClose }: BookDetailModalPr
     </Dialog>
   );
 }
-
-// ─── Hook for easy usage ──────────────────────────────────────────────────────
 
 export function useBookDetailModal() {
   const [state, setState] = useState<{ bookId?: number; authorId?: number } | null>(null);
