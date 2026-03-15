@@ -1,0 +1,168 @@
+id,userId,type,title,message,linkUrl,metadataJson,isRead,createdAt
+1,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/1,,1,2026-03-04 06:11:08
+30001,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/30001,,1,2026-03-04 18:31:00
+60001,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/60001,,1,2026-03-04 21:05:10
+60002,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/60003,,1,2026-03-04 21:42:16
+60003,1,book_ready,Book Generation Complete!,"Your book ""Varisin Malikanesi"" is ready to read.",/reader/60002,,1,2026-03-04 21:48:11
+60004,1,book_ready,Book Generation Complete!,"Your book ""Çifte Hayat: Geceyi Yazan Adam"" is ready to read.",/reader/60004,,1,2026-03-04 21:52:24
+60005,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/60005,,1,2026-03-04 23:00:54
+90001,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/90001,,1,2026-03-05 00:38:38
+90002,1,book_ready,Book Generation Complete!,"Your book ""Gizli Değişken"" is ready to read.",/reader/90002,,1,2026-03-05 00:49:25
+90003,1,book_ready,Book Generation Complete!,"Your book ""Çifte Hayat"" is ready to read.",/reader/90003,,1,2026-03-05 00:57:07
+120001,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/120001,,1,2026-03-05 02:21:12
+120002,1,book_ready,Book Generation Complete!,"Your book ""Çifte Hayat"" is ready to read.",/reader/120002,,1,2026-03-05 02:30:40
+120003,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/120005,,1,2026-03-05 05:52:01
+120004,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/120006,,1,2026-03-05 06:07:38
+120005,1,leaderboard_entry_newArrivals,"📈 ""Ay'a Yolculuk"" entered the New Arrivals chart!",Your book is now ranked #1 in New Arrivals. Keep up the great work!,/author/1,,1,2026-03-05 06:18:17
+120006,1,leaderboard_entry_mostPopular,"📈 ""Ay'a Yolculuk"" entered the Most Popular chart!",Your book is now ranked #1 in Most Popular. Keep up the great work!,/author/1,,1,2026-03-05 06:18:17
+120007,1,leaderboard_entry_bestSellers,"📈 ""Ay'a Yolculuk"" entered the Best Sellers chart!",Your book is now ranked #1 in Best Sellers. Keep up the great work!,/author/1,,1,2026-03-05 06:18:17
+150001,1,book_ready,Book Generation Complete!,"Your book ""Kayıp Şifrenin Sırrı"" is ready to read.",/reader/150001,,1,2026-03-05 07:11:47
+150002,1,rank_improvement_mostPopular,"🚀 ""Deney 27"" climbed 1 spot in Most Popular!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 10:58:08
+150003,1,rank_improvement_bestSellers,"🚀 ""Deney 27"" climbed 1 spot in Best Sellers!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 10:58:08
+150004,1,rank_improvement_bestSellers,"🚀 ""Ay'a Yolculuk"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,1,2026-03-05 10:58:08
+150005,1,rank_improvement_newArrivals,"🚀 ""Ay'a Yolculuk"" climbed 1 spot in New Arrivals!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 10:58:08
+150006,1,rank_improvement_bestSellers,"🚀 ""Deney 27"" climbed 1 spot in Best Sellers!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 11:47:47
+150007,1,rank_improvement_bestSellers,"🚀 ""Ay'a Yolculuk"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,1,2026-03-05 11:47:51
+150008,1,rank_improvement_newArrivals,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 1 spot in New Arrivals!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 11:47:51
+150009,1,rank_improvement_mostPopular,"🚀 ""Ay'a Yolculuk"" climbed 1 spot in Most Popular!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 11:47:51
+150010,1,rank_improvement_bestSellers,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 1 spot in Best Sellers!",Now ranked #2 (was #3). Your readers are loving it!,/author/1,,1,2026-03-05 11:48:00
+150011,1,rank_improvement_mostPopular,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 1 spot in Most Popular!",Now ranked #2 (was #3). Your readers are loving it!,/author/1,,1,2026-03-05 11:49:03
+150012,1,rank_improvement_newArrivals,"🚀 ""Deney 27"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/1,,1,2026-03-05 11:51:20
+180001,1,rank_improvement_newArrivals,"🚀 ""Ay'a Yolculuk"" climbed 1 spot in New Arrivals!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-05 14:26:08
+210001,1,rank_improvement_newArrivals,"🚀 ""Ay'a Yolculuk"" climbed 2 spots in New Arrivals!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,1,2026-03-05 17:25:39
+240001,150001,admin_action,Credits Added,An administrator added 998 credits. Reason: bonus,,,1,2026-03-05 18:52:20
+240002,1,book_sold,Your book was purchased!,"Someone purchased ""Kayıp Şifrenin Sırrı"". You earned 3 credits.",/library,,1,2026-03-05 19:05:26
+240003,150001,book_purchased,Purchase Successful!,"You purchased ""Kayıp Şifrenin Sırrı"" for 10 credits.",/reader/150001,,1,2026-03-05 19:05:26
+240004,150001,book_ready,Book Generation Complete!,"Your book ""Lily and the Little Brave Jack"" is ready to read.",/reader/180002,,1,2026-03-05 19:11:22
+240005,150001,book_ready,Book Generation Complete!,"Your book ""The Arcana Box"" is ready to read.",/reader/180001,,1,2026-03-05 19:11:47
+240006,1,review,"New review on ""Kayıp Şifrenin Sırrı""","★★★★★ — ""It turned out to be a captivating book. It was extremely enjoyable to read! 📚
+""",/store/150001,"{""bookId"": 150001, ""rating"": 5, ""reviewerId"": 150001}",1,2026-03-05 19:14:13
+240007,150001,leaderboard_entry_bestSellers,"📈 ""Lily and the Little Brave Jack"" entered the Best Sellers chart!",Your book is now ranked #3 in Best Sellers. Keep up the great work!,/author/150001,,1,2026-03-05 19:26:09
+240008,150001,leaderboard_entry_mostPopular,"📈 ""Lily and the Little Brave Jack"" entered the Most Popular chart!",Your book is now ranked #3 in Most Popular. Keep up the great work!,/author/150001,,1,2026-03-05 19:26:09
+240009,150001,leaderboard_entry_newArrivals,"📈 ""Lily and the Little Brave Jack"" entered the New Arrivals chart!",Your book is now ranked #1 in New Arrivals. Keep up the great work!,/author/150001,,1,2026-03-05 19:26:09
+240010,150001,leaderboard_entry_bestSellers,"📈 ""The Arcana Box"" entered the Best Sellers chart!",Your book is now ranked #4 in Best Sellers. Keep up the great work!,/author/150001,,1,2026-03-05 19:26:09
+240011,150001,leaderboard_entry_mostPopular,"📈 ""The Arcana Box"" entered the Most Popular chart!",Your book is now ranked #4 in Most Popular. Keep up the great work!,/author/150001,,1,2026-03-05 19:26:09
+240012,150001,leaderboard_entry_newArrivals,"📈 ""The Arcana Box"" entered the New Arrivals chart!",Your book is now ranked #2 in New Arrivals. Keep up the great work!,/author/150001,,1,2026-03-05 19:26:09
+240013,150001,book_ready,Book Generation Complete!,"Your book ""Thalion of the Grey Woods"" is ready to read.",/reader/180003,,1,2026-03-05 19:30:38
+240014,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-05 19:30:55
+240015,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-05 19:30:55
+240016,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-05 19:30:55
+240017,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-05 19:30:55
+240018,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in New Arrivals!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-05 19:40:44
+270001,180001,admin_action,Credits Added,An administrator added 600 credits. Reason: bonus,,,1,2026-03-07 09:34:04
+270002,180001,book_ready,Book Generation Complete!,"Your book ""Zümrüt Kapı'nın Sırrı"" is ready to read.",/reader/210001,,0,2026-03-07 10:10:50
+270003,180001,book_ready,Book Generation Complete!,"Your book ""Das Geheimnis des Mondlichts"" is ready to read.",/reader/210002,,0,2026-03-07 10:11:08
+300001,180001,leaderboard_entry_newArrivals,"📈 ""Das Geheimnis des Mondlichts"" entered the New Arrivals chart!",Your book is now ranked #1 in New Arrivals. Keep up the great work!,/author/180001,,0,2026-03-07 10:41:01
+300002,1,rank_improvement_bestSellers,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 1 spot in Best Sellers!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-07 10:41:01
+300003,1,rank_improvement_mostPopular,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 1 spot in Most Popular!",Now ranked #1 (was #2). Your readers are loving it!,/author/1,,1,2026-03-07 10:41:01
+300004,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 10:41:01
+330001,180001,leaderboard_entry_newArrivals,"📈 ""Das Geheimnis des Mondlichts"" entered the New Arrivals chart!",Your book is now ranked #1 in New Arrivals. Keep up the great work!,/author/180001,,0,2026-03-07 11:31:18
+330002,1,rank_improvement_bestSellers,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,1,2026-03-07 11:31:18
+330003,1,rank_improvement_mostPopular,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,1,2026-03-07 11:31:18
+330004,180001,leaderboard_entry_newArrivals,"📈 ""Das Geheimnis des Mondlichts"" entered the New Arrivals chart!",Your book is now ranked #1 in New Arrivals. Keep up the great work!,/author/180001,,0,2026-03-07 11:31:18
+330005,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 11:31:18
+330006,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 11:31:18
+330007,1,rank_improvement_mostPopular,"🚀 ""Kayıp Şifrenin Sırrı"" climbed 5 spots in Most Popular!",Now ranked #1 (was #6). Your readers are loving it!,/author/1,,1,2026-03-07 12:03:03
+330008,1,rank_improvement_bestSellers,"🚀 ""Deney 27"" climbed 1 spot in Best Sellers!",Now ranked #2 (was #3). Your readers are loving it!,/author/1,,1,2026-03-07 12:03:03
+330009,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:03
+330010,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:03
+330011,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:03
+330012,1,rank_improvement_mostPopular,"🚀 ""Deney 27"" climbed 1 spot in Most Popular!",Now ranked #2 (was #3). Your readers are loving it!,/author/1,,1,2026-03-07 12:03:14
+330013,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in Best Sellers!",Now ranked #3 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:14
+330014,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:14
+330015,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:14
+330016,1,rank_improvement_mostPopular,"🚀 ""Deney 27"" climbed 1 spot in Most Popular!",Now ranked #2 (was #3). Your readers are loving it!,/author/1,,1,2026-03-07 12:03:43
+330017,180001,leaderboard_entry_bestSellers,"📈 ""Das Geheimnis des Mondlichts"" entered the Best Sellers chart!",Your book is now ranked #5 in Best Sellers. Keep up the great work!,/author/180001,,0,2026-03-07 12:03:43
+330018,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:43
+330019,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:03:43
+360001,150001,book_sold,Your book was purchased!,"Someone purchased ""Lily and the Little Brave Jack"". You earned 0 credits.",/library,,1,2026-03-07 12:27:42
+360002,1,book_purchased,Purchase Successful!,"You purchased ""Lily and the Little Brave Jack"" for 3 credits.",/reader/180002,,1,2026-03-07 12:27:42
+360003,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 12:53:53
+360004,180001,leaderboard_entry_bestSellers,"📈 ""Das Geheimnis des Mondlichts"" entered the Best Sellers chart!",Your book is now ranked #4 in Best Sellers. Keep up the great work!,/author/180001,,0,2026-03-07 12:53:53
+360005,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 4 spots in Best Sellers!",Now ranked #1 (was #5). Your readers are loving it!,/author/150001,,1,2026-03-07 12:53:53
+360006,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 12:53:53
+360007,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 12:53:53
+360008,180001,leaderboard_entry_bestSellers,"📈 ""Das Geheimnis des Mondlichts"" entered the Best Sellers chart!",Your book is now ranked #4 in Best Sellers. Keep up the great work!,/author/180001,,0,2026-03-07 13:24:13
+360009,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 4 spots in Best Sellers!",Now ranked #1 (was #5). Your readers are loving it!,/author/150001,,1,2026-03-07 13:24:13
+360010,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 13:24:13
+360011,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 13:24:13
+360012,180001,leaderboard_entry_bestSellers,"📈 ""Das Geheimnis des Mondlichts"" entered the Best Sellers chart!",Your book is now ranked #4 in Best Sellers. Keep up the great work!,/author/180001,,0,2026-03-07 13:27:26
+360013,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 13:27:26
+360014,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in Best Sellers!",Now ranked #1 (was #2). Your readers are loving it!,/author/150001,,1,2026-03-07 13:27:26
+360015,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 13:27:26
+360016,1,book_sold,Your book was purchased!,"Someone purchased ""Kayıp Şifrenin Sırrı"". You earned 3 credits.",/library,,1,2026-03-07 13:30:51
+360017,180001,book_purchased,Purchase Successful!,"You purchased ""Kayıp Şifrenin Sırrı"" for 10 credits.",/reader/150001,,0,2026-03-07 13:30:51
+360018,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #2 (was #5). Your readers are loving it!,/author/150001,,1,2026-03-07 13:41:36
+360019,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 13:41:36
+360020,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 4 spots in Best Sellers!",Now ranked #1 (was #5). Your readers are loving it!,/author/150001,,1,2026-03-07 13:41:36
+360021,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 13:41:36
+360022,180001,leaderboard_entry_bestSellers,"📈 ""Das Geheimnis des Mondlichts"" entered the Best Sellers chart!",Your book is now ranked #4 in Best Sellers. Keep up the great work!,/author/180001,,0,2026-03-07 13:54:51
+360023,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 13:54:51
+360024,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in Best Sellers!",Now ranked #1 (was #2). Your readers are loving it!,/author/150001,,1,2026-03-07 13:54:51
+360025,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 13:54:51
+360026,1,rank_improvement_newArrivals,"🚀 ""Ay'a Yolculuk"" climbed 1 spot in New Arrivals!",Now ranked #3 (was #4). Your readers are loving it!,/author/1,,1,2026-03-07 13:54:51
+360027,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 14:15:38
+360028,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 4 spots in Best Sellers!",Now ranked #1 (was #5). Your readers are loving it!,/author/150001,,1,2026-03-07 14:15:38
+360029,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:15:38
+360030,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:19:15
+360031,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 14:19:15
+360032,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 4 spots in Best Sellers!",Now ranked #1 (was #5). Your readers are loving it!,/author/150001,,1,2026-03-07 14:19:15
+360033,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:19:15
+360034,150001,book_sold,Your book was purchased!,"Someone purchased ""The Arcana Box"". You earned 2 credits.",/library,,1,2026-03-07 14:20:03
+360035,1,book_purchased,Purchase Successful!,"You purchased ""The Arcana Box"" for 7 credits.",/reader/180001,,1,2026-03-07 14:20:03
+360036,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 14:27:18
+360037,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:27:18
+360038,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:27:18
+360039,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in Most Popular!",Now ranked #3 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 14:36:02
+360040,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:36:02
+360041,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:36:02
+360042,1,rank_improvement_newArrivals,"🚀 ""Ay'a Yolculuk"" climbed 2 spots in New Arrivals!",Now ranked #3 (was #5). Your readers are loving it!,/author/1,,1,2026-03-07 14:36:02
+390001,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 14:49:36
+390002,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in Best Sellers!",Now ranked #1 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 14:49:36
+390003,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 14:49:36
+390004,150001,book_sold,Your book was purchased!,"Someone purchased ""The Arcana Box"". You earned 2 credits.",/library,,1,2026-03-07 15:29:00
+390005,180001,book_purchased,Purchase Successful!,"You purchased ""The Arcana Box"" for 7 credits.",/reader/180001,,0,2026-03-07 15:29:00
+390006,180001,book_sold,Your book was purchased!,"Someone purchased ""Zümrüt Kapı'nın Sırrı"". You earned 3 credits.",/library,,0,2026-03-07 15:44:42
+390007,1,book_purchased,Purchase Successful!,"You purchased ""Zümrüt Kapı'nın Sırrı"" for 10 credits.",/reader/210001,,1,2026-03-07 15:44:42
+390008,180001,leaderboard_entry_bestSellers,"📈 ""Zümrüt Kapı'nın Sırrı"" entered the Best Sellers chart!",Your book is now ranked #3 in Best Sellers. Keep up the great work!,/author/180001,,0,2026-03-07 16:11:38
+390009,180001,leaderboard_entry_newArrivals,"📈 ""Zümrüt Kapı'nın Sırrı"" entered the New Arrivals chart!",Your book is now ranked #2 in New Arrivals. Keep up the great work!,/author/180001,,0,2026-03-07 16:11:38
+390010,180001,leaderboard_entry_mostPopular,"📈 ""Zümrüt Kapı'nın Sırrı"" entered the Most Popular chart!",Your book is now ranked #5 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 16:11:38
+390011,180001,leaderboard_entry_mostPopular,"📈 ""Das Geheimnis des Mondlichts"" entered the Most Popular chart!",Your book is now ranked #6 in Most Popular. Keep up the great work!,/author/180001,,0,2026-03-07 16:11:40
+390012,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/240001,,1,2026-03-07 16:25:01
+420001,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in Most Popular!",Now ranked #3 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:13:12
+420002,150001,rank_improvement_bestSellers,"🚀 ""The Arcana Box"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:13:12
+420003,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:13:12
+420004,150001,rank_improvement_mostPopular,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Most Popular!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:13:12
+420005,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 20:13:12
+420006,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 20:25:25
+420007,1,rank_improvement_bestSellers,"🚀 ""Ay'a Yolculuk"" climbed 4 spots in Best Sellers!",Now ranked #3 (was #7). Your readers are loving it!,/author/1,,1,2026-03-07 20:25:25
+420008,150001,rank_improvement_bestSellers,"🚀 ""The Arcana Box"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:29:55
+420009,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 2 spots in New Arrivals!",Now ranked #2 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:29:55
+420010,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:31:40
+420011,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 20:32:18
+420012,150001,rank_improvement_newArrivals,"🚀 ""Lily and the Little Brave Jack"" climbed 1 spot in New Arrivals!",Now ranked #2 (was #3). Your readers are loving it!,/author/150001,,1,2026-03-07 20:42:56
+420013,150001,rank_improvement_bestSellers,"🚀 ""Lily and the Little Brave Jack"" climbed 3 spots in Best Sellers!",Now ranked #1 (was #4). Your readers are loving it!,/author/150001,,1,2026-03-07 21:06:33
+420014,150001,book_ready,Book Generation Complete!,"Your book ""Lily and the Little Brave Jack"" is ready to read.",/reader/270001,,1,2026-03-07 21:42:21
+420015,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/270003,,1,2026-03-07 21:45:24
+420016,180001,book_ready,Book Generation Complete!,"Your book ""Das Geheimnis des Mondlichts"" is ready to read.",/reader/270005,,0,2026-03-07 21:47:13
+420017,180001,book_ready,Book Generation Complete!,"Your book ""Zümrüt Kapı'nın Sırrı"" is ready to read.",/reader/270004,,0,2026-03-07 21:47:28
+420018,150001,book_ready,Book Generation Complete!,"Your book ""The Arcana Box"" is ready to read.",/reader/270002,,1,2026-03-07 21:47:37
+450001,180001,book_ready,Book Generation Complete!,"Your book ""Das Geheimnis des Mondlichts"" is ready to read.",/reader/300002,,0,2026-03-09 07:50:24
+450002,180001,book_ready,Book Generation Complete!,"Your book ""Zümrüt Kapı'nın Sırrı"" is ready to read.",/reader/300001,,0,2026-03-09 07:52:00
+450003,150001,book_ready,Book Generation Complete!,"Your book ""The Arcana Box"" is ready to read.",/reader/300003,,1,2026-03-09 08:09:19
+480001,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/330001,,1,2026-03-09 11:43:27
+480002,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/330002,,1,2026-03-09 12:13:56
+510001,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/360001,,1,2026-03-09 18:11:24
+540001,180001,admin_action,Credits Added,An administrator added 1000 credits. Reason: bonus,,,0,2026-03-09 22:40:34
+540002,150001,admin_action,Credits Added,An administrator added 1000 credits. Reason: bonus,,,1,2026-03-09 22:40:47
+540003,1,admin_action,Credits Added,An administrator added 1000 credits. Reason: bonus,,,1,2026-03-10 03:08:32
+540004,1,book_ready,Book Generation Complete!,"Your book ""The Heir of the Mansion"" is ready to read.",/reader/390002,,1,2026-03-10 03:18:06
+540005,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/390004,,1,2026-03-10 04:26:41
+570001,1,book_ready,Book Generation Complete!,"Your book ""Deney 27"" is ready to read.",/reader/420001,,1,2026-03-13 16:38:31
+600001,1,book_ready,Book Generation Complete!,"Your book ""Ay'a Yolculuk"" is ready to read.",/reader/450002,,0,2026-03-13 19:33:00
+630001,1,rank_improvement_newArrivals,"🚀 ""Deney 27"" climbed 2 spots in New Arrivals!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,0,2026-03-14 11:23:11
+630002,1,rank_improvement_mostPopular,"🚀 ""Deney 27"" climbed 2 spots in Most Popular!",Now ranked #1 (was #3). Your readers are loving it!,/author/1,,0,2026-03-14 11:23:11
+630003,1,rank_improvement_bestSellers,"🚀 ""Deney 27"" climbed 6 spots in Best Sellers!",Now ranked #1 (was #7). Your readers are loving it!,/author/1,,0,2026-03-14 11:23:11
+660001,1,book_sold,Your book was purchased!,"Someone purchased ""Deney 27"". You earned 1 credits.",/library,,0,2026-03-14 18:16:18
+660002,180001,book_purchased,Purchase Successful!,"You purchased ""Deney 27"" for 5 credits.",/reader/420001,,0,2026-03-14 18:16:18
+660003,1,review,"New review on ""Deney 27""","★★★★★ — ""great story!""",/store/420001,"{""bookId"": 420001, ""rating"": 5, ""reviewerId"": 180001}",0,2026-03-14 18:17:42
