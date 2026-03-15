@@ -1,0 +1,1 @@
+ALTER TABLE `books` ADD `generationStep` varchar(255);

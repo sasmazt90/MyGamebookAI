@@ -1,0 +1,1 @@
+ALTER TABLE `monthlyRewards` ADD CONSTRAINT `monthlyRewards_userId_yearMonth_uq` UNIQUE(`userId`,`yearMonth`);

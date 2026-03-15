@@ -1,0 +1,2 @@
+ALTER TABLE `creditTransactions` MODIFY COLUMN `type` enum('purchase','spend_generate','spend_buy','earn_sale','admin_adjust','monthly_reward','refund_reversal') NOT NULL;--> statement-breakpoint
+ALTER TABLE `users` ADD `accountLocked` boolean DEFAULT false NOT NULL;
