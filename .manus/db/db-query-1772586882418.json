@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `notificationThrottle` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `notificationType` varchar(64) NOT NULL,\n  `referenceKey` varchar(255) NOT NULL,\n  `lastSentAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `notificationThrottle_id` PRIMARY KEY(`id`)\n);\nALTER TABLE `notificationThrottle` ADD CONSTRAINT `notificationThrottle_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute CREATE TABLE `notificationThrottle` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `notificationType` varchar(64) NOT NULL,\n  `referenceKey` varchar(255) NOT NULL,\n  `lastSentAt` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `notificationThrottle_id` PRIMARY KEY(`id`)\n);\nALTER TABLE `notificationThrottle` ADD CONSTRAINT `notificationThrottle_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 603
+}

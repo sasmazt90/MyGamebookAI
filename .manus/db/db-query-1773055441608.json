@@ -1,0 +1,26 @@
+{
+  "query": "SELECT gj.id, gj.bookId, b.title, gj.status, gj.attempts, gj.createdAt FROM generationJobs gj JOIN books b ON gj.bookId = b.id WHERE b.id IN (SELECT b.id FROM books b LEFT JOIN bookCharacters bc ON b.id = bc.bookId GROUP BY b.id HAVING COUNT(bc.id) > 1) ORDER BY gj.bookId DESC",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute SELECT gj.id, gj.bookId, b.title, gj.status, gj.attempts, gj.createdAt FROM generationJobs gj JOIN books b ON gj.bookId = b.id WHERE b.id IN (SELECT b.id FROM books b LEFT JOIN bookCharacters bc ON b.id = bc.bookId GROUP BY b.id HAVING COUNT(bc.id) > 1) ORDER BY gj.bookId DESC",
+  "rows": [
+    {
+      "id": "300003",
+      "bookId": "300003",
+      "title": "The Arcana Box",
+      "status": "completed",
+      "attempts": "1",
+      "createdAt": "2026-03-09 07:49:29"
+    },
+    {
+      "id": "300001",
+      "bookId": "300001",
+      "title": "Zümrüt Kapı'nın Sırrı",
+      "status": "completed",
+      "attempts": "1",
+      "createdAt": "2026-03-09 07:47:15"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbookId\ttitle\tstatus\tattempts\tcreatedAt\n300003\t300003\tThe Arcana Box\tcompleted\t1\t2026-03-09 07:49:29\n300001\t300001\tZümrüt Kapı'nın Sırrı\tcompleted\t1\t2026-03-09 07:47:15\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}

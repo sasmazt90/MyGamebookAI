@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Gamebook AI — Create AI-Powered Interactive Stories</title>
+    <meta name="description" content="Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters." />
+    <meta name="keywords" content="gamebook, interactive fiction, AI stories, branching narrative, choose your own adventure, illustrated stories, AI book generator, fairy tale, comic book" />
+    <meta property="og:title" content="Gamebook AI — Create AI-Powered Interactive Stories" />
+    <meta property="og:description" content="Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters." />
+    <meta property="og:type" content="website" />
+    <!-- Canonical URL — updated dynamically per route by useSEO hook; this is the static fallback for crawlers -->
+    <link id="seo-canonical" rel="canonical" href="https://gamebookai-cuorans8.manus.space/" />
+    <!-- WebSite JSON-LD structured data — updated dynamically on / by useSEO hook; static fallback for crawlers -->
+    <script id="seo-json-ld" type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Gamebook AI",
+      "url": "https://gamebookai-cuorans8.manus.space",
+      "description": "Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://gamebookai-cuorans8.manus.space/store?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bangers&display=swap" rel="stylesheet" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script
+      defer
+      src="%VITE_ANALYTICS_ENDPOINT%/umami"
+      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+  </body>
+
+</html>

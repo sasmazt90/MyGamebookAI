@@ -1,0 +1,595 @@
+{
+  "query": "\nSELECT b.id as book_id, b.title, b.category, b.coverImageUrl, p.pageNumber, p.imageUrl, LEFT(CAST(p.panels AS CHAR), 500) as panels_preview\nFROM books b\nJOIN bookPages p ON p.bookId = b.id\nWHERE b.id IN (60002, 60003, 60004)\nORDER BY b.id, p.pageNumber;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute \nSELECT b.id as book_id, b.title, b.category, b.coverImageUrl, p.pageNumber, p.imageUrl, LEFT(CAST(p.panels AS CHAR), 500) as panels_preview\nFROM books b\nJOIN bookPages p ON p.bookId = b.id\nWHERE b.id IN (60002, 60003, 60004)\nORDER BY b.id, p.pageNumber;\n",
+  "rows": [
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "1",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660622866.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "2",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660630731.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "3",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660639608.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "4",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660647738.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "5",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660655813.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "6",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660662894.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "7",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660672050.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "8",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660679868.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "9",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660687216.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "10",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660694287.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "11",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660704386.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "12",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660716314.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "13",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660727707.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "14",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660737017.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "15",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660746359.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "16",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660754209.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "17",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660761667.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "18",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660768928.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "19",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660777319.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "20",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660784572.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "21",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660802751.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "22",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660812046.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "23",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660820656.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "24",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660829039.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "25",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660835786.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "26",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660843749.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "27",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660852641.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "28",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660865435.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "29",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660881626.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60002",
+      "title": "Varisin Malikanesi",
+      "category": "crime_mystery",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png",
+      "pageNumber": "30",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660890651.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "1",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660470600.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "2",
+      "imageUrl": "NULL",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "3",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660482460.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "4",
+      "imageUrl": "NULL",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "5",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660493976.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "6",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660502416.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "7",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660511908.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "8",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660519927.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "9",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660528816.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60003",
+      "title": "Ay'a Yolculuk",
+      "category": "fairy_tale",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png",
+      "pageNumber": "10",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660536240.png",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "1",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660455281.png\", \"narration\": \"Tolgar, büyük bir holdingin toplantı odasında, elindeki lazer işaretleyiciyle dev ekrandaki karmaşık grafikleri gösteriyordu.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"Bu proje, pazar payımızı %15 artıracak.\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8S"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "2",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660484463.png\", \"narration\": \"As twilight fell, Tolgar's world began to shift, feeling a familiar tension beneath the city's neon glow.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660495279.png\", \"narration\": \"A t"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "3",
+      "imageUrl": "NULL",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "4",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660529315.png\", \"narration\": \"Tolgar makes a split-second decision and rushes into the street, his mind calculating the impending crash.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660537842.png\", \"narration\": \"He"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "5",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": \"shout\", \"dialogue\": \"Araba kontrolden çıkacak, yayaya çarpacak!\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660559068.png\", \"narration\": \"Tolgar anonymously calls the police from his phone.\", \"position\": \"bottom-left\", \"speaker\": \"Tolgar\"}, {\"bubbleType\": \"shout\", \"dialogue\": \"Hızla müdahale etmelisiniz!\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "6",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660586894.png\", \"narration\": \"Tolgar, olay yerinden uzaklaşırken zihninde yeni bir olasılık belirdi: onu uzaktan izleyen bir gölge.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"Bilen biri mi? Yoksa tesadüf mü?\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/177266"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "7",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660620356.png\", \"narration\": \"Tolgar breathes a sigh of relief after averting a disaster, maintaining his anonymity.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660630843.png\", \"narration\": \"He notes the increasin"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "8",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660652223.png\", \"narration\": \"Tolgar'ın ofisine gizemli bir zarf bırakılır.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"Olasılıkları değiştirmek tehlikelidir\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660661144.png\", \"narration\": \"Zarfın içinde dün geceki"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "9",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660681574.png\", \"narration\": \"Tolgar tears up the note and photo, discarding them in the trash.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"Bu sadece bir başlangıç...\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660692366.png\", \"narration\": \"He tries to fo"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "10",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660712050.png\", \"narration\": \"Tolgar, notu dikkatlice inceledi ve her detayı analiz etti.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"Bu kişi gücümü nasıl öğrendi?\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660720579.png\", \"narration\": \"Zihninde potansiy"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "11",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660740611.png\", \"narration\": \"Tolgar begins to suspect the escalating incidents are no coincidence, pondering their true nature.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660748707.png\", \"narration\": \"A chain of"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "12",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660769963.png\", \"narration\": \"Tolgar, son olayların tüm verilerini topladı: konumlar, zamanlar, etkilenen kişiler.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660778916.png\", \"narration\": \"Harita üzerinde bir dese"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "13",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660802532.png\", \"narration\": \"Tolgar uses his mind to perceive the potential source of events and the person behind them.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660810991.png\", \"narration\": \"Images are blurry"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "14",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660832631.png\", \"narration\": \"A week later, a second envelope arrived at Tolgar's office.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"Görme yeteneğin, seni kör ediyor\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660840869.png\", \"narration\": \"Inside, a photo"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "15",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660863253.png\", \"narration\": \"Tolgar covertly infiltrates company security to review camera footage.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660871110.png\", \"narration\": \"He discovers the envelope's sender is "
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "16",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660890240.png\", \"narration\": \"Tolgar recognized the unique font on the note, used by a former company employee.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"How did he learn my secret?\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660898424.png\", \"narration\""
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "17",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660918735.png\", \"narration\": \"Tolgar pieced together clues, discovering a hacker group's connection to the sender.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660928437.png\", \"narration\": \"This group had tracked T"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "18",
+      "imageUrl": "NULL",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "19",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660965217.png\", \"narration\": \"Tolgar, tüm dijital ayak izlerini sildi ve yeni bir kimlik oluşturdu.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660972553.png\", \"narration\": \"Hacker grubundan kaçmayı başarmıştı, an"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "20",
+      "imageUrl": "NULL",
+      "panels_preview": "NULL"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "21",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661010581.png\", \"narration\": \"Tolgar arrived at the bridge, seeing a man about to commit suicide.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"I understand your pain; I've faced similar darkness.\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661018727.png\", \""
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "22",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661037118.png\", \"narration\": \"Tolgar, yetkilileri arayarak köprüdeki potansiyel tehlike hakkında bilgi verdi.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661046427.png\", \"narration\": \"Polis ve kurtarma ekipleri in"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "23",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661065488.png\", \"narration\": \"Tolgar continued to track the hooded man.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661073057.png\", \"narration\": \"Using probabilities, he deduced the man would appear at an undergro"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "24",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661095508.png\", \"narration\": \"Tolgar enters the fight club and sees a hooded man effortlessly defeating opponents in the ring.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661105155.png\", \"narration\": \"The hooded m"
+    },
+    {
+      "book_id": "60004",
+      "title": "Çifte Hayat: Geceyi Yazan Adam",
+      "category": "comic",
+      "coverImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png",
+      "pageNumber": "25",
+      "imageUrl": "NULL",
+      "panels_preview": "[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661126279.png\", \"narration\": \"Tolgar watched a hooded man from outside the fight club, observing his every move.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661134419.png\", \"narration\": \"He realized the man posses"
+    }
+  ],
+  "messages": [],
+  "stdout": "book_id\ttitle\tcategory\tcoverImageUrl\tpageNumber\timageUrl\tpanels_preview\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t1\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660622866.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t2\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660630731.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t3\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660639608.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t4\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660647738.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t5\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660655813.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t6\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660662894.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t7\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660672050.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t8\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660679868.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t9\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660687216.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t10\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660694287.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t11\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660704386.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t12\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660716314.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t13\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660727707.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t14\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660737017.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t15\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660746359.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t16\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660754209.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t17\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660761667.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t18\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660768928.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t19\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660777319.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t20\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660784572.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t21\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660802751.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t22\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660812046.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t23\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660820656.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t24\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660829039.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t25\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660835786.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t26\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660843749.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t27\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660852641.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t28\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660865435.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t29\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660881626.png\tNULL\n60002\tVarisin Malikanesi\tcrime_mystery\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60002-cover-1772660613732.png\t30\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660890651.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t1\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660470600.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t2\tNULL\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t3\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660482460.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t4\tNULL\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t5\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660493976.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t6\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660502416.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t7\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660511908.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t8\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660519927.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t9\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660528816.png\tNULL\n60003\tAy'a Yolculuk\tfairy_tale\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60003-cover-1772660457153.png\t10\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660536240.png\tNULL\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t1\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660455281.png\", \"narration\": \"Tolgar, büyük bir holdingin toplantı odasında, elindeki lazer işaretleyiciyle dev ekrandaki karmaşık grafikleri gösteriyordu.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"Bu proje, pazar payımızı %15 artıracak.\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8S\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t2\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660484463.png\", \"narration\": \"As twilight fell, Tolgar's world began to shift, feeling a familiar tension beneath the city's neon glow.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660495279.png\", \"narration\": \"A t\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t3\tNULL\tNULL\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t4\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660529315.png\", \"narration\": \"Tolgar makes a split-second decision and rushes into the street, his mind calculating the impending crash.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660537842.png\", \"narration\": \"He\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t5\tNULL\t[{\"bubbleType\": \"shout\", \"dialogue\": \"Araba kontrolden çıkacak, yayaya çarpacak!\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660559068.png\", \"narration\": \"Tolgar anonymously calls the police from his phone.\", \"position\": \"bottom-left\", \"speaker\": \"Tolgar\"}, {\"bubbleType\": \"shout\", \"dialogue\": \"Hızla müdahale etmelisiniz!\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t6\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660586894.png\", \"narration\": \"Tolgar, olay yerinden uzaklaşırken zihninde yeni bir olasılık belirdi: onu uzaktan izleyen bir gölge.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"Bilen biri mi? Yoksa tesadüf mü?\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/177266\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t7\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660620356.png\", \"narration\": \"Tolgar breathes a sigh of relief after averting a disaster, maintaining his anonymity.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660630843.png\", \"narration\": \"He notes the increasin\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t8\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660652223.png\", \"narration\": \"Tolgar'ın ofisine gizemli bir zarf bırakılır.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"Olasılıkları değiştirmek tehlikelidir\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660661144.png\", \"narration\": \"Zarfın içinde dün geceki\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t9\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660681574.png\", \"narration\": \"Tolgar tears up the note and photo, discarding them in the trash.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"Bu sadece bir başlangıç...\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660692366.png\", \"narration\": \"He tries to fo\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t10\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660712050.png\", \"narration\": \"Tolgar, notu dikkatlice inceledi ve her detayı analiz etti.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"Bu kişi gücümü nasıl öğrendi?\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660720579.png\", \"narration\": \"Zihninde potansiy\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t11\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660740611.png\", \"narration\": \"Tolgar begins to suspect the escalating incidents are no coincidence, pondering their true nature.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660748707.png\", \"narration\": \"A chain of\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t12\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660769963.png\", \"narration\": \"Tolgar, son olayların tüm verilerini topladı: konumlar, zamanlar, etkilenen kişiler.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660778916.png\", \"narration\": \"Harita üzerinde bir dese\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t13\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660802532.png\", \"narration\": \"Tolgar uses his mind to perceive the potential source of events and the person behind them.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660810991.png\", \"narration\": \"Images are blurry\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t14\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660832631.png\", \"narration\": \"A week later, a second envelope arrived at Tolgar's office.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"Görme yeteneğin, seni kör ediyor\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660840869.png\", \"narration\": \"Inside, a photo\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t15\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660863253.png\", \"narration\": \"Tolgar covertly infiltrates company security to review camera footage.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660871110.png\", \"narration\": \"He discovers the envelope's sender is \n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t16\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660890240.png\", \"narration\": \"Tolgar recognized the unique font on the note, used by a former company employee.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"thought\", \"dialogue\": \"How did he learn my secret?\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660898424.png\", \"narration\"\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t17\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660918735.png\", \"narration\": \"Tolgar pieced together clues, discovering a hacker group's connection to the sender.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660928437.png\", \"narration\": \"This group had tracked T\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t18\tNULL\tNULL\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t19\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660965217.png\", \"narration\": \"Tolgar, tüm dijital ayak izlerini sildi ve yeni bir kimlik oluşturdu.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772660972553.png\", \"narration\": \"Hacker grubundan kaçmayı başarmıştı, an\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t20\tNULL\tNULL\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t21\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661010581.png\", \"narration\": \"Tolgar arrived at the bridge, seeing a man about to commit suicide.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": \"speech\", \"dialogue\": \"I understand your pain; I've faced similar darkness.\", \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661018727.png\", \"\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t22\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661037118.png\", \"narration\": \"Tolgar, yetkilileri arayarak köprüdeki potansiyel tehlike hakkında bilgi verdi.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661046427.png\", \"narration\": \"Polis ve kurtarma ekipleri in\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t23\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661065488.png\", \"narration\": \"Tolgar continued to track the hooded man.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661073057.png\", \"narration\": \"Using probabilities, he deduced the man would appear at an undergro\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t24\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661095508.png\", \"narration\": \"Tolgar enters the fight club and sees a hooded man effortlessly defeating opponents in the ring.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661105155.png\", \"narration\": \"The hooded m\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/covers/60004-cover-1772660443108.png\t25\tNULL\t[{\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661126279.png\", \"narration\": \"Tolgar watched a hooded man from outside the fight club, observing his every move.\", \"position\": null, \"speaker\": null}, {\"bubbleType\": null, \"dialogue\": null, \"imageUrl\": \"https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/generated/1772661134419.png\", \"narration\": \"He realized the man posses\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

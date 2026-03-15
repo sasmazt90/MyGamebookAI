@@ -1,0 +1,24 @@
+{
+  "query": "SELECT b.id, b.title, b.category, COUNT(bc.id) as character_count, GROUP_CONCAT(bc.name) as characters FROM books b LEFT JOIN bookCharacters bc ON b.id = bc.bookId GROUP BY b.id HAVING character_count > 1 ORDER BY character_count DESC LIMIT 20",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute SELECT b.id, b.title, b.category, COUNT(bc.id) as character_count, GROUP_CONCAT(bc.name) as characters FROM books b LEFT JOIN bookCharacters bc ON b.id = bc.bookId GROUP BY b.id HAVING character_count > 1 ORDER BY character_count DESC LIMIT 20",
+  "rows": [
+    {
+      "id": "300001",
+      "title": "Zümrüt Kapı'nın Sırrı",
+      "category": "comic",
+      "character_count": "4",
+      "characters": "Tunga,Elif,Mert,Lara"
+    },
+    {
+      "id": "300003",
+      "title": "The Arcana Box",
+      "category": "fantasy_scifi",
+      "character_count": "2",
+      "characters": "Timothy,Jane"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tcategory\tcharacter_count\tcharacters\n300001\tZümrüt Kapı'nın Sırrı\tcomic\t4\tTunga,Elif,Mert,Lara\n300003\tThe Arcana Box\tfantasy_scifi\t2\tTimothy,Jane\n",
+  "stderr": "",
+  "execution_time_ms": 92
+}

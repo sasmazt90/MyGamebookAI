@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, name, email, role FROM users WHERE role = 'admin' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute SELECT id, name, email, role FROM users WHERE role = 'admin' LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "gamebookai",
+      "email": "gamebookai@outlook.com",
+      "role": "admin"
+    },
+    {
+      "id": "30055",
+      "name": "Tolgar",
+      "email": "tolgar@sasmaz.digital",
+      "role": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\n1\tgamebookai\tgamebookai@outlook.com\tadmin\n30055\tTolgar\ttolgar@sasmaz.digital\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

@@ -1,0 +1,11 @@
+{
+  "query": "SELECT u.id, u.name, u.email, u.role FROM users u WHERE u.role = 'admin' LIMIT 5;\nSELECT c.id, c.name, c.photoUrl, c.userId FROM characters c WHERE c.photoUrl IS NOT NULL LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute SELECT u.id, u.name, u.email, u.role FROM users u WHERE u.role = 'admin' LIMIT 5;\nSELECT c.id, c.name, c.photoUrl, c.userId FROM characters c WHERE c.photoUrl IS NOT NULL LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "id\tname\temail\trole",
+    "1\tgamebookai\tgamebookai@outlook.com\tadmin",
+    "30055\tTolgar\ttolgar@sasmaz.digital\tadmin",
+    "ERROR 1146 (42S02) at line 2: Table 'cuorans8sgwcijucwsxm4w.characters' doesn't exist"
+  ]
+}

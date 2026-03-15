@@ -1,0 +1,32 @@
+{
+  "query": "SELECT id, name, openId FROM users WHERE role = 'admin';\nSELECT b.id, b.title, b.category, b.status, b.authorId FROM books b ORDER BY b.id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user YjcbNGfyMCcwqGq.root --database cuoraNs8SGWCiJUcwSXm4W --execute SELECT id, name, openId FROM users WHERE role = 'admin';\nSELECT b.id, b.title, b.category, b.status, b.authorId FROM books b ORDER BY b.id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "gamebookai",
+      "openId": "PbySHUvWXNcnW399ES5vsA"
+    },
+    {
+      "id": "30055",
+      "name": "Tolgar",
+      "openId": "email:tolgar@sasmaz.digital"
+    }
+  ],
+  "messages": [
+    "id\ttitle\tcategory\tstatus\tauthorId",
+    "90003\tÇifte Hayat\tcomic\tready\t1",
+    "90002\tGizli Değişken\tcrime_mystery\tready\t1",
+    "90001\tAy'a Yolculuk\tfairy_tale\tready\t1",
+    "60005\tAy'a Yolculuk\tfairy_tale\tdeleted\t1",
+    "60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\tdeleted\t1",
+    "60003\tAy'a Yolculuk\tfairy_tale\tdeleted\t1",
+    "60002\tVarisin Malikanesi\tcrime_mystery\tdeleted\t1",
+    "60001\tAy'a Yolculuk\tfairy_tale\tdeleted\t1",
+    "30001\tAy'a Yolculuk\tfairy_tale\tdeleted\t1",
+    "1\tAy'a Yolculuk\tfairy_tale\tdeleted\t1"
+  ],
+  "stdout": "id\tname\topenId\n1\tgamebookai\tPbySHUvWXNcnW399ES5vsA\n30055\tTolgar\temail:tolgar@sasmaz.digital\nid\ttitle\tcategory\tstatus\tauthorId\n90003\tÇifte Hayat\tcomic\tready\t1\n90002\tGizli Değişken\tcrime_mystery\tready\t1\n90001\tAy'a Yolculuk\tfairy_tale\tready\t1\n60005\tAy'a Yolculuk\tfairy_tale\tdeleted\t1\n60004\tÇifte Hayat: Geceyi Yazan Adam\tcomic\tdeleted\t1\n60003\tAy'a Yolculuk\tfairy_tale\tdeleted\t1\n60002\tVarisin Malikanesi\tcrime_mystery\tdeleted\t1\n60001\tAy'a Yolculuk\tfairy_tale\tdeleted\t1\n30001\tAy'a Yolculuk\tfairy_tale\tdeleted\t1\n1\tAy'a Yolculuk\tfairy_tale\tdeleted\t1\n",
+  "stderr": "",
+  "execution_time_ms": 64
+}

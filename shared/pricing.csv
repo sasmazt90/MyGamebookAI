@@ -1,0 +1,28 @@
+# Gamebook AI — Credit Pricing Table (source of truth)
+# Format: category,length,base_credits
+# Rules:
+#   - base_credits = credits charged for the book generation (excluding character photos)
+#   - character photo add-on = +5 credits per photo (see PHOTO_EXTRA_PER_PHOTO below)
+#   - Both the backend (server/routers/books.ts) and the UI cost calculator must read from this file
+#   - CHARACTER_UPLOAD_COST constant = PHOTO_EXTRA_PER_PHOTO (never hardcode 5 in UI or backend)
+#
+# Image generation counts per category/length (for reference):
+#   fairy_tale,thin   → 1 cover + 10 page illustrations = 11 images
+#   comic,thin        → 1 cover + 10 composite pages (→ 30 cropped panels) = 11 image calls
+#   comic,normal      → 1 cover + 18 composite pages (→ 54 cropped panels) = 19 image calls
+#   other,normal      → 1 cover + 8 branch images = 9 images
+#   other,thick       → 1 cover + 12 branch images = 13 images
+#
+PHOTO_EXTRA_PER_PHOTO,5
+category,length,base_credits
+fairy_tale,thin,50
+comic,thin,60
+comic,normal,90
+crime_mystery,normal,40
+crime_mystery,thick,60
+fantasy_scifi,normal,40
+fantasy_scifi,thick,60
+romance,normal,40
+romance,thick,60
+horror_thriller,normal,40
+horror_thriller,thick,60
