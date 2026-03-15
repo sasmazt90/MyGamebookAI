@@ -27,15 +27,17 @@ Uygulama backend ile birlikte `http://localhost:3000` üzerinde çalışır.
 
 ### AI/LLM (backend)
 
-Yeni genel isimler:
-- `LLM_API_KEY`
-- `LLM_API_URL` (opsiyonel, default OpenAI chat completions)
+Metin üretimi (OpenAI):
+- `TEXT_LLM_API_KEY`
+- `TEXT_LLM_API_URL` (default: `https://api.openai.com`)
+- `TEXT_LLM_MODEL` (default: `gpt-4o-mini`)
 
-Geriye dönük uyumluluk için eski isimler de destekleniyor:
-- `BUILT_IN_FORGE_API_KEY`
-- `BUILT_IN_FORGE_API_URL`
-- `OPENAI_API_KEY`
-- `OPENAI_BASE_URL`
+Görsel üretimi (Google Gemini):
+- `IMAGE_PROVIDER=google`
+- `GOOGLE_API_KEY`
+- `GOOGLE_IMAGE_MODEL` (default: `gemini-2.0-flash-preview-image-generation`)
+
+> Not: Eski `BUILT_IN_FORGE_*` ve `OPENAI_*` isimleri geriye dönük uyumluluk için halen tanınır.
 
 ### Frontend (Vercel Environment Variables)
 
@@ -56,7 +58,7 @@ Geriye dönük uyumluluk için eski isimler de destekleniyor:
    ```bash
    pnpm start
    ```
-4. Environment variables gir (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `LLM_API_KEY`, ...).
+4. Environment variables gir (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `TEXT_LLM_API_KEY`, `GOOGLE_API_KEY`, ...).
 5. Domain al (ör. `https://mygamebookai-api.up.railway.app`).
 6. İlk migration için bir kez çalıştır:
    ```bash
