@@ -107,7 +107,28 @@ function resolveMigrationsFolder() {
   return null;
 }
 
-async function ensureLegacyUserColumns(db: ReturnType<typeof drizzle>) {
+function getMySqlErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  const directCode = (error as { code?: unknown }).code;
+  if (typeof directCode === "string") return directCode;
+
+  const causeCode = (error as { cause?: { code?: unknown } }).cause?.code;
+  if (typeof causeCode === "string") return causeCode;
+
+  return undefined;
+}
+
+async function usersTableExists(db: ReturnType<typeof drizzle>): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`SHOW TABLES LIKE 'users'`);
+    return Array.isArray(result) && result.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function getExistingUserColumns(db: ReturnType<typeof drizzle>): Promise<Set<string>> {
   try {
     const result = await db.execute(
       sql`SELECT COLUMN_NAME as columnName
@@ -116,11 +137,30 @@ async function ensureLegacyUserColumns(db: ReturnType<typeof drizzle>) {
             AND TABLE_NAME = 'users'`
     );
 
-    const existingColumns = new Set(
+    return new Set(
       (result as Array<{ columnName?: string }>).map(
         (row) => row.columnName?.toLowerCase() ?? ""
       )
     );
+  } catch {
+    const showColumnsResult = await db.execute(sql.raw("SHOW COLUMNS FROM users"));
+    return new Set(
+      (showColumnsResult as Array<{ Field?: string }>).map(
+        (row) => row.Field?.toLowerCase() ?? ""
+      )
+    );
+  }
+}
+
+async function ensureLegacyUserColumns(db: ReturnType<typeof drizzle>) {
+  try {
+    const hasUsersTable = await usersTableExists(db);
+    if (!hasUsersTable) {
+      console.warn("[Database] users table not found yet; skipping legacy users column checks.");
+      return;
+    }
+
+    const existingColumns = await getExistingUserColumns(db);
 
     const requiredColumns: Array<{ name: string; definition: string }> = [
       { name: "passwordHash", definition: "VARCHAR(255) NULL" },
@@ -148,13 +188,29 @@ async function ensureLegacyUserColumns(db: ReturnType<typeof drizzle>) {
     ];
 
     for (const column of requiredColumns) {
-      if (!existingColumns.has(column.name.toLowerCase())) {
+      if (existingColumns.has(column.name.toLowerCase())) {
+        continue;
+      }
+
+      try {
         await db.execute(
           sql.raw(
             `ALTER TABLE users ADD COLUMN \`${column.name}\` ${column.definition}`
           )
         );
+        existingColumns.add(column.name.toLowerCase());
         console.warn(`[Database] Added missing users.${column.name} column`);
+      } catch (error) {
+        const errorCode = getMySqlErrorCode(error);
+        if (errorCode === "ER_DUP_FIELDNAME") {
+          existingColumns.add(column.name.toLowerCase());
+          continue;
+        }
+        if (errorCode === "ER_NO_SUCH_TABLE") {
+          console.warn("[Database] users table disappeared while patching legacy columns; skipping.");
+          return;
+        }
+        throw error;
       }
     }
   } catch (error) {

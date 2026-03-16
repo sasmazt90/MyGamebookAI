@@ -34,4 +34,20 @@ export const ENV = {
     process.env.BUILT_IN_FORGE_API_KEY ??
     process.env.LLM_API_KEY ??
     "",
+
+  // Object storage (preferred: Cloudflare R2 via S3-compatible API)
+  storageProvider: (process.env.STORAGE_PROVIDER ?? "r2").toLowerCase(),
+  r2AccountId: process.env.R2_ACCOUNT_ID ?? "",
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+  r2BucketName: process.env.R2_BUCKET_NAME ?? "",
+  r2Endpoint:
+    process.env.R2_ENDPOINT ??
+    (process.env.R2_ACCOUNT_ID
+      ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+      : ""),
+  r2PublicBaseUrl:
+    process.env.R2_PUBLIC_BASE_URL ??
+    process.env.R2_PUBLIC_URL ??
+    "",
 };

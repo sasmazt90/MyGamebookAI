@@ -39,6 +39,19 @@ Görsel üretimi (Google Gemini):
 
 > Not: Eski `BUILT_IN_FORGE_*` ve `OPENAI_*` isimleri geriye dönük uyumluluk için halen tanınır.
 
+### Storage (backend)
+
+Önerilen: **Cloudflare R2**
+- `STORAGE_PROVIDER=r2`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME` (ör: `mygamebookai-assets`)
+- `R2_ENDPOINT` (opsiyonel; boşsa `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`)
+- `R2_PUBLIC_BASE_URL` (opsiyonel; custom domain veya `*.r2.dev` URL. Boşsa sistem imzalı geçici URL üretir)
+
+Geriye dönük opsiyon: `BUILT_IN_FORGE_API_URL` + `BUILT_IN_FORGE_API_KEY`
+
 ### Frontend (Vercel Environment Variables)
 
 - `VITE_API_BASE_URL` → backend base URL
@@ -58,7 +71,7 @@ Görsel üretimi (Google Gemini):
    ```bash
    pnpm start
    ```
-4. Environment variables gir (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `TEXT_LLM_API_KEY`, `GOOGLE_API_KEY`, ...).
+4. Environment variables gir (`DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `TEXT_LLM_API_KEY`, `GOOGLE_API_KEY`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, ...).
 5. Domain al (ör. `https://mygamebookai-api.up.railway.app`).
 6. Uygulama açılışta otomatik migration dener (drizzle klasöründeki SQL'leri uygular).
    - Yine de istersen manuel tetiklemek için:
@@ -109,4 +122,3 @@ Eğer GitHub'a `old_database/` klasörü yüklediysen:
 - Önce backend'i deploy et ve loglarda `[Database] Connected database: ...` ile `[Database] Schema check after migration ...` mesajlarını kontrol et.
 - Bu proje artık açılışta tablo/kolon migration'ını otomatik dener; yani Railway tarafında tabloları tek tek elle açman gerekmez.
 - `old_database/` içindeki veri dump dosyalarını (INSERT/CSV) ayrıca import etmen gerekir; şema (table/column) ile veri taşıma iki ayrı adımdır.
-
