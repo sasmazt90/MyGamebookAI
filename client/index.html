@@ -13,20 +13,20 @@
     <meta property="og:description" content="Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters." />
     <meta property="og:type" content="website" />
     <!-- Canonical URL — updated dynamically per route by useSEO hook; this is the static fallback for crawlers -->
-    <link id="seo-canonical" rel="canonical" href="https://gamebookai-cuorans8.manus.space/" />
+    <link id="seo-canonical" rel="canonical" href="%VITE_PUBLIC_APP_URL%/" />
     <!-- WebSite JSON-LD structured data — updated dynamically on / by useSEO hook; static fallback for crawlers -->
     <script id="seo-json-ld" type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Gamebook AI",
-      "url": "https://gamebookai-cuorans8.manus.space",
+      "url": "%VITE_PUBLIC_APP_URL%",
       "description": "Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters.",
       "potentialAction": {
         "@type": "SearchAction",
         "target": {
           "@type": "EntryPoint",
-          "urlTemplate": "https://gamebookai-cuorans8.manus.space/store?q={search_term_string}"
+          "urlTemplate": "%VITE_PUBLIC_APP_URL%/store?q={search_term_string}"
         },
         "query-input": "required name=search_term_string"
       }
