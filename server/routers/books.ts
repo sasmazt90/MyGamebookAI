@@ -29,15 +29,36 @@ import { addCoverOverlay } from "../coverOverlay";
 import sharp from "sharp";
 import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
 
-// SFX tags per category — now using descriptive English keywords that match Google Sound Library
-const SFX_PRESETS: Record<string, string[]> = {
-  fairy_tale: ["forest", "birds", "magic", "wind", "night"],
-  comic: ["punch", "explosion", "crowd", "city", "run"],
-  crime_mystery: ["rain", "door", "footstep", "heartbeat", "wind"],
-  fantasy_scifi: ["space", "laser", "thunder", "fire", "magic"],
-  romance: ["birds", "piano", "wind", "water", "gentle"],
-  horror_thriller: ["heartbeat", "door", "wind", "scream", "rain"],
+const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
+  fairy_tale: ["thin"],
+  comic: ["thin", "normal"],
+  crime_mystery: ["normal", "thick"],
+  fantasy_scifi: ["normal", "thick"],
+  romance: ["normal", "thick"],
+  horror_thriller: ["normal", "thick"],
 };
+
+function isLengthAllowedForCategory(category: string, length: string): boolean {
+  return (CATEGORY_LENGTH_RULES[category] ?? []).includes(length);
+}
+
+function stripInlineChoiceLabels(content: string): string {
+  const cleanedLines = content
+    .split(/\r?\n/)
+    .map((line) => line
+      .replace(/\s+Choice\s*A\s*:.*/i, "")
+      .replace(/\s+Choice\s*B\s*:.*/i, "")
+      .trimEnd())
+    .filter((line) => !/^\s*make\s+your\s+choice\s*:?\s*$/i.test(line))
+    .filter((line) => !/^\s*(?:choice\s*[ab]|[ab])\s*[:\)]\s*(?:null\s*)?$/i.test(line));
+
+  return cleanedLines
+    .join("\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 
 async function generateBookContent(bookId: number, bookData: {
   title: string;
@@ -91,11 +112,11 @@ async function generateBookContent(bookId: number, bookData: {
     // This is the primary mechanism for visual consistency across all illustrations.
     const STYLE_PRESETS: Record<string, string> = {
       fairy_tale: [
-        "soft watercolor children's book illustration",
-        "warm diffused front-lighting, golden-hour colour temperature",
-        "pastel palette: peach, mint, lavender, warm cream",
-        "loose wet-on-wet watercolor brushwork with soft ink outlines",
-        "medium-shot framing, characters centered, whimsical rounded shapes",
+        "classic children's storybook illustration",
+        "warm natural storybook lighting, cozy indoor/outdoor glow",
+        "storybook palette: rich but gentle colours, clean contrast, child-friendly tones",
+        "clean gouache-style painted textures with crisp storybook outlines",
+        "storybook composition, readable character silhouettes, expressive faces",
         "no text, no letters, no words, no captions",
       ].join(", "),
       comic: [
@@ -788,16 +809,22 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     const generateImageWithRefCheck = async (
       stage: string,
       prompt: string,
-      _refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
+      refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
     ) => {
-      if (illustratedPortraits.length > 0) {
+      const mergedRefs = [
+        ...(refImages ?? []),
+        ...illustratedPortraits,
+      ].filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
+
+      if (mergedRefs.length > 0) {
         console.log(
-          `[Books] Generating image for bookId=${bookId} stage=${stage} (style-bridge mode — ${illustratedPortraits.length} illustrated portrait(s) as reference)`
+          `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode — ${mergedRefs.length} image reference(s))`
         );
-        return generateImage({ prompt, originalImages: illustratedPortraits });
+        return generateImage({ prompt, originalImages: mergedRefs });
       }
+
       console.log(
-        `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode — no illustrated portraits available)`
+        `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode — no usable references)`
       );
       return generateImage({ prompt });
     };
@@ -895,6 +922,7 @@ Rules:
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
+    const criticalValidationErrors: string[] = [];
 
     // Build a map of pageId → list of source pages that reference it as a target.
     // Any pageId referenced by more than one source = a merge violation.
@@ -902,13 +930,19 @@ Rules:
     for (const page of storyData.pages) {
       if (page.isBranchPage) {
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
-          validationErrors.push(`Page ${page.pageNumber}: nextPageA=${page.nextPageA} does not exist`);
+          const msg = `Page ${page.pageNumber}: nextPageA=${page.nextPageA} does not exist`;
+          validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         if (page.nextPageB && !pageNumbers.has(page.nextPageB)) {
-          validationErrors.push(`Page ${page.pageNumber}: nextPageB=${page.nextPageB} does not exist`);
+          const msg = `Page ${page.pageNumber}: nextPageB=${page.nextPageB} does not exist`;
+          validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         if (!page.choiceA || !page.choiceB) {
-          validationErrors.push(`Page ${page.pageNumber}: branch page missing choiceA or choiceB text`);
+          const msg = `Page ${page.pageNumber}: branch page missing choiceA or choiceB text`;
+          validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         // Track target references for merge detection
         if (page.nextPageA) {
@@ -931,6 +965,7 @@ Rules:
         const violation = `MERGE VIOLATION: Page ${targetId} is referenced as a branch target by multiple pages: [${sourceIds.join(", ")}]. Branches must never merge.`;
         mergeViolations.push(violation);
         validationErrors.push(violation);
+        criticalValidationErrors.push(violation);
       }
     }
     if (mergeViolations.length > 0) {
@@ -942,12 +977,18 @@ Rules:
     // Check at least one ending exists
     const endingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1));
     if (endingPages.length === 0) {
-      validationErrors.push("No ending pages found — story has no conclusion");
+      const msg = "No ending pages found — story has no conclusion";
+      validationErrors.push(msg);
+      criticalValidationErrors.push(msg);
     }
 
     if (validationErrors.length > 0) {
       console.warn(`[Books] Structure validation warnings for book ${bookId}:`, validationErrors);
       // Non-fatal: log and continue — the story may still be usable
+    }
+
+    if (criticalValidationErrors.length > 0) {
+      throw new Error(`Story structure validation failed: ${criticalValidationErrors.join(" | ")}`);
     }
 
      // ─── Step 4: Per-page expansion pass ───────────────────────────────────
@@ -1000,13 +1041,13 @@ CHILDREN'S WRITING RULES:
 - Use vivid, sensory details: colours, sounds, smells, textures
 - Maintain a warm, hopeful, and whimsical tone throughout
 - Characters must match their descriptions exactly — no aliases
-- If this is a branch page, end with the exact choice text provided in a clear, child-friendly way${contextBlock}${branchContext}`,
+- If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}`,
               },
               {
                 role: "user" as const,
                 content: `Expand this fairy tale page outline into 1-2 short, magical paragraphs in ${language} (suitable for children):
 
-Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. End with:\nChoice A: ${page.choiceA}\nChoice B: ${page.choiceB}` : ""}${page.isEnding ? "\n\nThis is an ending page. Write a warm, satisfying conclusion that feels complete and hopeful." : ""}
+Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. Keep prose natural and DO NOT print "Choice A" or "Choice B" inside the story text.` : ""}${page.isEnding ? "\n\nThis is an ending page. Write a warm, satisfying conclusion that feels complete and hopeful." : ""}
 
 Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
               },
@@ -1087,7 +1128,7 @@ CONTINUITY RULES:
 - Character appearances and personalities must match the character cards exactly
 - Do NOT introduce new named characters without establishing them
 - Maintain consistent tone and atmosphere for ${category.replace(/_/g, " ")} genre
-- If this is a branch page, end with the exact choice text provided${contextBlock}${branchContext}
+- If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}
 
 UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters. Preserve ALL Unicode exactly as written — Turkish (c-cedilla, g-breve, dotless-i, o-umlaut, s-cedilla, u-umlaut), German (umlauts, sharp-s), French accents, Spanish tilde-n, Cyrillic, Chinese, Japanese, Arabic, and all other scripts must appear verbatim.`,
               },
@@ -1095,7 +1136,7 @@ UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters.
                 role: "user" as const,
                 content: `Expand this page outline into 2-4 vivid paragraphs of narrative prose in ${language}:
 
-Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. End with:\nChoice A: ${page.choiceA}\nChoice B: ${page.choiceB}` : ""}${page.isEnding ? "\n\nThis is an ending page. Write a satisfying conclusion." : ""}
+Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. Keep prose natural and DO NOT print "Choice A" or "Choice B" inside the story text.` : ""}${page.isEnding ? "\n\nThis is an ending page. Write a satisfying conclusion." : ""}
 
 Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
               },
@@ -1115,6 +1156,12 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
         }
       }
     }
+
+    // Final prose cleanup: strip duplicated in-text choice labels and UI-like markers.
+    storyData.pages = storyData.pages.map((page) => ({
+      ...page,
+      content: stripInlineChoiceLabels(page.content ?? ""),
+    }));
 
     await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
 
@@ -1341,6 +1388,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
             const compositeResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-composite`,
               compositePrompt,
+              charPhotos.length > 0 ? charPhotos : undefined,
             );
 
             if (compositeResult.url) {
@@ -1421,6 +1469,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
               CHARACTER_LOCK_INSTRUCTION,
               "same character appearance as all other illustrations in this book",
             ].filter(Boolean).join(" | "),
+            charPhotos.length > 0 ? charPhotos : undefined,
           );
           imageUrl = imgResult.url ?? null;
 
@@ -1441,6 +1490,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
                 CHARACTER_LOCK_INSTRUCTION,
                 "same character appearance as all other illustrations in this book",
               ].filter(Boolean).join(" | "),
+              charPhotos.length > 0 ? charPhotos : undefined,
             );
             imageUrl = imgResult.url ?? null;
             console.log(`[Books] Branch image generated for page ${page.pageNumber}`);
@@ -1562,6 +1612,12 @@ export const booksRouter = router({
       })
     )
     .query(({ input }) => {
+      if (!isLengthAllowedForCategory(input.category, input.length)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invalid length "${input.length}" for category "${input.category}".`,
+        });
+      }
       return computeTotalCost(input.category, input.length, input.characterPhotoCount);
     }),
 
@@ -1591,13 +1647,22 @@ export const booksRouter = router({
       }
 
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return [];
+      }
 
       // Content moderation check
       const blockedTerms = ["hate speech", "explicit sexual", "extreme violence", "self-harm", "propaganda", "racism"];
       const descLower = input.description.toLowerCase();
       if (blockedTerms.some(term => descLower.includes(term))) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Content violates safety guidelines" });
+      }
+
+      if (!isLengthAllowedForCategory(input.category, input.length)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invalid length "${input.length}" for category "${input.category}".`,
+        });
       }
 
       // Calculate cost — always read from shared/pricing.ts (source of truth: shared/pricing.csv)
@@ -1746,7 +1811,13 @@ export const booksRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return {
+          bestSellers: [],
+          newArrivals: [],
+          mostPopular: [],
+        };
+      }
 
       const owned = await db
         .select({ bookId: userBooks.bookId })
@@ -1924,7 +1995,9 @@ export const booksRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return [];
+      }
 
       const conditions = [
         eq(books.isPublished, true),
@@ -2214,7 +2287,13 @@ export const booksRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return {
+          bestSellers: [],
+          newArrivals: [],
+          mostPopular: [],
+        };
+      }
 
       const conditions = [
         eq(books.isPublished, true),

@@ -4,9 +4,12 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { CREDIT_PACKAGES, type CreditPackageId } from "./products";
 import { TRPCError } from "@trpc/server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim();
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: "2026-02-25.clover",
+    })
+  : null;
 
 export const stripeRouter = router({
   /**
@@ -38,6 +41,13 @@ export const stripeRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.status === "suspended" || ctx.user.accountLocked) {
         throw new TRPCError({ code: "FORBIDDEN", message: ctx.user.accountLocked ? "Account locked due to payment issue. Please contact support." : "Account suspended" });
+      }
+
+      if (!stripe) {
+        throw new TRPCError({
+          code: "SERVICE_UNAVAILABLE",
+          message: "Payments are currently disabled (missing STRIPE_SECRET_KEY).",
+        });
       }
 
       const pkg = CREDIT_PACKAGES.find(p => p.id === input.packageId);
