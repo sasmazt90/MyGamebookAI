@@ -34,14 +34,16 @@ const FLIP_STYLES = `
   0%   { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
   100% { transform: perspective(1200px) rotateY(-180deg); opacity: 1; }
 }
-/* Non-Fairy-Tale: Realistic page flip (right page folds onto left, center fixed) */
+/* Non-Fairy-Tale: spine-fixed page-curl style flip (right page curls over left page) */
 @keyframes flipForwardRealistic {
-  0%   { transform: perspective(1200px) rotateY(0deg) translateZ(0); opacity: 1; }
-  100% { transform: perspective(1200px) rotateY(-180deg) translateZ(0); opacity: 1; }
+  0%   { transform: perspective(1400px) rotateY(0deg) translateX(0) skewY(0deg) scaleX(1); opacity: 1; filter: brightness(1); }
+  45%  { transform: perspective(1400px) rotateY(-20deg) translateX(-1.5%) skewY(1.2deg) scaleX(0.995); opacity: 1; filter: brightness(0.92); }
+  100% { transform: perspective(1400px) rotateY(-36deg) translateX(-3.5%) skewY(2.2deg) scaleX(0.99); opacity: 1; filter: brightness(0.86); }
 }
 @keyframes flipBackwardRealistic {
-  0%   { transform: perspective(1200px) rotateY(0deg) translateZ(0); opacity: 1; }
-  100% { transform: perspective(1200px) rotateY(180deg) translateZ(0); opacity: 1; }
+  0%   { transform: perspective(1400px) rotateY(0deg) translateX(0) skewY(0deg) scaleX(1); opacity: 1; filter: brightness(1); }
+  45%  { transform: perspective(1400px) rotateY(20deg) translateX(1.5%) skewY(-1.2deg) scaleX(0.995); opacity: 1; filter: brightness(0.92); }
+  100% { transform: perspective(1400px) rotateY(36deg) translateX(3.5%) skewY(-2.2deg) scaleX(0.99); opacity: 1; filter: brightness(0.86); }
 }
 @keyframes musicBar1 { 0%,100%{height:40%} 50%{height:90%} }
 @keyframes musicBar2 { 0%,100%{height:70%} 50%{height:30%} }
@@ -676,7 +678,7 @@ export default function Reader() {
           )}
           style={{
             ...curlStyle,
-            transformOrigin: "center center",
+            transformOrigin: isFairyTale ? "center center" : "right center",
             perspective: "1200px",
             cursor: cornerCursorStyle,
           }}

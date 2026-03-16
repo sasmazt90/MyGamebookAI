@@ -29,17 +29,6 @@ import { addCoverOverlay } from "../coverOverlay";
 import sharp from "sharp";
 import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
 
-// SFX tags per category — now using descriptive English keywords that match Google Sound Library
-const SFX_PRESETS: Record<string, string[]> = {
-  fairy_tale: ["forest", "birds", "magic", "wind", "night"],
-  comic: ["punch", "explosion", "crowd", "city", "run"],
-  crime_mystery: ["rain", "door", "footstep", "heartbeat", "wind"],
-  fantasy_scifi: ["space", "laser", "thunder", "fire", "magic"],
-  romance: ["birds", "piano", "wind", "water", "gentle"],
-  horror_thriller: ["heartbeat", "door", "wind", "scream", "rain"],
-};
-
-
 const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
   fairy_tale: ["thin"],
   comic: ["thin", "normal"],
@@ -123,11 +112,11 @@ async function generateBookContent(bookId: number, bookData: {
     // This is the primary mechanism for visual consistency across all illustrations.
     const STYLE_PRESETS: Record<string, string> = {
       fairy_tale: [
-        "soft watercolor children's book illustration",
-        "warm diffused front-lighting, golden-hour colour temperature",
-        "pastel palette: peach, mint, lavender, warm cream",
-        "loose wet-on-wet watercolor brushwork with soft ink outlines",
-        "medium-shot framing, characters centered, whimsical rounded shapes",
+        "classic children's storybook illustration",
+        "warm natural storybook lighting, cozy indoor/outdoor glow",
+        "storybook palette: rich but gentle colours, clean contrast, child-friendly tones",
+        "clean gouache-style painted textures with crisp storybook outlines",
+        "storybook composition, readable character silhouettes, expressive faces",
         "no text, no letters, no words, no captions",
       ].join(", "),
       comic: [
@@ -933,6 +922,7 @@ Rules:
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
+    const criticalValidationErrors: string[] = [];
 
     // Build a map of pageId → list of source pages that reference it as a target.
     // Any pageId referenced by more than one source = a merge violation.
@@ -940,13 +930,19 @@ Rules:
     for (const page of storyData.pages) {
       if (page.isBranchPage) {
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
-          validationErrors.push(`Page ${page.pageNumber}: nextPageA=${page.nextPageA} does not exist`);
+          const msg = `Page ${page.pageNumber}: nextPageA=${page.nextPageA} does not exist`;
+          validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         if (page.nextPageB && !pageNumbers.has(page.nextPageB)) {
-          validationErrors.push(`Page ${page.pageNumber}: nextPageB=${page.nextPageB} does not exist`);
+          const msg = `Page ${page.pageNumber}: nextPageB=${page.nextPageB} does not exist`;
+          validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         if (!page.choiceA || !page.choiceB) {
-          validationErrors.push(`Page ${page.pageNumber}: branch page missing choiceA or choiceB text`);
+          const msg = `Page ${page.pageNumber}: branch page missing choiceA or choiceB text`;
+          validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         // Track target references for merge detection
         if (page.nextPageA) {
@@ -969,6 +965,7 @@ Rules:
         const violation = `MERGE VIOLATION: Page ${targetId} is referenced as a branch target by multiple pages: [${sourceIds.join(", ")}]. Branches must never merge.`;
         mergeViolations.push(violation);
         validationErrors.push(violation);
+        criticalValidationErrors.push(violation);
       }
     }
     if (mergeViolations.length > 0) {
@@ -980,12 +977,18 @@ Rules:
     // Check at least one ending exists
     const endingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1));
     if (endingPages.length === 0) {
-      validationErrors.push("No ending pages found — story has no conclusion");
+      const msg = "No ending pages found — story has no conclusion";
+      validationErrors.push(msg);
+      criticalValidationErrors.push(msg);
     }
 
     if (validationErrors.length > 0) {
       console.warn(`[Books] Structure validation warnings for book ${bookId}:`, validationErrors);
       // Non-fatal: log and continue — the story may still be usable
+    }
+
+    if (criticalValidationErrors.length > 0) {
+      throw new Error(`Story structure validation failed: ${criticalValidationErrors.join(" | ")}`);
     }
 
      // ─── Step 4: Per-page expansion pass ───────────────────────────────────

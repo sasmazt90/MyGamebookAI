@@ -2,7 +2,7 @@
  * useReaderAudio — Web Audio API hook for the Reader page.
  *
  * Provides:
- *  - playPageTurn(sfxTags?)  → paper-rustle + optional Google Sound Library SFX
+ *  - playPageTurn(sfxTags?)  → optional Google Sound Library SFX
  *  - startAmbience()         → genre-specific procedural ambient loop
  *  - stopAmbience()
  *  - muted / setMuted
@@ -14,19 +14,11 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SOUND_LIBRARY_CSV_URL, findBestSound, type SoundEntry } from "@shared/soundLibrary";
 
 // ---------------------------------------------------------------------------
 // Google Sound Library — CSV loader + keyword matcher
 // ---------------------------------------------------------------------------
-
-const SOUND_LIBRARY_CSV_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663399842622/cuoraNs8SGWCiJUcwSXm4W/google-sound-library_ca44f471.csv";
-
-interface SoundEntry {
-  category: string;
-  sound: string;
-  url: string;
-}
 
 // Module-level cache so we only fetch once per session
 let soundLibraryCache: SoundEntry[] | null = null;
@@ -67,25 +59,6 @@ function loadSoundLibrary(): Promise<SoundEntry[]> {
   });
 }
 
-function findBestSoundUrl(entries: SoundEntry[], sfxTags: string[]): string | null {
-  if (!entries.length || !sfxTags.length) return null;
-  const keywords = sfxTags.map(t => t.toLowerCase().replace(/_/g, " ").trim());
-  let bestScore = 0;
-  let bestUrl: string | null = null;
-  for (const entry of entries) {
-    let score = 0;
-    for (const kw of keywords) {
-      if (entry.sound === kw) score += 10;
-      else if (entry.sound.includes(kw)) score += 5;
-      else if (kw.split(" ").some(w => w.length > 2 && entry.sound.includes(w))) score += 3;
-      else if (entry.category.includes(kw)) score += 2;
-      else if (kw.split(" ").some(w => w.length > 2 && entry.category.includes(w))) score += 1;
-    }
-    if (score > bestScore) { bestScore = score; bestUrl = entry.url; }
-  }
-  return bestScore > 0 ? bestUrl : null;
-}
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -93,8 +66,8 @@ function findBestSoundUrl(entries: SoundEntry[], sfxTags: string[]): string | nu
 export type BookCategory =
   | "horror_thriller"
   | "romance"
-  | "comic_book"
-  | "illustrated_fairy_tale"
+  | "comic"
+  | "fairy_tale"
   | "crime_mystery"
   | "fantasy_scifi"
   | string;
@@ -180,7 +153,7 @@ const GENRE_AMBIENCE: Record<string, AmbienceConfig> = {
     hpCutoff: 80,
     lpCutoff: 3500,
   },
-  illustrated_fairy_tale: {
+  fairy_tale: {
     rootHz: 329.6,       // E4 — bright, magical
     droneType: "sine",
     overtones: [[2, 0.4], [3, 0.2], [4, 0.1], [6, 0.05]],
@@ -202,7 +175,7 @@ const GENRE_AMBIENCE: Record<string, AmbienceConfig> = {
     hpCutoff: 40,
     lpCutoff: 4000,
   },
-  comic_book: {
+  comic: {
     rootHz: 196,         // G3 — punchy, energetic
     droneType: "square",
     overtones: [[2, 0.2], [3, 0.1]],
@@ -290,83 +263,33 @@ export function useReaderAudio(category: BookCategory) {
   }
 
   // ---------------------------------------------------------------------------
-  // Page-turn SFX (synthesised paper rustle + optional Google Sound Library SFX)
+  // Page-turn SFX (Google Sound Library only)
   // ---------------------------------------------------------------------------
 
   const playPageTurn = useCallback((sfxTags?: string[]) => {
-    if (muted) return;
+    if (muted || !sfxTags || sfxTags.length === 0) return;
 
-    // 1. Whoosh effect (page flip motion sound)
-    try {
-      const ctx = getCtx();
-      const whooshLen = Math.floor(ctx.sampleRate * 0.35);
-      const whooshBuf = ctx.createBuffer(1, whooshLen, ctx.sampleRate);
-      const whooshData = whooshBuf.getChannelData(0);
-      for (let i = 0; i < whooshLen; i++) {
-        const t = i / whooshLen;
-        const freq = 800 - (t * 600);
-        const phase = (2 * Math.PI * freq * i) / ctx.sampleRate;
-        const sine = Math.sin(phase);
-        const noise = Math.random() * 0.3;
-        const env = Math.exp(-t * 8) * (1 - Math.exp(-t * 40));
-        whooshData[i] = (sine * 0.7 + noise * 0.3) * env;
-      }
-      const whooshSrc = ctx.createBufferSource();
-      whooshSrc.buffer = whooshBuf;
-      const whooshGain = ctx.createGain();
-      whooshGain.gain.value = volume * 0.5;
-      whooshSrc.connect(whooshGain);
-      whooshGain.connect(ctx.destination);
-      whooshSrc.start();
-    } catch {}
-
-    // 2. Paper rustle via Web Audio API (delayed after whoosh)
-    try {
-      const ctx = getCtx();
-      const bufLen = Math.floor(ctx.sampleRate * 0.15);
-      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufLen; i++) {
-        const t = i / bufLen;
-        const env = Math.exp(-t * 15) * (1 - Math.exp(-t * 70));
-        data[i] = (Math.random() * 2 - 1) * env;
-      }
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const bp = ctx.createBiquadFilter();
-      bp.type = "bandpass";
-      bp.frequency.value = 3200;
-      bp.Q.value = 1.0;
-      const gain = ctx.createGain();
-      gain.gain.value = volume * 0.4;
-      src.connect(bp);
-      bp.connect(gain);
-      gain.connect(ctx.destination);
-      setTimeout(() => src.start(), 200);
-    } catch {}
-
-    // 3. Google Sound Library SFX — play after page flip animation
-    if (sfxTags && sfxTags.length > 0) {
-      loadSoundLibrary().then(entries => {
-        const url = findBestSoundUrl(entries, sfxTags);
-        if (!url) return;
-        try {
-          if (sfxAudioRef.current) {
-            sfxAudioRef.current.pause();
-            sfxAudioRef.current = null;
+    // Page-turn whoosh/rustle intentionally removed for all categories.
+    // Only context-aware scene SFX is played from the shared sound library.
+    loadSoundLibrary().then(entries => {
+      const url = findBestSound(entries, "", sfxTags, categoryRef.current);
+      if (!url) return;
+      try {
+        if (sfxAudioRef.current) {
+          sfxAudioRef.current.pause();
+          sfxAudioRef.current = null;
+        }
+        const audio = new Audio(url);
+        audio.volume = Math.min(1, volume * 1.2);
+        audio.crossOrigin = "anonymous";
+        sfxAudioRef.current = audio;
+        setTimeout(() => {
+          if (sfxAudioRef.current === audio) {
+            audio.play().catch(() => {});
           }
-          const audio = new Audio(url);
-          audio.volume = Math.min(1, volume * 1.2);
-          audio.crossOrigin = "anonymous";
-          sfxAudioRef.current = audio;
-          setTimeout(() => {
-            if (sfxAudioRef.current === audio) {
-              audio.play().catch(() => {});
-            }
-          }, 350);
-        } catch {}
-      });
-    }
+        }, 350);
+      } catch {}
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [muted, volume]);
 
