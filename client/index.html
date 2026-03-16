@@ -13,37 +13,42 @@
     <meta property="og:description" content="Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters." />
     <meta property="og:type" content="website" />
     <!-- Canonical URL — updated dynamically per route by useSEO hook; this is the static fallback for crawlers -->
-    <link id="seo-canonical" rel="canonical" href="https://gamebookai-cuorans8.manus.space/" />
+    <link id="seo-canonical" rel="canonical" href="%VITE_PUBLIC_APP_URL%/" />
     <!-- WebSite JSON-LD structured data — updated dynamically on / by useSEO hook; static fallback for crawlers -->
     <script id="seo-json-ld" type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "Gamebook AI",
-      "url": "https://gamebookai-cuorans8.manus.space",
+      "url": "%VITE_PUBLIC_APP_URL%",
       "description": "Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters.",
       "potentialAction": {
         "@type": "SearchAction",
         "target": {
           "@type": "EntryPoint",
-          "urlTemplate": "https://gamebookai-cuorans8.manus.space/store?q={search_term_string}"
+          "urlTemplate": "%VITE_PUBLIC_APP_URL%/store?q={search_term_string}"
         },
         "query-input": "required name=search_term_string"
       }
     }
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bangers&display=swap" rel="stylesheet" />
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <script type="module">
+      const endpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+      const websiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+
+      if (endpoint && websiteId) {
+        const script = document.createElement("script");
+        script.defer = true;
+        script.src = `${endpoint.replace(/\/$/, "")}/umami`;
+        script.setAttribute("data-website-id", websiteId);
+        document.body.appendChild(script);
+      }
+    </script>
   </body>
 
 </html>
