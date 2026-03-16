@@ -1,0 +1,6 @@
+id,openId,name,email,loginMethod,role,createdAt,updatedAt,lastSignedIn,status,accountLocked,deletedAt,passwordHash
+1,PbySHUvWXNcnW399ES5vsA,gamebookai,gamebookai@outlook.com,email,admin,2026-03-03 20:44:48,2026-03-15 16:51:30,2026-03-15 16:51:31,active,0,,$2b$12$A04.hEYoPQm.hFN3EXeltu6BYtKGRZa.ES55tqhfajVLT7o6CaH5m
+30055,email:tolgar@sasmaz.digital,Tolgar,tolgar@sasmaz.digital,email,admin,2026-03-04 04:02:18,2026-03-04 04:12:26,2026-03-04 04:05:01,active,0,,$2b$12$8uwVzYmDvpfrmSI03LmrdeXzmVYusklOkna4vfWYHejN2PIbXz/bq
+30057,email:testuser@example.com,Test User,testuser@example.com,email,user,2026-03-04 04:05:09,2026-03-04 04:05:09,2026-03-04 04:05:09,active,0,,$2b$12$vFOOyYjRWMdORvLkoJPX.eeNg5LhE5K8MvlMRv.zPbevVY3OrcuPi
+150001,email:sevkiyegulder@outlook.com,Jane Watson,sevkiyegulder@outlook.com,email,user,2026-03-05 11:22:27,2026-03-13 18:43:13,2026-03-13 18:43:13,active,0,,$2b$12$vo7kfu/omvLhFsOlO5M6Juub7IXAW4xGDsetlInM6S61Kp/HyOH/K
+180001,email:rrrnediciii@gmail.com,Roei Medici,rrrnediciii@gmail.com,email,user,2026-03-07 09:26:00,2026-03-07 21:37:39,2026-03-07 21:37:40,active,0,,$2b$12$Ifbw1ZSdouRHGmLNAM1SZOF4ay2tN0UXpb7otsBKtqmjwcdLPNzTy

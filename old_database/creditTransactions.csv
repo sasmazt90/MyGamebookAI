@@ -1,0 +1,63 @@
+id,userId,type,amount,balanceAfter,description,referenceId,stripePaymentIntentId,createdAt
+1,1,spend_generate,-11,989,Generated book: Ay'a Yolculuk,,,2026-03-04 06:07:16
+30001,1,spend_generate,-11,978,Generated book: Ay'a Yolculuk,,,2026-03-04 18:26:37
+60001,1,spend_generate,-11,967,Generated book: Ay'a Yolculuk,,,2026-03-04 21:00:19
+60002,1,spend_generate,-9,958,Generated book: Varisin Malikanesi,,,2026-03-04 21:39:16
+60003,1,spend_generate,-11,947,Generated book: Ay'a Yolculuk,,,2026-03-04 21:39:16
+60004,1,spend_generate,-9,938,Generated book: Çifte Hayat: Geceyi Yazan Adam,,,2026-03-04 21:39:17
+60005,1,spend_generate,-11,927,Generated book: Ay'a Yolculuk,,,2026-03-04 22:58:06
+90001,1,spend_generate,-11,916,Generated book: Ay'a Yolculuk,,,2026-03-05 00:34:28
+90002,1,spend_generate,-9,907,Generated book: Gizli Değişken,,,2026-03-05 00:35:37
+90003,1,spend_generate,-9,898,Generated book: Çifte Hayat,,,2026-03-05 00:36:26
+120001,1,spend_generate,-11,887,Generated book: Ay'a Yolculuk,,,2026-03-05 02:18:23
+120002,1,spend_generate,-9,878,Generated book: Çifte Hayat,,,2026-03-05 02:19:15
+120003,1,spend_generate,-9,869,Generated book: Varisin Malikanesi,,,2026-03-05 02:20:16
+120004,1,spend_generate,-11,858,Generated book: Ay'a Yolculuk,,,2026-03-05 02:52:10
+120005,1,spend_generate,-60,798,Generated book: Ay'a Yolculuk,,,2026-03-05 05:49:03
+120006,1,spend_generate,-95,703,Generated book: Deney 27,,,2026-03-05 06:02:09
+150001,1,spend_generate,-65,638,Generated book: Kayıp Şifrenin Sırrı,,,2026-03-05 06:53:25
+180001,150001,admin_adjust,998,998,bonus,,,2026-03-05 18:52:20
+180002,150001,spend_generate,-50,948,Generated book: The Arcana Box,,,2026-03-05 18:56:07
+180003,150001,spend_generate,-60,888,Generated book: Lily and the Little Brave Jack,,,2026-03-05 19:04:52
+180004,150001,spend_buy,-10,878,Purchased: Kayıp Şifrenin Sırrı,150001,,2026-03-05 19:05:26
+180005,1,earn_sale,3,641,Sale of: Kayıp Şifrenin Sırrı,150001,,2026-03-05 19:05:26
+180006,150001,spend_generate,-95,783,Generated book: Thalion of the Grey Woods,,,2026-03-05 19:25:31
+210001,180001,admin_adjust,600,600,bonus,,,2026-03-07 09:34:04
+210002,180001,spend_generate,-110,490,Generated book: Zümrüt Kapı'nın Sırrı,,,2026-03-07 09:59:07
+210003,180001,spend_generate,-55,435,Generated book: Das Geheimnis des Mondlichts,,,2026-03-07 10:07:46
+240001,1,spend_buy,-3,638,Purchased: Lily and the Little Brave Jack,180002,,2026-03-07 12:27:41
+240002,150001,earn_sale,0,783,Sale of: Lily and the Little Brave Jack,180002,,2026-03-07 12:27:42
+240003,180001,spend_buy,-10,425,Purchased: Kayıp Şifrenin Sırrı,150001,,2026-03-07 13:30:51
+240004,1,earn_sale,3,641,Sale of: Kayıp Şifrenin Sırrı,150001,,2026-03-07 13:30:51
+240005,1,spend_buy,-7,634,Purchased: The Arcana Box,180001,,2026-03-07 14:20:03
+240006,150001,earn_sale,2,785,Sale of: The Arcana Box,180001,,2026-03-07 14:20:03
+270001,180001,spend_buy,-7,418,Purchased: The Arcana Box,180001,,2026-03-07 15:29:00
+270002,150001,earn_sale,2,787,Sale of: The Arcana Box,180001,,2026-03-07 15:29:00
+270003,1,spend_buy,-10,624,Purchased: Zümrüt Kapı'nın Sırrı,210001,,2026-03-07 15:44:42
+270004,180001,earn_sale,3,421,Sale of: Zümrüt Kapı'nın Sırrı,210001,,2026-03-07 15:44:42
+270005,1,spend_generate,-95,529,Generated book: Deney 27,,,2026-03-07 16:20:52
+300001,150001,spend_generate,-60,727,Generated book: Lily and the Little Brave Jack,,,2026-03-07 21:39:04
+300002,150001,spend_generate,-70,657,Generated book: The Arcana Box,,,2026-03-07 21:40:09
+300003,1,spend_generate,-95,434,Generated book: Deney 27,,,2026-03-07 21:41:46
+300004,180001,spend_generate,-110,311,Generated book: Zümrüt Kapı'nın Sırrı,,,2026-03-07 21:45:33
+300005,180001,spend_generate,-55,256,Generated book: Das Geheimnis des Mondlichts,,,2026-03-07 21:46:38
+300006,1,spend_generate,-60,374,Generated book: Ay'a Yolculuk,,,2026-03-07 21:47:37
+330001,180001,spend_generate,-110,146,Generated book: Zümrüt Kapı'nın Sırrı,,,2026-03-09 07:47:14
+330002,180001,spend_generate,-55,91,Generated book: Das Geheimnis des Mondlichts,,,2026-03-09 07:47:59
+330003,150001,spend_generate,-70,587,Generated book: The Arcana Box,,,2026-03-09 07:49:29
+360001,1,spend_generate,-95,279,Generated book: Deney 27,,,2026-03-09 11:41:21
+360002,1,spend_generate,-95,184,Generated book: Deney 27,,,2026-03-09 12:09:26
+390001,1,spend_generate,-95,89,Generated book: Deney 27,,,2026-03-09 18:06:25
+420001,180001,admin_adjust,1000,1091,bonus,,,2026-03-09 22:40:34
+420002,150001,admin_adjust,1000,1587,bonus,,,2026-03-09 22:40:47
+420003,180001,spend_generate,-110,981,Generated book: Zümrüt Kapı'nın Sırrı,,,2026-03-09 22:44:50
+420004,1,admin_adjust,1000,1089,bonus,,,2026-03-10 03:08:32
+420005,1,spend_generate,-95,994,Generated book: The Heir of the Mansion,,,2026-03-10 03:11:21
+420006,1,spend_generate,-95,899,Generated book: Deney 27,,,2026-03-10 04:11:29
+420007,1,spend_generate,-95,804,Generated book: Deney 27,,,2026-03-10 04:22:26
+450001,1,spend_generate,-95,709,Generated book: Deney 27,,,2026-03-13 16:33:29
+480001,150001,spend_generate,-110,1477,Generated book: Zümrüt Kapı'nın Sırrı,,,2026-03-13 18:45:19
+480002,1,spend_generate,-60,649,Generated book: Ay'a Yolculuk,,,2026-03-13 19:29:55
+510001,150001,spend_generate,-70,1407,Generated book: The Arcana Box,,,2026-03-14 18:15:12
+510002,180001,spend_buy,-5,976,Purchased: Deney 27,420001,,2026-03-14 18:16:18
+510003,1,earn_sale,1,650,Sale of: Deney 27,420001,,2026-03-14 18:16:18

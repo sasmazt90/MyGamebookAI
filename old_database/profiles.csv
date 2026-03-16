@@ -1,0 +1,4 @@
+userId,authorName,authorNameLower,avatarUrl,interfaceLanguage,onboardingComplete,createdAt,updatedAt,cachedTotalBooks,cachedTotalSales,cachedTotalReviews,cachedAverageRating,cachedTotalCompletions,statsUpdatedAt,lastBestSellerRank,lastNewArrivalRank,lastMostPopularRank,lastRankSnapshotAt,bio
+1,Tolgar,tolgar,,en,1,2026-03-04 04:12:27,2026-03-15 12:25:50,1,1,1,5,3,2026-03-14 18:17:43,1,1,1,2026-03-15 12:25:51,
+30055,TolgarSasmaz,tolgarsasmaz,,en,1,2026-03-04 04:12:26,2026-03-04 04:12:26,0,0,0,0,0,2026-03-04 04:12:26,,,,,
+150001,Jane Hudson,jane hudson,,en,1,2026-03-05 11:22:54,2026-03-09 11:09:51,0,0,0,0,1,2026-03-09 11:09:52,1,2,4,2026-03-07 21:06:34,
