@@ -211,6 +211,8 @@ const normalizeToolChoice = (
 
 const resolveApiUrl = () => `${ENV.textApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
+const OPENAI_CHAT_COMPLETIONS_MAX_TOKENS = 16384;
+
 const assertApiKey = () => {
   if (!ENV.textApiKey) {
     throw new Error("TEXT_LLM_API_KEY (or OPENAI_API_KEY) is not configured");
@@ -274,6 +276,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     output_schema,
     responseFormat,
     response_format,
+    maxTokens,
+    max_tokens,
   } = params;
 
   const payload: Record<string, unknown> = {
@@ -293,7 +297,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768;
+  const requestedMaxTokens = maxTokens ?? max_tokens ?? ENV.textMaxTokens;
+  payload.max_tokens = Math.min(
+    Math.max(1, requestedMaxTokens),
+    OPENAI_CHAT_COMPLETIONS_MAX_TOKENS
+  );
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,

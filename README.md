@@ -31,6 +31,7 @@ Metin üretimi (OpenAI):
 - `TEXT_LLM_API_KEY`
 - `TEXT_LLM_API_URL` (default: `https://api.openai.com`)
 - `TEXT_LLM_MODEL` (default: `gpt-4o-mini`)
+- `TEXT_LLM_MAX_TOKENS` (default: `4096`, upper safety cap: `16384`)
 
 Görsel üretimi (Google Gemini):
 - `IMAGE_PROVIDER=google`

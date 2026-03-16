@@ -17,6 +17,12 @@ export const ENV = {
     process.env.LLM_API_KEY ??
     "",
   textModel: process.env.TEXT_LLM_MODEL ?? "gpt-4o-mini",
+  textMaxTokens: (() => {
+    const raw = process.env.TEXT_LLM_MAX_TOKENS;
+    if (!raw) return 4096;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 4096;
+  })(),
 
   // Image generation provider
   imageProvider: (process.env.IMAGE_PROVIDER ?? "google").toLowerCase(),
