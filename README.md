@@ -123,3 +123,15 @@ Eğer GitHub'a `old_database/` klasörü yüklediysen:
 - Önce backend'i deploy et ve loglarda `[Database] Connected database: ...` ile `[Database] Schema check after migration ...` mesajlarını kontrol et.
 - Bu proje artık açılışta tablo/kolon migration'ını otomatik dener; yani Railway tarafında tabloları tek tek elle açman gerekmez.
 - `old_database/` içindeki veri dump dosyalarını (INSERT/CSV) ayrıca import etmen gerekir; şema (table/column) ile veri taşıma iki ayrı adımdır.
+
+
+## 8) Hızlı sağlık kontrolleri
+
+Deploy sonrası temel kontroller için:
+
+```bash
+pnpm test
+pnpm build
+```
+
+Bu iki komut, hem backend testlerini hem de istemci + sunucu derleme adımlarını doğrulamak için hızlı bir başlangıç sağlar.

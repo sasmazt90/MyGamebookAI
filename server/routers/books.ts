@@ -1644,7 +1644,9 @@ export const booksRouter = router({
       }
 
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return [];
+      }
 
       // Content moderation check
       const blockedTerms = ["hate speech", "explicit sexual", "extreme violence", "self-harm", "propaganda", "racism"];
@@ -1806,7 +1808,13 @@ export const booksRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return {
+          bestSellers: [],
+          newArrivals: [],
+          mostPopular: [],
+        };
+      }
 
       const owned = await db
         .select({ bookId: userBooks.bookId })
@@ -1984,7 +1992,9 @@ export const booksRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return [];
+      }
 
       const conditions = [
         eq(books.isPublished, true),
@@ -2274,7 +2284,13 @@ export const booksRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return {
+          bestSellers: [],
+          newArrivals: [],
+          mostPopular: [],
+        };
+      }
 
       const conditions = [
         eq(books.isPublished, true),
