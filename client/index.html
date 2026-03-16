@@ -12,25 +12,36 @@
     <meta property="og:title" content="Gamebook AI — Create AI-Powered Interactive Stories" />
     <meta property="og:description" content="Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters." />
     <meta property="og:type" content="website" />
-    <!-- Canonical URL — updated dynamically per route by useSEO hook; this is the static fallback for crawlers -->
-    <link id="seo-canonical" rel="canonical" href="%VITE_PUBLIC_APP_URL%/" />
-    <!-- WebSite JSON-LD structured data — updated dynamically on / by useSEO hook; static fallback for crawlers -->
-    <script id="seo-json-ld" type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Gamebook AI",
-      "url": "%VITE_PUBLIC_APP_URL%",
-      "description": "Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters.",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": {
-          "@type": "EntryPoint",
-          "urlTemplate": "%VITE_PUBLIC_APP_URL%/store?q={search_term_string}"
-        },
-        "query-input": "required name=search_term_string"
+    <link id="seo-canonical" rel="canonical" href="https://example.com/" />
+    <script id="seo-json-ld" type="application/ld+json"></script>
+    <script type="module">
+      const publicAppUrl = (import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin || "").replace(/\/$/, "");
+
+      if (publicAppUrl) {
+        const canonical = document.getElementById("seo-canonical");
+        if (canonical) {
+          canonical.setAttribute("href", `${publicAppUrl}/`);
+        }
+
+        const ld = document.getElementById("seo-json-ld");
+        if (ld) {
+          ld.textContent = JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Gamebook AI",
+            url: publicAppUrl,
+            description: "Create, read, and share AI-generated interactive gamebooks with branching stories, vivid illustrations, and memorable characters.",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: {
+                "@type": "EntryPoint",
+                urlTemplate: `${publicAppUrl}/store?q={search_term_string}`,
+              },
+              "query-input": "required name=search_term_string",
+            },
+          });
+        }
       }
-    }
     </script>
   </head>
 
