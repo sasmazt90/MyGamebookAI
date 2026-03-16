@@ -6,21 +6,30 @@ import { creditTransactions, wallets, stripeEvents, users } from "../../drizzle/
 import { eq, sql } from "drizzle-orm";
 import { CREDIT_PACKAGES } from "./products";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim();
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+
+const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: "2026-02-25.clover",
+    })
+  : null;
 
 /**
  * Register the Stripe webhook route on the Express app.
  * Must be registered BEFORE express.json() middleware.
  */
 export function registerStripeWebhook(app: Express) {
+  if (!stripe || !webhookSecret) {
+    console.warn("[Stripe Webhook] Stripe is disabled because STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is missing.");
+    return;
+  }
+
   app.post(
     "/api/stripe/webhook",
     express.raw({ type: "application/json" }),
     async (req: Request, res: Response) => {
       const sig = req.headers["stripe-signature"];
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
       let event: Stripe.Event;
 
