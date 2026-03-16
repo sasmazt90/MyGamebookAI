@@ -922,6 +922,7 @@ Rules:
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
+    const criticalValidationErrors: string[] = [];
 
     // Build a map of pageId → list of source pages that reference it as a target.
     // Any pageId referenced by more than one source = a merge violation.
@@ -961,6 +962,7 @@ Rules:
         const violation = `MERGE VIOLATION: Page ${targetId} is referenced as a branch target by multiple pages: [${sourceIds.join(", ")}]. Branches must never merge.`;
         mergeViolations.push(violation);
         validationErrors.push(violation);
+        criticalValidationErrors.push(violation);
       }
     }
     if (mergeViolations.length > 0) {
