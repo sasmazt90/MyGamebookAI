@@ -794,7 +794,6 @@ export default function Reader() {
                   rightChoiceSlot={
                     hasChoices ? (
                       <div className="space-y-3">
-                        <p className="text-sm font-bold uppercase tracking-wide text-yellow-400" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
@@ -853,7 +852,6 @@ export default function Reader() {
                   choiceSlot={
                     hasChoices && !madeChoice ? (
                       <div className="space-y-3">
-                        <p className="text-sm font-bold uppercase tracking-wide text-yellow-400" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
@@ -937,7 +935,6 @@ export default function Reader() {
                     {/* A/B Choices */}
                     {hasChoices && (
                       <div className="mt-5 space-y-3 max-w-xl mx-auto">
-                        <p className="text-sm font-semibold text-[#2D1B69] text-center">{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
@@ -1042,7 +1039,6 @@ export default function Reader() {
                     {/* A/B Choices */}
                     {hasChoices && (
                       <div className="mt-6 space-y-3">
-                        <p className="text-sm font-semibold text-[#2D1B69]">{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
