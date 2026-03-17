@@ -1,213 +1,115 @@
 /**
  * Storage helpers using Cloudflare R2 (S3-compatible API).
- * Uses environment variables: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
- * R2_BUCKET_NAME, R2_ENDPOINT, R2_PUBLIC_BASE_URL, R2_ACCOUNT_ID.
+ * Uses @aws-sdk/client-s3 for reliable AWS4 signing.
+ * Environment variables: R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+ * R2_BUCKET_NAME, R2_ENDPOINT, R2_PUBLIC_BASE_URL.
  */
 
-function getR2Config() {
-   const accessKeyId = process.env.R2_ACCESS_KEY_ID ?? "";
-   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? "";
-   const bucketName = process.env.R2_BUCKET_NAME ?? "";
-   const endpoint = process.env.R2_ENDPOINT ?? "";
-   const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL ?? "";
+import {
+     S3Client,
+     PutObjectCommand,
+     DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 
-  if (!accessKeyId || !secretAccessKey || !bucketName || !endpoint) {
-       throw new Error(
-              "R2 storage credentials missing: set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_ENDPOINT"
-            );
+function getS3Client() {
+     const accessKeyId = process.env.R2_ACCESS_KEY_ID ?? "";
+     const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY ?? "";
+     const endpoint = process.env.R2_ENDPOINT ?? "";
+
+  if (!accessKeyId || !secretAccessKey || !endpoint) {
+         throw new Error(
+                  "R2 storage credentials missing: set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT"
+                );
   }
 
-  return { accessKeyId, secretAccessKey, bucketName, endpoint, publicBaseUrl };
+  return new S3Client({
+         region: "auto",
+         endpoint,
+         credentials: { accessKeyId, secretAccessKey },
+         forcePathStyle: true,
+  });
+}
+
+function getBucketName(): string {
+     const bucket = process.env.R2_BUCKET_NAME ?? "";
+     if (!bucket) throw new Error("R2_BUCKET_NAME environment variable is missing");
+     return bucket;
 }
 
 function normalizeKey(relKey: string): string {
-   return relKey.replace(/^\/+/, "");
+     return relKey.replace(/^\/+/, "");
 }
 
-/**
- * Create an AWS Signature V4 authorization header for R2/S3.
- * Lightweight implementation without external SDK dependencies.
- *
- * AWS4 Canonical Request format (each element separated by \n):
- *   HTTPMethod
- *   CanonicalURI
- *   CanonicalQueryString
- *   CanonicalHeaders <- each header is "key:value\n", concatenated WITHOUT extra \n between them
- *   SignedHeaders
- *   HexEncode(Hash(Payload))
- */
-async function signS3Request(
-   method: string,
-   key: string,
-   contentType: string,
-   body: Buffer | string,
-   config: ReturnType<typeof getR2Config>
- ): Promise<{ url: string; headers: Record<string, string> }> {
-   const { accessKeyId, secretAccessKey, bucketName, endpoint } = config;
+function buildPublicUrl(key: string): string {
+     const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL ?? "";
+     const endpoint = process.env.R2_ENDPOINT ?? "";
+     const bucket = process.env.R2_BUCKET_NAME ?? "";
 
-  // Build URL
-  const baseEndpoint = endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
-   const url = `${baseEndpoint}/${bucketName}/${key}`;
-
-  const now = new Date();
-   const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, "");
-   const amzDate = now.toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
-
-  const bodyBuffer = typeof body === "string" ? Buffer.from(body) : body;
-
-  // SHA-256 hash of body
-  const hashBuffer = await crypto.subtle.digest("SHA-256", bodyBuffer);
-   const payloadHash = Array.from(new Uint8Array(hashBuffer))
-     .map((b) => b.toString(16).padStart(2, "0"))
-     .join("");
-
-  const host = new URL(url).host;
-
-  // Canonical headers: each header MUST end with \n, concatenated as a single string (no extra \n between them)
-  const canonicalHeaders =
-       `content-type:${contentType}\n` +
-       `host:${host}\n` +
-       `x-amz-content-sha256:${payloadHash}\n` +
-       `x-amz-date:${amzDate}\n`;
-
-  const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
-
-  // Canonical request: each section separated by \n
-  const canonicalRequest = [
-       method,
-       `/${bucketName}/${key}`,
-       "", // empty query string
-       canonicalHeaders, // already ends with \n, join will add one more — that's correct per spec
-       signedHeaders,
-       payloadHash,
-     ].join("\n");
-
-  const region = "auto";
-   const service = "s3";
-   const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-
-  const canonicalHashBuffer = await crypto.subtle.digest(
-       "SHA-256",
-       new TextEncoder().encode(canonicalRequest)
-     );
-   const canonicalHash = Array.from(new Uint8Array(canonicalHashBuffer))
-     .map((b) => b.toString(16).padStart(2, "0"))
-     .join("");
-
-  const stringToSign = [
-       "AWS4-HMAC-SHA256",
-       amzDate,
-       credentialScope,
-       canonicalHash,
-     ].join("\n");
-
-  // Signing key derivation
-  async function hmacSHA256(key: BufferSource, data: string): Promise<ArrayBuffer> {
-       const cryptoKey = await crypto.subtle.importKey(
-              "raw",
-              key,
-        { name: "HMAC", hash: "SHA-256" },
-              false,
-              ["sign"]
-            );
-       return crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(data));
+  if (publicBaseUrl) {
+         return `${publicBaseUrl.replace(/\/+$/, "")}/${key}`;
   }
 
-  const kDate = await hmacSHA256(new TextEncoder().encode(`AWS4${secretAccessKey}`), dateStamp);
-   const kRegion = await hmacSHA256(kDate, region);
-   const kService = await hmacSHA256(kRegion, service);
-   const kSigning = await hmacSHA256(kService, "aws4_request");
-
-  const signatureBuffer = await hmacSHA256(kSigning, stringToSign);
-   const signature = Array.from(new Uint8Array(signatureBuffer))
-     .map((b) => b.toString(16).padStart(2, "0"))
-     .join("");
-
-  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  return {
-       url,
-       headers: {
-              "Content-Type": contentType,
-              "Host": host,
-              "X-Amz-Content-Sha256": payloadHash,
-              "X-Amz-Date": amzDate,
-              "Authorization": authorization,
-       },
-  };
+  // Fallback: path-style URL
+  return `${endpoint.replace(/\/+$/, "")}/${bucket}/${key}`;
 }
 
 export async function storagePut(
-   relKey: string,
-   data: Buffer | Uint8Array | string,
-   contentType = "application/octet-stream"
- ): Promise<{ key: string; url: string }> {
-   const config = getR2Config();
-   const key = normalizeKey(relKey);
+     relKey: string,
+     data: Buffer | Uint8Array | string,
+     contentType = "application/octet-stream"
+   ): Promise<{ key: string; url: string }> {
+     const client = getS3Client();
+     const bucket = getBucketName();
+     const key = normalizeKey(relKey);
 
   const bodyBuffer =
-       data instanceof Buffer
-       ? data
-         : data instanceof Uint8Array
-       ? Buffer.from(data)
-         : Buffer.from(data);
+         data instanceof Buffer
+         ? data
+           : data instanceof Uint8Array
+         ? Buffer.from(data)
+           : Buffer.from(data);
 
-  const { url, headers } = await signS3Request("PUT", key, contentType, bodyBuffer, config);
-
-  const response = await fetch(url, {
-       method: "PUT",
-       headers,
-       body: bodyBuffer,
+  const command = new PutObjectCommand({
+         Bucket: bucket,
+         Key: key,
+         Body: bodyBuffer,
+         ContentType: contentType,
   });
 
-  if (!response.ok) {
-       const message = await response.text().catch(() => response.statusText);
-       throw new Error(
-              `Storage upload failed (${response.status} ${response.statusText}): ${message}`
-            );
+  const response = await client.send(command);
+
+  if (
+         response.$metadata.httpStatusCode &&
+         response.$metadata.httpStatusCode >= 400
+       ) {
+         throw new Error(
+                  `Storage upload failed with status ${response.$metadata.httpStatusCode}`
+                );
   }
 
-  // Build public URL
-  const publicUrl = config.publicBaseUrl
-     ? `${config.publicBaseUrl.replace(/\/+$/, "")}/${key}`
-       : url;
-
-  return { key, url: publicUrl };
+  return { key, url: buildPublicUrl(key) };
 }
 
 export async function storageGet(
-   relKey: string
- ): Promise<{ key: string; url: string }> {
-   const config = getR2Config();
-   const key = normalizeKey(relKey);
-
-  const publicUrl = config.publicBaseUrl
-     ? `${config.publicBaseUrl.replace(/\/+$/, "")}/${key}`
-       : `${config.endpoint.replace(/\/+$/, "")}/${config.bucketName}/${key}`;
-
-  return { key, url: publicUrl };
+     relKey: string
+   ): Promise<{ key: string; url: string }> {
+     const key = normalizeKey(relKey);
+     return { key, url: buildPublicUrl(key) };
 }
 
 export async function storageDelete(relKey: string): Promise<void> {
-   const config = getR2Config();
-   const key = normalizeKey(relKey);
+     const client = getS3Client();
+     const bucket = getBucketName();
+     const key = normalizeKey(relKey);
 
   try {
-       const emptyBuffer = Buffer.alloc(0);
-       const { url, headers } = await signS3Request(
-              "DELETE",
-              key,
-              "application/octet-stream",
-              emptyBuffer,
-              config
-            );
-
-     await fetch(url, {
-            method: "DELETE",
-            headers,
-     });
+         const command = new DeleteObjectCommand({
+                  Bucket: bucket,
+                  Key: key,
+         });
+         await client.send(command);
   } catch (err) {
-       // Non-fatal: log but don't throw — cleanup is best-effort
-     console.error(`[Storage] Failed to delete key "${key}":`, err);
+         // Non-fatal: log but don't throw — cleanup is best-effort
+       console.error(`[Storage] Failed to delete key "${key}":`, err);
   }
 }
