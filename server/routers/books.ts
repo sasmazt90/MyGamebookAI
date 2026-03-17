@@ -932,14 +932,17 @@ Rules:
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
           const msg = `Page ${page.pageNumber}: nextPageA=${page.nextPageA} does not exist`;
           validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         if (page.nextPageB && !pageNumbers.has(page.nextPageB)) {
           const msg = `Page ${page.pageNumber}: nextPageB=${page.nextPageB} does not exist`;
           validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         if (!page.choiceA || !page.choiceB) {
           const msg = `Page ${page.pageNumber}: branch page missing choiceA or choiceB text`;
           validationErrors.push(msg);
+          criticalValidationErrors.push(msg);
         }
         // Track target references for merge detection
         if (page.nextPageA) {
@@ -976,6 +979,7 @@ Rules:
     if (endingPages.length === 0) {
       const msg = "No ending pages found — story has no conclusion";
       validationErrors.push(msg);
+      criticalValidationErrors.push(msg);
     }
 
     if (validationErrors.length > 0) {
@@ -983,51 +987,8 @@ Rules:
       // Non-fatal: log and continue — the story may still be usable
     }
 
-    // Auto-repair common structure issues instead of hard-failing generation.
-    // This keeps generation resilient to imperfect but recoverable LLM JSON.
-    const usedTargets = new Set<number>();
-    for (const page of storyData.pages) {
-      // Drop dangling references
-      if (page.nextPageA && !pageNumbers.has(page.nextPageA)) page.nextPageA = null;
-      if (page.nextPageB && !pageNumbers.has(page.nextPageB)) page.nextPageB = null;
-
-      // Enforce no-merge by keeping the first reference to each target
-      if (page.nextPageA) {
-        if (usedTargets.has(page.nextPageA)) page.nextPageA = null;
-        else usedTargets.add(page.nextPageA);
-      }
-      if (page.nextPageB) {
-        if (usedTargets.has(page.nextPageB)) page.nextPageB = null;
-        else usedTargets.add(page.nextPageB);
-      }
-
-      const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
-      if (page.isBranchPage && hasBranchTargets) {
-        if (!page.choiceA && page.nextPageA) page.choiceA = "Option A";
-        if (!page.choiceB && page.nextPageB) page.choiceB = "Option B";
-      }
-
-      // If no valid targets remain, downgrade to non-branch ending page
-      if (!hasBranchTargets) {
-        page.isBranchPage = false;
-        page.choiceA = null;
-        page.choiceB = null;
-        page.nextPageA = null;
-        page.nextPageB = null;
-        page.isEnding = true;
-      }
-    }
-
-    const repairedEndingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB));
-    if (repairedEndingPages.length === 0 && storyData.pages.length > 0) {
-      const last = storyData.pages[storyData.pages.length - 1];
-      last.isBranchPage = false;
-      last.choiceA = null;
-      last.choiceB = null;
-      last.nextPageA = null;
-      last.nextPageB = null;
-      last.isEnding = true;
-      validationErrors.push("Auto-repair: forced final page to ending.");
+    if (criticalValidationErrors.length > 0) {
+      throw new Error(`Story structure validation failed: ${criticalValidationErrors.join(" | ")}`);
     }
 
      // ─── Step 4: Per-page expansion pass ───────────────────────────────────
