@@ -1,9 +1,12 @@
 {
-  "rewrites": [
-    { "source": "/api/trpc/:path*", "destination": "https://mygamebookai-production.up.railway.app/api/trpc/:path*" }
-  ],
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+    "rewrites": [
+          {
+                  "source": "/api/trpc/:path*",
+                  "destination": "https://mygamebookai-production.up.railway.app/api/trpc/:path*"
+          },
+          {
+                  "source": "/(.*)",
+                  "destination": "/index.html"
+          }
+    ]
 }
