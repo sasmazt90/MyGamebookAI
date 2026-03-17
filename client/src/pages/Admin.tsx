@@ -94,6 +94,12 @@ type BannerFormState = {
   isActive: boolean;
 };
 
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+const BANNER_UPLOAD_URL = API_BASE_URL
+  ? `${API_BASE_URL.replace(/\/$/, "")}/api/banners/upload`
+  : "/api/banners/upload";
+
 const EMPTY_FORM: BannerFormState = {
   imageUrl: "",
   headline: "",
@@ -400,7 +406,7 @@ export default function Admin() {
     try {
       const formData = new FormData();
       formData.append("image", file);
-      const res = await fetch("/api/banners/upload", {
+      const res = await fetch(BANNER_UPLOAD_URL, {
         method: "POST",
         body: formData,
         credentials: "include",
