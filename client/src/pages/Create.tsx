@@ -63,6 +63,7 @@ type Character = {
   name: string;
   photoBase64?: string;
   photoMimeType?: string;
+  photoUrl?: string;
   photoPreview?: string;
 };
 
@@ -98,7 +99,7 @@ export default function Create() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Credit cost calculation
-  const photoCount = characters.filter(c => c.photoBase64).length;
+  const photoCount = characters.filter(c => c.photoBase64 || c.photoUrl).length;
   const { data: costData } = trpc.books.getCreditCost.useQuery({
     category,
     length,
@@ -139,6 +140,17 @@ export default function Create() {
     setCharacters(prev => prev.map(c => c.id === id ? { ...c, name } : c));
   };
 
+  const updateCharacterPhotoUrl = (id: string, photoUrl: string) => {
+    const cleanUrl = photoUrl.trim();
+    setCharacters(prev => prev.map(c => c.id === id ? {
+      ...c,
+      photoUrl: cleanUrl,
+      photoBase64: undefined,
+      photoMimeType: undefined,
+      photoPreview: cleanUrl || undefined,
+    } : c));
+  };
+
   const handlePhotoUpload = (id: string, file: File) => {
     if (file.size > 5 * 1024 * 1024) {
       toast.error(t("create.photoTooLarge" as any) || "Photo must be under 5MB");
@@ -150,7 +162,7 @@ export default function Create() {
       const base64 = dataUrl.split(",")[1];
       setCharacters(prev => prev.map(c =>
         c.id === id
-          ? { ...c, photoBase64: base64, photoMimeType: file.type, photoPreview: dataUrl }
+          ? { ...c, photoBase64: base64, photoMimeType: file.type, photoUrl: undefined, photoPreview: dataUrl }
           : c
       ));
     };
@@ -181,6 +193,7 @@ export default function Create() {
         name: c.name,
         photoBase64: c.photoBase64,
         photoMimeType: c.photoMimeType,
+        photoUrl: c.photoUrl,
       })),
       safetyChecked,
     });
@@ -344,6 +357,14 @@ export default function Create() {
                       />
                     </div>
                   )}
+                  <div className="mt-3">
+                    <Input
+                      value={char.photoUrl ?? ""}
+                      onChange={e => updateCharacterPhotoUrl(char.id, e.target.value)}
+                      placeholder={t("create.photoUrlPlaceholder" as any) || "Or paste image URL (Google Drive link supported)"}
+                      className="bg-[#1A1033] border-purple-900/50 text-white placeholder:text-gray-600"
+                    />
+                  </div>
                 </div>
               ))}
 
