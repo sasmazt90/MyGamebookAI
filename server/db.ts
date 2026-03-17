@@ -1,5 +1,8 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import {
   users,
   profiles,
@@ -10,6 +13,7 @@ import {
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _schemaInitPromise: Promise<void> | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -20,7 +24,198 @@ export async function getDb() {
       _db = null;
     }
   }
+
+  if (_db && !_schemaInitPromise) {
+    _schemaInitPromise = ensureDatabaseSchema(_db);
+  }
+
+  if (_schemaInitPromise) {
+    await _schemaInitPromise;
+  }
+
   return _db;
+}
+
+async function ensureDatabaseSchema(db: ReturnType<typeof drizzle>) {
+  const before = await inspectDatabaseState(db);
+  if (before) {
+    console.warn(`[Database] Connected database: ${before.databaseName}, existing tables: ${before.tableCount}`);
+  }
+
+  await runMigrations(db);
+  await ensureLegacyUserColumns(db);
+
+  const after = await inspectDatabaseState(db);
+  if (after) {
+    console.warn(`[Database] Schema check after migration on ${after.databaseName}: tables=${after.tableCount}`);
+    if (after.tableCount === 0) {
+      console.warn(
+        "[Database] No tables found after migration. DATABASE_URL likely points to a different/empty database or migration user lacks privileges."
+      );
+    }
+  }
+}
+
+async function inspectDatabaseState(db: ReturnType<typeof drizzle>) {
+  try {
+    const databaseResult = await db.execute(sql`SELECT DATABASE() AS dbName`);
+    const databaseName = (databaseResult as Array<{ dbName?: string }>)[0]?.dbName ?? "(unknown)";
+
+    const tableCountResult = await db.execute(
+      sql`SELECT COUNT(*) AS tableCount
+          FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()`
+    );
+    const rawCount = (tableCountResult as Array<{ tableCount?: number | string }>)[0]?.tableCount ?? 0;
+    const tableCount = Number(rawCount) || 0;
+
+    return { databaseName, tableCount };
+  } catch (error) {
+    console.warn("[Database] Could not inspect database state:", error);
+    return null;
+  }
+}
+
+async function runMigrations(db: ReturnType<typeof drizzle>) {
+  const migrationsFolder = resolveMigrationsFolder();
+  if (!migrationsFolder) {
+    console.warn("[Database] Migrations folder not found; skipping auto-migration.");
+    return;
+  }
+
+  try {
+    await migrate(db, { migrationsFolder });
+  } catch (error) {
+    console.warn("[Database] Auto-migration failed:", error);
+  }
+}
+
+function resolveMigrationsFolder() {
+  const cwd = process.cwd();
+  const candidates = [
+    path.resolve(cwd, "drizzle"),
+    path.resolve(cwd, "../drizzle"),
+    path.resolve(cwd, "../../drizzle"),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function getMySqlErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  const directCode = (error as { code?: unknown }).code;
+  if (typeof directCode === "string") return directCode;
+
+  const causeCode = (error as { cause?: { code?: unknown } }).cause?.code;
+  if (typeof causeCode === "string") return causeCode;
+
+  return undefined;
+}
+
+async function usersTableExists(db: ReturnType<typeof drizzle>): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`SHOW TABLES LIKE 'users'`);
+    return Array.isArray(result) && result.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function getExistingUserColumns(db: ReturnType<typeof drizzle>): Promise<Set<string>> {
+  try {
+    const result = await db.execute(
+      sql`SELECT COLUMN_NAME as columnName
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'users'`
+    );
+
+    return new Set(
+      (result as Array<{ columnName?: string }>).map(
+        (row) => row.columnName?.toLowerCase() ?? ""
+      )
+    );
+  } catch {
+    const showColumnsResult = await db.execute(sql.raw("SHOW COLUMNS FROM users"));
+    return new Set(
+      (showColumnsResult as Array<{ Field?: string }>).map(
+        (row) => row.Field?.toLowerCase() ?? ""
+      )
+    );
+  }
+}
+
+async function ensureLegacyUserColumns(db: ReturnType<typeof drizzle>) {
+  try {
+    const hasUsersTable = await usersTableExists(db);
+    if (!hasUsersTable) {
+      console.warn("[Database] users table not found yet; skipping legacy users column checks.");
+      return;
+    }
+
+    const existingColumns = await getExistingUserColumns(db);
+
+    const requiredColumns: Array<{ name: string; definition: string }> = [
+      { name: "passwordHash", definition: "VARCHAR(255) NULL" },
+      { name: "loginMethod", definition: "VARCHAR(64) NULL" },
+      {
+        name: "role",
+        definition: "ENUM('user','admin') NOT NULL DEFAULT 'user'",
+      },
+      {
+        name: "status",
+        definition:
+          "ENUM('active','suspended','deleted') NOT NULL DEFAULT 'active'",
+      },
+      { name: "accountLocked", definition: "TINYINT(1) NOT NULL DEFAULT 0" },
+      { name: "deletedAt", definition: "TIMESTAMP NULL DEFAULT NULL" },
+      {
+        name: "updatedAt",
+        definition:
+          "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+      },
+      {
+        name: "lastSignedIn",
+        definition: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+      },
+    ];
+
+    for (const column of requiredColumns) {
+      if (existingColumns.has(column.name.toLowerCase())) {
+        continue;
+      }
+
+      try {
+        await db.execute(
+          sql.raw(
+            `ALTER TABLE users ADD COLUMN \`${column.name}\` ${column.definition}`
+          )
+        );
+        existingColumns.add(column.name.toLowerCase());
+        console.warn(`[Database] Added missing users.${column.name} column`);
+      } catch (error) {
+        const errorCode = getMySqlErrorCode(error);
+        if (errorCode === "ER_DUP_FIELDNAME") {
+          existingColumns.add(column.name.toLowerCase());
+          continue;
+        }
+        if (errorCode === "ER_NO_SUCH_TABLE") {
+          console.warn("[Database] users table disappeared while patching legacy columns; skipping.");
+          return;
+        }
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.warn("[Database] Could not verify legacy users schema:", error);
+  }
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
