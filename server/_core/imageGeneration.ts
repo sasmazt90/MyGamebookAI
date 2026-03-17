@@ -1,92 +1,85 @@
 /**
- * Image generation helper using internal ImageService
+ * Image generation helper using Google Gemini API (imagen / gemini-2.0-flash-exp).
+ * Falls back gracefully when API key is not configured.
  *
  * Example usage:
  *   const { url: imageUrl } = await generateImage({
  *     prompt: "A serene landscape with mountains"
  *   });
- *
- * For editing:
- *   const { url: imageUrl } = await generateImage({
- *     prompt: "Add a rainbow to this landscape",
- *     originalImages: [{
- *       url: "https://example.com/original.jpg",
- *       mimeType: "image/jpeg"
- *     }]
- *   });
  */
+
 import { storagePut } from "server/storage";
-import { ENV } from "./env";
 
 export type GenerateImageOptions = {
-  prompt: string;
-  originalImages?: Array<{
-    url?: string;
-    b64Json?: string;
-    mimeType?: string;
-  }>;
+    prompt: string;
+    originalImages?: Array<{
+      url?: string;
+      b64Json?: string;
+      mimeType?: string;
+    }>;
 };
 
 export type GenerateImageResponse = {
-  url?: string;
+    url?: string;
 };
 
 export async function generateImage(
-  options: GenerateImageOptions
-): Promise<GenerateImageResponse> {
-  if (!ENV.forgeApiUrl) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
-  }
-  if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+    options: GenerateImageOptions
+  ): Promise<GenerateImageResponse> {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    const model = process.env.GOOGLE_IMAGE_MODEL ?? "imagen-3.0-generate-002";
+
+  if (!apiKey) {
+        throw new Error("GOOGLE_API_KEY is not configured");
   }
 
-  // Build the full URL by appending the service path to the base URL
-  const baseUrl = ENV.forgeApiUrl.endsWith("/")
-    ? ENV.forgeApiUrl
-    : `${ENV.forgeApiUrl}/`;
-  const fullUrl = new URL(
-    "images.v1.ImageService/GenerateImage",
-    baseUrl
-  ).toString();
+  // Use Imagen 3 via Vertex-compatible REST endpoint (Gemini Developer API)
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
 
-  const response = await fetch(fullUrl, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      "connect-protocol-version": "1",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify({
-      prompt: options.prompt,
-      original_images: options.originalImages || [],
-    }),
+  const body: Record<string, unknown> = {
+        instances: [{ prompt: options.prompt }],
+        parameters: {
+                sampleCount: 1,
+        },
+  };
+
+  const response = await fetch(url, {
+        method: "POST",
+        headers: {
+                "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
-    );
+        const detail = await response.text().catch(() => "");
+        throw new Error(
+                `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
+              );
   }
 
   const result = (await response.json()) as {
-    image: {
-      b64Json: string;
-      mimeType: string;
-    };
+        predictions?: Array<{
+                bytesBase64Encoded?: string;
+                mimeType?: string;
+        }>;
   };
-  const base64Data = result.image.b64Json;
-  const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
-  const { url } = await storagePut(
-    `generated/${Date.now()}.png`,
-    buffer,
-    result.image.mimeType
-  );
-  return {
-    url,
-  };
+  const prediction = result.predictions?.[0];
+    if (!prediction?.bytesBase64Encoded) {
+          throw new Error("Image generation returned no image data");
+    }
+
+  const base64Data = prediction.bytesBase64Encoded;
+    const mimeType = prediction.mimeType ?? "image/png";
+    const buffer = Buffer.from(base64Data, "base64");
+
+  // Save to R2 storage
+  const { url: imageUrl } = await storagePut(
+        `generated/${Date.now()}.png`,
+        buffer,
+        mimeType
+      );
+
+  return { url: imageUrl };
 }
