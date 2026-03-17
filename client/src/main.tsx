@@ -8,6 +8,18 @@ import App from "./App";
 import "./index.css";
 
 const queryClient = new QueryClient();
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+
+const TRPC_URL = API_BASE_URL
+  ? `${API_BASE_URL.replace(/\/$/, "")}/api/trpc`
+  : "/api/trpc";
+
+
+const isNotFoundError = (error: unknown): boolean => {
+  if (!(error instanceof TRPCClientError)) return false;
+  const code = (error as TRPCClientError<any> & { data?: { code?: string } }).data?.code;
+  return code === "NOT_FOUND";
+};
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -24,7 +36,9 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    if (!isNotFoundError(error)) {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -32,14 +46,16 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    if (!isNotFoundError(error)) {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: TRPC_URL,
       transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {

@@ -48,7 +48,7 @@ function GeneratingBookStatus({ bookId }: { bookId: number }) {
   const { t } = useLanguage();
   const { data } = trpc.books.getStatus.useQuery(
     { bookId },
-    { refetchInterval: 5000, refetchIntervalInBackground: true }
+    { enabled: Number.isFinite(bookId) && bookId > 0, refetchInterval: 5000, refetchIntervalInBackground: true, retry: false }
   );
   const step = data?.generationStep;
   return (

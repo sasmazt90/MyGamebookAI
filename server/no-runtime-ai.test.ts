@@ -111,7 +111,18 @@ describe("No-Runtime-AI guardrails", () => {
   // ── books.leaderboard ─────────────────────────────────────────────────────
   it("books.leaderboard does NOT call invokeLLM or generateImage", async () => {
     const caller = appRouter.createCaller(makeActiveCtx());
-    await expect(caller.books.leaderboard({})).rejects.toThrow();
+
+    // Public listing may either return empty lists (graceful no-DB fallback)
+    // or throw (older behavior). In both cases, AI must not run.
+    try {
+      const result = await caller.books.leaderboard({});
+      expect(result).toHaveProperty("bestSellers");
+      expect(result).toHaveProperty("newArrivals");
+      expect(result).toHaveProperty("mostPopular");
+    } catch {
+      // no-op: rejection is acceptable for this guardrail test
+    }
+
     expect(invokeLLM).not.toHaveBeenCalled();
     expect(generateImage).not.toHaveBeenCalled();
   });
