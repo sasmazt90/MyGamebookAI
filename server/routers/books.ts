@@ -1590,7 +1590,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
     console.error("[Books] Generation failed:", error);
     await db
       .update(books)
-      .set({ status: "failed" })
+      .set({ status: "failed", generationStep: error instanceof Error ? error.message.slice(0, 240) : "Generation failed" })
       .where(eq(books.id, bookId));
     // Clean up any uploaded character photos on failure
     if (bookData.uploadedKeys?.length) {
