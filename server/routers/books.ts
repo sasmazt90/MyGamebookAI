@@ -59,14 +59,19 @@ function stripInlineChoiceLabels(content: string): string {
     .trim();
 }
 
-function normaliseCharacterPhotoUrl(rawUrl: string): string {
+export function normaliseCharacterPhotoUrl(rawUrl: string): string {
   const url = new URL(rawUrl.trim());
+
   if (url.hostname.includes("drive.google.com")) {
-    const match = url.pathname.match(/\/file\/d\/([^/]+)/);
-    if (match?.[1]) {
-      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    const fromPath = url.pathname.match(/\/file\/d\/([^/]+)/)?.[1];
+    const fromQuery = url.searchParams.get("id") ?? undefined;
+    const fileId = fromPath || fromQuery;
+    if (fileId) {
+      // Use Googleusercontent endpoint because preview links are HTML pages.
+      return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
     }
   }
+
   return url.toString();
 }
 
