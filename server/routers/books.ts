@@ -928,15 +928,7 @@ Rules:
 - For comics: 3-4 panel descriptions per page
 - For others: 3-5 sentence narrative paragraphs`;
 
-    const structureResponse = await invokeLLM({
-      messages: [
-        { role: "system" as const, content: structureSystemPrompt },
-        { role: "user" as const, content: structurePrompt },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    let storyData: { pages: Array<{
+    type StoryData = { pages: Array<{
       pageNumber: number;
       branchPath: string;
       isBranchPage: boolean;
@@ -949,16 +941,42 @@ Rules:
       nextPageB: number | null;
     }> };
 
-    try {
-      const rawContent = structureResponse.choices[0]?.message?.content || "{}";
-      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-      storyData = JSON.parse(content);
-    } catch {
-      storyData = { pages: [] };
+    let storyData: StoryData | null = null;
+    let structureErr: string | null = null;
+    const maxStructureAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxStructureAttempts; attempt++) {
+      try {
+        const structureResponse = await invokeLLM({
+          messages: [
+            { role: "system" as const, content: structureSystemPrompt },
+            { role: "user" as const, content: structurePrompt },
+          ],
+          response_format: { type: "json_object" },
+        });
+
+        const rawContent = structureResponse.choices[0]?.message?.content || "{}";
+        const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        const parsed = JSON.parse(content) as StoryData;
+
+        if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+          storyData = parsed;
+          structureErr = null;
+          break;
+        }
+
+        structureErr = `Attempt ${attempt}: empty pages array`;
+      } catch (err) {
+        structureErr = `Attempt ${attempt}: ${err instanceof Error ? err.message : String(err)}`;
+      }
+
+      if (attempt < maxStructureAttempts) {
+        console.warn(`[Books] Structure generation retry ${attempt}/${maxStructureAttempts} for book ${bookId}: ${structureErr}`);
+      }
     }
 
-    if (!storyData.pages || storyData.pages.length === 0) {
-      throw new Error("Failed to generate story structure");
+    if (!storyData?.pages?.length) {
+      throw new Error(`Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`);
     }
 
     // ─── Step 3: Post-structure validation ───────────────────────────────────
