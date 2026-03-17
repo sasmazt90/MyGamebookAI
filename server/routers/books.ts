@@ -59,6 +59,45 @@ function stripInlineChoiceLabels(content: string): string {
     .trim();
 }
 
+function normaliseCharacterPhotoUrl(rawUrl: string): string {
+  const url = new URL(rawUrl.trim());
+  if (url.hostname.includes("drive.google.com")) {
+    const match = url.pathname.match(/\/file\/d\/([^/]+)/);
+    if (match?.[1]) {
+      return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+    }
+  }
+  return url.toString();
+}
+
+async function fetchCharacterPhotoFromUrl(rawUrl: string): Promise<{ base64Data: string; mimeType: string }> {
+  const safeUrl = normaliseCharacterPhotoUrl(rawUrl);
+  const response = await fetch(safeUrl, {
+    headers: {
+      "User-Agent": "GamebookAI/1.0",
+      Accept: "image/*",
+    },
+  });
+
+  if (!response.ok) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: `Character photo URL could not be downloaded (${response.status})` });
+  }
+
+  const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || "";
+  if (!mimeType.startsWith("image/")) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Character photo URL must point to a valid image" });
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const asBase64 = bytes.toString("base64");
+  const err = validateUpload(asBase64, mimeType, "characterPhoto");
+  if (err) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
+
+  return { base64Data: asBase64, mimeType };
+}
+
 
 async function generateBookContent(bookId: number, bookData: {
   title: string;
@@ -932,17 +971,14 @@ Rules:
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
           const msg = `Page ${page.pageNumber}: nextPageA=${page.nextPageA} does not exist`;
           validationErrors.push(msg);
-          criticalValidationErrors.push(msg);
         }
         if (page.nextPageB && !pageNumbers.has(page.nextPageB)) {
           const msg = `Page ${page.pageNumber}: nextPageB=${page.nextPageB} does not exist`;
           validationErrors.push(msg);
-          criticalValidationErrors.push(msg);
         }
         if (!page.choiceA || !page.choiceB) {
           const msg = `Page ${page.pageNumber}: branch page missing choiceA or choiceB text`;
           validationErrors.push(msg);
-          criticalValidationErrors.push(msg);
         }
         // Track target references for merge detection
         if (page.nextPageA) {
@@ -979,7 +1015,6 @@ Rules:
     if (endingPages.length === 0) {
       const msg = "No ending pages found — story has no conclusion";
       validationErrors.push(msg);
-      criticalValidationErrors.push(msg);
     }
 
     if (validationErrors.length > 0) {
@@ -987,8 +1022,51 @@ Rules:
       // Non-fatal: log and continue — the story may still be usable
     }
 
-    if (criticalValidationErrors.length > 0) {
-      throw new Error(`Story structure validation failed: ${criticalValidationErrors.join(" | ")}`);
+    // Auto-repair common structure issues instead of hard-failing generation.
+    // This keeps generation resilient to imperfect but recoverable LLM JSON.
+    const usedTargets = new Set<number>();
+    for (const page of storyData.pages) {
+      // Drop dangling references
+      if (page.nextPageA && !pageNumbers.has(page.nextPageA)) page.nextPageA = null;
+      if (page.nextPageB && !pageNumbers.has(page.nextPageB)) page.nextPageB = null;
+
+      // Enforce no-merge by keeping the first reference to each target
+      if (page.nextPageA) {
+        if (usedTargets.has(page.nextPageA)) page.nextPageA = null;
+        else usedTargets.add(page.nextPageA);
+      }
+      if (page.nextPageB) {
+        if (usedTargets.has(page.nextPageB)) page.nextPageB = null;
+        else usedTargets.add(page.nextPageB);
+      }
+
+      const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
+      if (page.isBranchPage && hasBranchTargets) {
+        if (!page.choiceA && page.nextPageA) page.choiceA = "Option A";
+        if (!page.choiceB && page.nextPageB) page.choiceB = "Option B";
+      }
+
+      // If no valid targets remain, downgrade to non-branch ending page
+      if (!hasBranchTargets) {
+        page.isBranchPage = false;
+        page.choiceA = null;
+        page.choiceB = null;
+        page.nextPageA = null;
+        page.nextPageB = null;
+        page.isEnding = true;
+      }
+    }
+
+    const repairedEndingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB));
+    if (repairedEndingPages.length === 0 && storyData.pages.length > 0) {
+      const last = storyData.pages[storyData.pages.length - 1];
+      last.isBranchPage = false;
+      last.choiceA = null;
+      last.choiceB = null;
+      last.nextPageA = null;
+      last.nextPageB = null;
+      last.isEnding = true;
+      validationErrors.push("Auto-repair: forced final page to ending.");
     }
 
      // ─── Step 4: Per-page expansion pass ───────────────────────────────────
@@ -1635,6 +1713,7 @@ export const booksRouter = router({
             name: z.string().min(1).max(60).trim(),
             photoBase64: z.string().optional(),
             photoMimeType: z.string().optional(),
+            photoUrl: z.string().url().max(2000).optional(),
           })
         ).max(10).default([]),
         safetyChecked: z.boolean().default(true),
@@ -1666,7 +1745,7 @@ export const booksRouter = router({
       }
 
       // Calculate cost — always read from shared/pricing.ts (source of truth: shared/pricing.csv)
-      const charPhotos = input.characters.filter(c => c.photoBase64).length;
+      const charPhotos = input.characters.filter(c => c.photoBase64 || c.photoUrl).length;
       const { total } = computeTotalCost(input.category, input.length, charPhotos);
 
       // Check balance
@@ -1692,6 +1771,9 @@ export const booksRouter = router({
           if (err) {
             throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
           }
+        } else if (char.photoUrl) {
+          // Validate URL shape early and fail-fast for malformed Google Drive links.
+          normaliseCharacterPhotoUrl(char.photoUrl);
         }
       }
 
@@ -1700,11 +1782,20 @@ export const booksRouter = router({
       const characterData: Array<{ name: string; photoUrl?: string }> = [];
       for (const char of input.characters) {
         let photoUrl: string | undefined;
-        if (char.photoBase64 && char.photoMimeType) {
-          const buffer = Buffer.from(char.photoBase64, "base64");
-          const ext = char.photoMimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+        let base64Data = char.photoBase64;
+        let mimeType = char.photoMimeType;
+
+        if (!base64Data && char.photoUrl) {
+          const downloaded = await fetchCharacterPhotoFromUrl(char.photoUrl);
+          base64Data = downloaded.base64Data;
+          mimeType = downloaded.mimeType;
+        }
+
+        if (base64Data && mimeType) {
+          const buffer = Buffer.from(base64Data, "base64");
+          const ext = mimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
           const key = `characters/${ctx.user.id}-${nanoid(8)}.${ext}`;
-          const result = await storagePut(key, buffer, char.photoMimeType);
+          const result = await storagePut(key, buffer, mimeType);
           uploadedKeys.push(key);
           photoUrl = result.url;
         }
