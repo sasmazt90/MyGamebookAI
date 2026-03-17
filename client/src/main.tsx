@@ -14,6 +14,13 @@ const TRPC_URL = API_BASE_URL
   ? `${API_BASE_URL.replace(/\/$/, "")}/api/trpc`
   : "/api/trpc";
 
+
+const isNotFoundError = (error: unknown): boolean => {
+  if (!(error instanceof TRPCClientError)) return false;
+  const code = (error as TRPCClientError<any> & { data?: { code?: string } }).data?.code;
+  return code === "NOT_FOUND";
+};
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
@@ -29,7 +36,9 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    if (!isNotFoundError(error)) {
+      console.error("[API Query Error]", error);
+    }
   }
 });
 
@@ -37,7 +46,9 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    if (!isNotFoundError(error)) {
+      console.error("[API Mutation Error]", error);
+    }
   }
 });
 

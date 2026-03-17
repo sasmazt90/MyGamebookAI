@@ -884,6 +884,10 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         } catch (err) {
           lastErr = err instanceof Error ? err.message : String(err);
         }
+
+        if (attempt < maxImageAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 700 * attempt));
+        }
       }
 
       throw new Error(`Image generation failed for ${stage} after ${maxImageAttempts} attempts: ${lastErr ?? "unknown error"}`);
@@ -1357,8 +1361,9 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
     // ─── Parallel image generation with concurrency limit ────────────────────────
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
     // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
-    const CONCURRENCY_LIMIT = 5;
+    const CONCURRENCY_LIMIT = isOtherGenre ? 1 : 2;
     const totalPages = storyData.pages.length;
+    const imageFailures: Array<{ pageNumber: number; error: string }> = [];
 
     // Semaphore: limits concurrent image generation calls
     let activeCount = 0;
@@ -1616,6 +1621,8 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
           // Non-branch pages: imageUrl stays null (text-only)
         }
       } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        imageFailures.push({ pageNumber: page.pageNumber, error: errMsg });
         console.error(`[Books] Image generation failed for page ${page.pageNumber}:`, e);
       } finally {
         releaseSemaphore();
@@ -1636,7 +1643,8 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
     if (category === "fairy_tale") {
       const generatedFairy = storyData.pages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
       if (generatedFairy < pageCount) {
-        throw new Error(`Fairy tale illustration shortfall: expected ${pageCount}, got ${generatedFairy}`);
+        const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
+        throw new Error(`Fairy tale illustration shortfall: expected ${pageCount}, got ${generatedFairy}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 
@@ -1646,14 +1654,16 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
         return Array.isArray(panels) && panels.length >= 3;
       }).length;
       if (generatedComic < pageCount) {
-        throw new Error(`Comic panel shortfall: expected ${pageCount} pages with panels, got ${generatedComic}`);
+        const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
+        throw new Error(`Comic panel shortfall: expected ${pageCount} pages with panels, got ${generatedComic}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 
     if (isOtherGenre && branchImageCount > 0) {
       const generatedBranch = Array.from(branchPageNumbers).filter((n) => !!imageResultByPage.get(n)?.imageUrl).length;
       if (generatedBranch < branchImageCount) {
-        throw new Error(`Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch}`);
+        const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
+        throw new Error(`Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 
