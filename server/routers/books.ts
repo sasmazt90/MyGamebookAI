@@ -293,6 +293,7 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
             },
           ],
           response_format: { type: "json_object" },
+          max_tokens: pageCount >= 80 ? 14000 : pageCount >= 18 ? 8000 : 5000,
         });
         const raw = photoResp.choices[0]?.message?.content;
         if (typeof raw === "string" && raw.trim().length > 10) {
@@ -382,6 +383,7 @@ Respond with JSON: {"characters": [{"name": "", "appearance": "", "voice": "", "
 IMPORTANT: The appearance field must be a single string containing all 12 axes above, each on its own sentence. This will be used verbatim in image generation prompts.` },
           ],
           response_format: { type: "json_object" },
+          max_tokens: pageCount >= 80 ? 14000 : pageCount >= 18 ? 8000 : 5000,
         });
         const raw = cardResp.choices[0]?.message?.content || "{}";
         const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
@@ -860,17 +862,31 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ...illustratedPortraits,
       ].filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
 
-      if (mergedRefs.length > 0) {
-        console.log(
-          `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode — ${mergedRefs.length} image reference(s))`
-        );
-        return generateImage({ prompt, originalImages: mergedRefs });
+      const maxImageAttempts = 3;
+      let lastErr: string | null = null;
+      for (let attempt = 1; attempt <= maxImageAttempts; attempt++) {
+        try {
+          if (mergedRefs.length > 0) {
+            console.log(
+              `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode — ${mergedRefs.length} image reference(s), attempt ${attempt}/${maxImageAttempts})`
+            );
+            const result = await generateImage({ prompt, originalImages: mergedRefs });
+            if (result?.url) return result;
+            lastErr = `Image API returned no URL (attempt ${attempt})`;
+          } else {
+            console.log(
+              `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode — no usable references, attempt ${attempt}/${maxImageAttempts})`
+            );
+            const result = await generateImage({ prompt });
+            if (result?.url) return result;
+            lastErr = `Image API returned no URL (attempt ${attempt})`;
+          }
+        } catch (err) {
+          lastErr = err instanceof Error ? err.message : String(err);
+        }
       }
 
-      console.log(
-        `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode — no usable references)`
-      );
-      return generateImage({ prompt });
+      throw new Error(`Image generation failed for ${stage} after ${maxImageAttempts} attempts: ${lastErr ?? "unknown error"}`);
     };
 
     // ─── Step 2: Generate story structure (outline pass) ─────────────────────
@@ -953,6 +969,7 @@ Rules:
             { role: "user" as const, content: structurePrompt },
           ],
           response_format: { type: "json_object" },
+          max_tokens: pageCount >= 80 ? 14000 : pageCount >= 18 ? 8000 : 5000,
         });
 
         const rawContent = structureResponse.choices[0]?.message?.content || "{}";
@@ -1613,6 +1630,31 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
     const imageResultByPage = new Map<number, PageImageResult>();
     for (const r of pageImageResults) {
       imageResultByPage.set(r.pageNumber, r);
+    }
+
+    // Enforce required illustration counts to avoid shipping "ready" books without images.
+    if (category === "fairy_tale") {
+      const generatedFairy = storyData.pages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
+      if (generatedFairy < pageCount) {
+        throw new Error(`Fairy tale illustration shortfall: expected ${pageCount}, got ${generatedFairy}`);
+      }
+    }
+
+    if (category === "comic") {
+      const generatedComic = storyData.pages.filter((p) => {
+        const panels = imageResultByPage.get(p.pageNumber)?.panels;
+        return Array.isArray(panels) && panels.length >= 3;
+      }).length;
+      if (generatedComic < pageCount) {
+        throw new Error(`Comic panel shortfall: expected ${pageCount} pages with panels, got ${generatedComic}`);
+      }
+    }
+
+    if (isOtherGenre && branchImageCount > 0) {
+      const generatedBranch = Array.from(branchPageNumbers).filter((n) => !!imageResultByPage.get(n)?.imageUrl).length;
+      if (generatedBranch < branchImageCount) {
+        throw new Error(`Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch}`);
+      }
     }
 
     // ─── Sequential DB insertion (preserves order, gets correct IDs) ───────────────
