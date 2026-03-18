@@ -296,12 +296,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.tool_choice = normalizedToolChoice;
   }
 
-  payload.max_tokens = 32768
-  payload.thinking = {
-    "budget_tokens": 128
-  }
+      payload.max_tokens = parseInt(process.env.TEXT_LLM_MAX_TOKENS ?? "4096")
 
-  const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
     response_format,
     outputSchema,
