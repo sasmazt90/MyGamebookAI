@@ -298,7 +298,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
       payload.max_tokens = parseInt(process.env.TEXT_LLM_MAX_TOKENS ?? "4096")
 
-    responseFormat,
+    const normalizedResponseFormat = normalizeResponseFormat({
+  responseFormat,
     response_format,
     outputSchema,
     output_schema,
