@@ -47,6 +47,7 @@ export async function generateImage(
         method: "POST",
         headers: {
                 "Content-Type": "application/json",
+                        "Referer": process.env.CORS_ORIGIN?.split(",")[0] ?? "https://my-gamebook-ai.vercel.app",
         },
         body: JSON.stringify(body),
   });
