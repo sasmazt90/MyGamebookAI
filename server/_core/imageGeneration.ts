@@ -5,20 +5,20 @@
  * - Google Gemini image generation (`IMAGE_PROVIDER=google`)
  * - Legacy Forge ImageService (`IMAGE_PROVIDER=forge`)
  */
-
 import { storagePut } from "server/storage";
+import { ENV } from "./env";
 
 export type GenerateImageOptions = {
-    prompt: string;
-    originalImages?: Array<{
-      url?: string;
-      b64Json?: string;
-      mimeType?: string;
-    }>;
+  prompt: string;
+  originalImages?: Array<{
+    url?: string;
+    b64Json?: string;
+    mimeType?: string;
+  }>;
 };
 
 export type GenerateImageResponse = {
-    url?: string;
+  url?: string;
 };
 
 type GooglePart =
@@ -195,17 +195,17 @@ async function generateWithForge(options: GenerateImageOptions): Promise<Generat
   });
 
   if (!response.ok) {
-        const detail = await response.text().catch(() => "");
-        throw new Error(
-                `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
-              );
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
+    );
   }
 
   const result = (await response.json()) as {
-        predictions?: Array<{
-                bytesBase64Encoded?: string;
-                mimeType?: string;
-        }>;
+    image: {
+      b64Json: string;
+      mimeType: string;
+    };
   };
 
   const buffer = Buffer.from(result.image.b64Json, "base64");
