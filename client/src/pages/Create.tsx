@@ -48,7 +48,7 @@ const GENRE_LENGTHS: Record<string, string[]> = {
   fantasy_scifi:   ["normal", "thick"],
 };
 
-// Exact page counts per category+length â must match the generation spec
+// Exact page counts per category+length Ã¢ÂÂ must match the generation spec
 const PAGE_COUNT_LABELS: Record<string, Record<string, string>> = {
   fairy_tale:      { thin: "10 pages" },
   comic:           { thin: "10 pages", normal: "18 pages" },
@@ -72,7 +72,7 @@ export default function Create() {
   const [, navigate] = useLocation();
 
   useSEO({
-    title: "Create a Gamebook â AI-Powered Interactive Story Generator",
+    title: "Create a Gamebook Ã¢ÂÂ AI-Powered Interactive Story Generator",
     description: "Design your own AI-generated interactive gamebook. Choose a genre, add characters with photos, set the length, and let AI write your branching story.",
     canonicalPath: "/create",
   });
@@ -111,21 +111,21 @@ export default function Create() {
 
   const createBook = trpc.books.create.useMutation({
     onSuccess: (_data) => {
-      toast.success(t("create.generationStarted" as any) || "Book generation started! Check your library.");
+      toast.success("Book generation started! Check your library.");
       navigate("/library");
     },
     onError: (err) => {
       if (err.data?.code === "PAYMENT_REQUIRED") {
         toast.error(t("store.insufficientCredits"));
       } else {
-        toast.error(t("create.creationFailed" as any) || "Something went wrong while creating your book. Please try again.");
+        toast.error("Something went wrong while creating your book. Please try again.");
       }
     },
   });
 
   const addCharacter = () => {
     if (characters.length >= 5) {
-      toast.error(t("create.maxCharacters" as any) || "Maximum 5 characters allowed");
+      toast.error("Maximum 5 characters allowed");
       return;
     }
     setCharacters(prev => [...prev, { id: crypto.randomUUID(), name: "" }]);
@@ -141,7 +141,7 @@ export default function Create() {
 
   const handlePhotoUpload = (id: string, file: File) => {
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(t("create.photoTooLarge" as any) || "Photo must be under 5MB");
+      toast.error("Photo must be under 5MB");
       return;
     }
     const reader = new FileReader();
@@ -163,11 +163,11 @@ export default function Create() {
       return;
     }
     if (!title.trim()) {
-      toast.error(t("create.enterTitle" as any) || "Please enter a book title");
+      toast.error("Please enter a book title");
       return;
     }
     if (!safetyChecked) {
-      toast.error(t("create.agreeSafety" as any) || "Please agree to the safety guidelines");
+      toast.error("Please agree to the safety guidelines");
       return;
     }
 
@@ -186,7 +186,7 @@ export default function Create() {
     });
   };
 
-  // Total cost comes from backend (getCreditCost tRPC query) â never hardcoded
+  // Total cost comes from backend (getCreditCost tRPC query) Ã¢ÂÂ never hardcoded
   const total = costData?.total ?? 0;
   const hasEnoughCredits = (balance?.balance ?? 0) >= total;
 
@@ -212,7 +212,7 @@ export default function Create() {
                 <Input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
-                  placeholder={t("create.titlePlaceholder" as any) || "Enter your book title..."}
+                  placeholder={"Enter your book title..."}
                   className="bg-[#0D0B1A] border-purple-900/50 text-white placeholder:text-gray-600 focus:border-[#7C3AED]"
                   maxLength={255}
                 />
@@ -286,7 +286,7 @@ export default function Create() {
                 <Textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder={t("create.descPlaceholder" as any) || "Describe your story, characters, setting, and mood..."}
+                  placeholder={"Describe your story, characters, setting, and mood..."}
                   className="bg-[#0D0B1A] border-purple-900/50 text-white placeholder:text-gray-600 focus:border-[#7C3AED] min-h-[120px] resize-none"
                   maxLength={2000}
                 />
@@ -303,7 +303,7 @@ export default function Create() {
                     <Input
                       value={char.name}
                       onChange={e => updateCharacterName(char.id, e.target.value)}
-                      placeholder={`${t("create.characterN" as any) || "Character"} ${idx + 1}`}
+                      placeholder={`${"Character"} ${idx + 1}`}
                       className="bg-[#1A1033] border-purple-900/50 text-white placeholder:text-gray-600 flex-1"
                     />
                     <button
@@ -384,25 +384,25 @@ export default function Create() {
               <h3 className="font-semibold text-white mb-4">{t("create.creditCost")}</h3>
 
               <div className="space-y-3 mb-4">
-                {/* Base Cost â always shown, comes from backend pricing.csv */}
+                {/* Base Cost Ã¢ÂÂ always shown, comes from backend pricing.csv */}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">{t("create.baseCost")}</span>
                   <span className="text-white">
-                    {costData ? costData.base : <span className="text-gray-500">â¦</span>} {costData ? t("store.price") : ""}
+                    {costData ? costData.base : <span className="text-gray-500">Ã¢ÂÂ¦</span>} {costData ? t("store.price") : ""}
                   </span>
                 </div>
-                {/* Character Images â shown only when at least one photo is uploaded */}
+                {/* Character Images Ã¢ÂÂ shown only when at least one photo is uploaded */}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">{t("create.photoExtra")}</span>
                   <span className={photoCount > 0 ? "text-[#F59E0B]" : "text-gray-600"}>
-                    {photoCount > 0 ? `+${costData?.photoExtra ?? 0}` : "â"} {photoCount > 0 ? t("store.price") : ""}
+                    {photoCount > 0 ? `+${costData?.photoExtra ?? 0}` : "Ã¢ÂÂ"} {photoCount > 0 ? t("store.price") : ""}
                   </span>
                 </div>
                 {/* Total */}
                 <div className="border-t border-purple-900/30 pt-3 flex justify-between">
                   <span className="font-semibold text-white">{t("create.total")}</span>
                   <span className="font-bold text-[#F59E0B] text-lg">
-                    {costData ? total : "â¦"} {costData ? t("store.price") : ""}
+                    {costData ? total : "Ã¢ÂÂ¦"} {costData ? t("store.price") : ""}
                   </span>
                 </div>
               </div>
