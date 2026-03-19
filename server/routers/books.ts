@@ -786,6 +786,20 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     // This string is prepended to EVERY generateImage prompt in this book so that
     // all illustrations share the same art style, lighting, palette, and framing.
     // It is also stored in books.illustrationStyleLock for admin/debug inspection.
+    // Global identity lock — prepended to every generateImage call.
+    const IDENTITY_LOCK =
+      "CRITICAL IDENTITY PRESERVATION: Every character in this image MUST be the EXACT SAME PERSON as the uploaded reference photo. " +
+      "Do NOT redesign, beautify, genericise, or replace any face. " +
+      "Preserve WITHOUT EXCEPTION: face shape, skin tone, eye colour, hairline, haircut, and age impression. " +
+      "The same character MUST look visually identical across every page and panel of this book. " +
+      "If the requested art style conflicts with identity fidelity, IDENTITY WINS. Override style for face accuracy.";
+
+    // Style-bridge rule — added to portrait prompt only (style conversion, not new character).
+    const STYLE_BRIDGE_RULE =
+      "STYLE CONVERSION ONLY: This is NOT a new or redesigned character. " +
+      "Convert the rendering style only. The person MUST look like the EXACT SAME real individual from the reference photo. " +
+      "Change only the artistic rendering style. Preserve all facial features, identity markers, and personal likeness without exception.";
+
     const STYLE_LOCK = [
       stylePreset,
       NO_TEXT_CONSTRAINT,
@@ -850,6 +864,8 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
             ].filter(Boolean).join(", ")
           : char.name;
         const portraitPrompt = [
+          IDENTITY_LOCK,
+          STYLE_BRIDGE_RULE,
           stylePreset,
           `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${stylePreset} ${category === "comic" ? "comic book" : category === "fairy_tale" ? "illustrated fairy tale" : "illustrated story"} style character while keeping face identity 100% recognizable`,
           `Preserve EXACTLY: the person's face shape, facial features, ${appearanceHint}`,
@@ -889,6 +905,8 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ...illustratedPortraits,
       ].filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
 
+      const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
+
       const maxImageAttempts = 3;
       let lastErr: string | null = null;
       for (let attempt = 1; attempt <= maxImageAttempts; attempt++) {
@@ -897,14 +915,14 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
             console.log(
               `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode â ${mergedRefs.length} image reference(s), attempt ${attempt}/${maxImageAttempts})`
             );
-            const result = await generateImage({ prompt, originalImages: mergedRefs });
+            const result = await generateImage({ prompt: effectivePrompt, originalImages: mergedRefs });
             if (result?.url) return result;
             lastErr = `Image API returned no URL (attempt ${attempt})`;
           } else {
             console.log(
               `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode â no usable references, attempt ${attempt}/${maxImageAttempts})`
             );
-            const result = await generateImage({ prompt });
+            const result = await generateImage({ prompt: effectivePrompt });
             if (result?.url) return result;
             lastErr = `Image API returned no URL (attempt ${attempt})`;
           }
