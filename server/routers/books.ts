@@ -23,6 +23,15 @@ import { storageDelete, storagePut } from "../storage";
 import { refreshAuthorStats } from "../authorStatsCache";
 import { nanoid } from "nanoid";
 import { sanitizeText, sanitizeRichText } from "../sanitize";
+
+async function imageUrlToBase64DataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
+  const mime = res.headers.get("content-type") || "image/jpeg";
+  const buf = Buffer.from(await res.arrayBuffer());
+  return `data:${mime};base64,${buf.toString("base64")}`;
+}
+
 import { validateUpload } from "../uploadValidation";
 import { claimAndRunJob } from "../generationWorker";
 import { addCoverOverlay } from "../coverOverlay";
@@ -122,10 +131,10 @@ async function generateBookContent(bookId: number, bookData: {
     const isComic = category === "comic";
     const isOtherGenre = ["crime_mystery", "fantasy_scifi", "romance", "horror_thriller"].includes(category);
 
-    // ─── Spec-compliant page and image counts ────────────────────────────────
+    // âââ Spec-compliant page and image counts ââââââââââââââââââââââââââââââââ
     // fairy_tale:        10 pages, 10 page illustrations + 1 cover = 11 total images
-    // comic thin:        10 pages × 3 panels = 30 panel images + 1 cover = 31 total
-    // comic normal:      18 pages × 3 panels = 54 panel images + 1 cover = 55 total
+    // comic thin:        10 pages Ã 3 panels = 30 panel images + 1 cover = 31 total
+    // comic normal:      18 pages Ã 3 panels = 54 panel images + 1 cover = 55 total
     // other normal:      80 pages, 8 branch images + 1 cover = 9 total
     // other thick:       120 pages, 12 branch images + 1 cover = 13 total
     let pageCount = 10;   // fairy_tale default
@@ -143,16 +152,16 @@ async function generateBookContent(bookId: number, bookData: {
 
     const charNames = characters.map(c => c.name).join(", ");
 
-    // Character photos for image consistency — passed as originalImages to every generateImage call
+    // Character photos for image consistency â passed as originalImages to every generateImage call
     const charPhotos = characters
       .filter(c => c.photoUrl)
       .map(c => ({ url: c.photoUrl!, mimeType: "image/jpeg" as const }));
 
-    // ─── Global Style Lock ────────────────────────────────────────────────────
+    // âââ Global Style Lock ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     // Each genre gets a rich, multi-axis style descriptor assembled ONCE and
     // injected verbatim into every image prompt (cover, per-page, comic panels).
-    // Axes: art medium · lighting direction · colour temperature · palette ·
-    //       brush/line style · framing rule · negative constraints.
+    // Axes: art medium Â· lighting direction Â· colour temperature Â· palette Â·
+    //       brush/line style Â· framing rule Â· negative constraints.
     // This is the primary mechanism for visual consistency across all illustrations.
     const STYLE_PRESETS: Record<string, string> = {
       fairy_tale: [
@@ -206,10 +215,10 @@ async function generateBookContent(bookId: number, bookData: {
     };
     const stylePreset = STYLE_PRESETS[category] || "cinematic digital illustration, consistent character design, no text, no letters";
 
-    // ─── Step 1: Generate rich character cards ────────────────────────────────
+    // âââ Step 1: Generate rich character cards ââââââââââââââââââââââââââââââââ
     // Each character gets a detailed visual + personality anchor used in every
     // subsequent LLM call to maintain consistency.
-    await db.update(books).set({ generationStep: "Building character profiles…" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Building character profilesâ¦" }).where(eq(books.id, bookId));
     type CharacterCard = {
       name: string;
       appearance: string;  // physical description for image prompts
@@ -220,20 +229,20 @@ async function generateBookContent(bookId: number, bookData: {
 
     let characterCards: CharacterCard[] = [];
 
-    // ─── Step 1a: Photo analysis pass ────────────────────────────────────────
+    // âââ Step 1a: Photo analysis pass ââââââââââââââââââââââââââââââââââââââââ
     // For every character that has an uploaded photo, use the multimodal LLM to
     // extract concrete visual descriptors across ALL 8 physical identity axes:
-    //   1. skin_tone      — complexion, undertone, texture
-    //   2. face_shape     — overall shape, jaw, chin, cheekbones
-    //   3. hair_colour    — primary + secondary colour, highlights
-    //   4. hair_style     — length, texture, cut style
-    //   5. eye_colour     — iris colour + any ring/fleck detail
-    //   6. eye_shape      — shape, size, lid type, lash density
-    //   7. nose_shape     — bridge, tip, width, profile
-    //   8. eyebrows       — thickness, arch, colour, spacing
-    //   9. body_shape     — height estimate, build, posture
-    //  10. facial_hair    — present/absent, style, colour
-    //  11. distinctive    — scars, freckles, moles, glasses, tattoos
+    //   1. skin_tone      â complexion, undertone, texture
+    //   2. face_shape     â overall shape, jaw, chin, cheekbones
+    //   3. hair_colour    â primary + secondary colour, highlights
+    //   4. hair_style     â length, texture, cut style
+    //   5. eye_colour     â iris colour + any ring/fleck detail
+    //   6. eye_shape      â shape, size, lid type, lash density
+    //   7. nose_shape     â bridge, tip, width, profile
+    //   8. eyebrows       â thickness, arch, colour, spacing
+    //   9. body_shape     â height estimate, build, posture
+    //  10. facial_hair    â present/absent, style, colour
+    //  11. distinctive    â scars, freckles, moles, glasses, tattoos
     // The structured JSON output is used both to build the character card
     // appearance field and to populate the per-axis PHYSICAL_IDENTITY_LOCK.
     type PhotoAnalysis = {
@@ -255,6 +264,13 @@ async function generateBookContent(bookId: number, bookData: {
     for (const char of characters) {
       if (!char.photoUrl) continue;
       try {
+        let photoDataUrl: string;
+        try {
+          photoDataUrl = await imageUrlToBase64DataUrl(char.photoUrl);
+        } catch (dlErr) {
+          console.warn(`[Books] Could not download photo for "${char.name}", skipping photo analysis:`, dlErr);
+          continue;
+        }
         const photoResp = await invokeLLM({
           messages: [
             {
@@ -266,14 +282,14 @@ async function generateBookContent(bookId: number, bookData: {
               content: [
                 {
                   type: "image_url" as const,
-                  image_url: { url: char.photoUrl, detail: "high" as const },
+                  image_url: { url: photoDataUrl, detail: "high" as const },
                 },
                 {
                   type: "text" as const,
                   text: `Analyse this photo and return a JSON object with EXACTLY these keys describing the person's physical appearance:
 
 {
-  "skin_tone": "<e.g. fair porcelain, warm olive, medium tan, rich brown, deep ebony — include undertone: warm/cool/neutral>",
+  "skin_tone": "<e.g. fair porcelain, warm olive, medium tan, rich brown, deep ebony â include undertone: warm/cool/neutral>",
   "face_shape": "<e.g. oval with soft jaw, square with strong angular jaw, heart-shaped with wide forehead and pointed chin, round with full cheeks>",
   "hair_colour": "<primary colour + any secondary/highlight, e.g. dark espresso brown with subtle warm highlights>",
   "hair_style": "<length + texture + cut, e.g. short side-parted undercut, shoulder-length wavy bob, long straight with blunt fringe>",
@@ -282,8 +298,8 @@ async function generateBookContent(bookId: number, bookData: {
   "nose_shape": "<e.g. straight medium bridge with rounded tip, broad flat bridge with wide nostrils, aquiline with high bridge and narrow tip>",
   "eyebrows": "<thickness + arch + colour, e.g. thick straight dark-brown brows, thin highly-arched light-brown brows, bushy natural brows with slight arch>",
   "body_shape": "<height estimate + build, e.g. tall athletic build with broad shoulders, medium height stocky muscular frame, petite slim build>",
-  "facial_hair": "<e.g. clean-shaven, short dark stubble, full neatly-trimmed brown beard, thin moustache — or 'none' if absent>",
-  "distinctive": "<any notable features: freckles, moles, scars, dimples, glasses, tattoos — or 'none'>",
+  "facial_hair": "<e.g. clean-shaven, short dark stubble, full neatly-trimmed brown beard, thin moustache â or 'none' if absent>",
+  "distinctive": "<any notable features: freckles, moles, scars, dimples, glasses, tattoos â or 'none'>",
   "prose_summary": "<2-3 flowing sentences combining all the above into a natural character description suitable for an illustrated book>"
 }
 
@@ -293,7 +309,7 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
             },
           ],
           response_format: { type: "json_object" },
-          max_tokens: pageCount >= 80 ? 14000 : pageCount >= 18 ? 8000 : 5000,
+          max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
         });
         const raw = photoResp.choices[0]?.message?.content;
         if (typeof raw === "string" && raw.trim().length > 10) {
@@ -302,9 +318,9 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
             photoAnalyses[char.name] = parsed;
             // prose_summary is the backward-compat description used in card generation
             photoDescriptions[char.name] = parsed.prose_summary || raw.trim();
-            console.log(`[Books] Photo analysis for "${char.name}": ${photoDescriptions[char.name].substring(0, 120)}…`);
+            console.log(`[Books] Photo analysis for "${char.name}": ${photoDescriptions[char.name].substring(0, 120)}â¦`);
           } catch {
-            // JSON parse failed — fall back to raw text
+            // JSON parse failed â fall back to raw text
             photoDescriptions[char.name] = raw.trim();
             console.warn(`[Books] Photo analysis JSON parse failed for "${char.name}", using raw text.`);
           }
@@ -343,7 +359,7 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
             })
             .join("\n\n");
           return hints
-            ? `\n\nREFERENCE PHOTO ANALYSES (you MUST base the appearance field on these — preserve every detail exactly):\n${hints}`
+            ? `\n\nREFERENCE PHOTO ANALYSES (you MUST base the appearance field on these â preserve every detail exactly):\n${hints}`
             : "";
         };
         const photoHintBlock = buildPhotoHintBlock();
@@ -374,7 +390,7 @@ For each character provide:
     9. BODY: height and build (e.g. "tall athletic build with broad shoulders")
    10. FACIAL HAIR: facial hair or 'clean-shaven' (e.g. "short dark stubble" or "clean-shaven")
    11. DISTINCTIVE: any notable features or 'none' (e.g. "small scar above left eyebrow")
-   12. CLOTHING: describe the character's SPECIFIC outfit in detail (colours, style, accessories). This exact outfit MUST remain IDENTICAL across every single page — no outfit changes allowed
+   12. CLOTHING: describe the character's SPECIFIC outfit in detail (colours, style, accessories). This exact outfit MUST remain IDENTICAL across every single page â no outfit changes allowed
 - voice: 1-2 sentences describing how they speak and their personality
 - role: one of protagonist, antagonist, supporting
 
@@ -383,7 +399,7 @@ Respond with JSON: {"characters": [{"name": "", "appearance": "", "voice": "", "
 IMPORTANT: The appearance field must be a single string containing all 12 axes above, each on its own sentence. This will be used verbatim in image generation prompts.` },
           ],
           response_format: { type: "json_object" },
-          max_tokens: pageCount >= 80 ? 14000 : pageCount >= 18 ? 8000 : 5000,
+          max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
         });
         const raw = cardResp.choices[0]?.message?.content || "{}";
         const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
@@ -424,11 +440,11 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ).join("\n")}`
       : "";
 
-    // ─── Character Anchor Block for image prompts ─────────────────────────────
+    // âââ Character Anchor Block for image prompts âââââââââââââââââââââââââââââ
     // Uses the FULL appearance description (not just the first sentence) so the
     // image model receives every visual detail: hair, eyes, build, clothing,
     // distinguishing features. Assembled ONCE and injected into every image prompt.
-    // Build a photo-reference note for the image prompt — lists which characters
+    // Build a photo-reference note for the image prompt â lists which characters
     // have uploaded reference photos so the image model knows to use them as
     // face/identity anchors, not just style references.
     const photoRefNote = characterCards
@@ -479,7 +495,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
           : "");
 
     // Fix 1: charVisualAnchor previously truncated appearance to the first sentence only
-    // via .split(".")[0] — silently dropping hair colour, eye colour, and clothing from
+    // via .split(".")[0] â silently dropping hair colour, eye colour, and clothing from
     // comic panel prompts. Now uses the FULL appearance string, same as charAnchorBlock.
     const charVisualAnchor = characterCards.length > 0
       ? `CHARACTERS (exact appearance, every panel): ${characterCards.map(c => `${c.name} (${c.role}): ${c.appearance}`).join(" | ")}. Maintain exact character appearance in every panel.`
@@ -537,7 +553,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     const colourKeywords = characterCards.map(c => {
       const app = c.appearance;
 
-      // ── Hair colour ──────────────────────────────────────────────────────────
+      // ââ Hair colour ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Pattern: <optional multi-word colour prefix> + <core colour word> + optional
       // filler words + "hair" + optional trailing descriptor (e.g. "hair styled in waves")
       // We allow up to ~40 chars of filler between the colour word and "hair" to catch
@@ -554,7 +570,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       );
       const hairMatch = app.match(hairRe);
 
-      // ── Eye colour ───────────────────────────────────────────────────────────
+      // ââ Eye colour âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Pattern: <optional multi-word colour prefix> + <core colour word> +
       //          optional single bridging colour word + "eyes"
       // The bridging word handles compound descriptors like "forest green eyes"
@@ -573,7 +589,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       );
       const eyeMatch = app.match(eyeRe);
 
-      // ── 3. SKIN TONE ─────────────────────────────────────────────────────────
+      // ââ 3. SKIN TONE âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "warm olive skin", "fair porcelain complexion", "deep ebony skin",
       // "medium tan skin with warm undertone", "rich brown skin", etc.
       const SKIN_TONE_WORDS =
@@ -589,7 +605,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+(?:skin|complexion))/i)
         : null;
 
-      // ── 4. FACE SHAPE ────────────────────────────────────────────────────────
+      // ââ 4. FACE SHAPE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "oval face", "square jaw", "heart-shaped face", "strong angular jaw",
       // "round face with full cheeks", "diamond-shaped face", etc.
       const FACE_SHAPE_WORDS =
@@ -605,7 +621,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:face|jaw|chin|cheekbones?))/i)
         : null;
 
-      // ── 5. HAIR STYLE ────────────────────────────────────────────────────────
+      // ââ 5. HAIR STYLE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures the cut/length/texture AFTER the colour word.
       // e.g. "short side-parted undercut", "long wavy hair", "shoulder-length bob",
       // "tight coily afro", "straight blunt fringe", "messy textured crop".
@@ -623,7 +639,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,5}\s+hair(?:[\w\s,'-]{0,30})?)/i)
         : null;
 
-      // ── 6. EYE SHAPE ─────────────────────────────────────────────────────────
+      // ââ 6. EYE SHAPE âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "almond-shaped eyes", "round wide-set eyes", "hooded deep-set eyes",
       // "monolid eyes", "upturned eyes", "heavy-lidded eyes", "large expressive eyes".
       const EYE_SHAPE_WORDS =
@@ -639,7 +655,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+eyes)/i)
         : null;
 
-      // ── 7. NOSE SHAPE ────────────────────────────────────────────────────────
+      // ââ 7. NOSE SHAPE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "straight nose", "button nose", "aquiline nose", "broad flat nose",
       // "narrow pointed nose", "upturned snub nose", "prominent Roman nose".
       const NOSE_SHAPE_WORDS =
@@ -655,7 +671,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+nose)/i)
         : null;
 
-      // ── 8. EYEBROWS ──────────────────────────────────────────────────────────
+      // ââ 8. EYEBROWS ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "thick straight dark-brown brows", "thin arched brows",
       // "bushy natural eyebrows", "sparse light brows", "bold defined brows".
       const EYEBROW_WORDS =
@@ -671,7 +687,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:eyebrows?|brows?))/i)
         : null;
 
-      // ── 9. BODY SHAPE ────────────────────────────────────────────────────────
+      // ââ 9. BODY SHAPE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "tall athletic build", "petite slim frame", "stocky muscular build",
       // "medium height heavyset frame", "lean wiry physique", "broad-shouldered build".
       const BODY_SHAPE_WORDS =
@@ -688,7 +704,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,5}\s+(?:build|frame|figure|physique|stature))/i)
         : null;
 
-      // ── 10. FACIAL HAIR ────────────────────────────────────────────────────────
+      // ââ 10. FACIAL HAIR ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
       // Captures: "clean-shaven", "short dark stubble", "full neatly-trimmed brown beard",
       // "thin moustache", "goatee", "mutton chops", "five o'clock shadow".
       //
@@ -709,7 +725,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         `(clean-shaven|clean shaven|${FACIAL_HAIR_MODIFIERS}(?:[\\s-]+[\\w-]+){0,3}[\\s-]+${FACIAL_HAIR_NOUNS}|${FACIAL_HAIR_NOUNS}(?:[\\s-]+[\\w-]+){0,3})`,
         "i",
       );
-      const facialHairMatch = app.match(facialHairRe);      // ── Fallback: capture any "<colour> hair" or "<colour> eyes" not caught above ──
+      const facialHairMatch = app.match(facialHairRe);      // ââ Fallback: capture any "<colour> hair" or "<colour> eyes" not caught above ââ
       // This handles unusual descriptors the primary patterns might miss.
       const fallbackHair = !hairMatch
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+hair)/i)
@@ -739,15 +755,15 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     // and is injected into STYLE_LOCK and every per-page/panel prompt.
     // Keeping the old constant name for backward compat with STYLE_LOCK assembly below.
     const CHARACTER_COLOUR_LOCK = colourKeywords
-      ? `PHYSICAL IDENTITY LOCK — do NOT change ANY of these physical traits in any illustration: ${colourKeywords}`
+      ? `PHYSICAL IDENTITY LOCK â do NOT change ANY of these physical traits in any illustration: ${colourKeywords}`
       : "";
 
-    // ─── Guardrail 2B: Centralised no-text constraint ──────────────────────────
+    // âââ Guardrail 2B: Centralised no-text constraint ââââââââââââââââââââââââââ
     // This constant is injected into EVERY image prompt to prevent the model from
     // rendering any text, typography, or title/author text inside the image.
     // Title and author name are added ONLY via the addCoverOverlay() UI layer.
     const NO_TEXT_CONSTRAINT =
-      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no title, no author name, no captions, no labels anywhere in the image"    // ─── Guardrail 2C: Comic panel character hard-lock instruction ────────────────────
+      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no title, no author name, no captions, no labels anywhere in the image"    // âââ Guardrail 2C: Comic panel character hard-lock instruction ââââââââââââââââââââ
     // Appended to every comic panel prompt after the per-panel speaker focus note.
     // Prevents per-panel character drift by explicitly repeating the full physical identity lock.
     // ENHANCED: Added explicit character count enforcement, negative prompts, and visual distinctness rules.
@@ -766,7 +782,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       "   - Clothing: Each character wears distinctly different clothing colors and styles.\n" +
       "8. PHOTO REFERENCE PRIORITY: If character photos are provided, render faces EXACTLY as photographed. Do not alter facial structure, features, or appearance.\n" +
       "9. QUALITY ASSURANCE: Before finalizing, verify that every character is visually distinct and cannot be confused with any other character in the image.";
-    // ─── Assemble the global STYLE_LOCK string ─────────────────────────────────
+    // âââ Assemble the global STYLE_LOCK string âââââââââââââââââââââââââââââââââ
     // This string is prepended to EVERY generateImage prompt in this book so that
     // all illustrations share the same art style, lighting, palette, and framing.
     // It is also stored in books.illustrationStyleLock for admin/debug inspection.
@@ -781,7 +797,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       "STYLE CONSISTENCY: This illustration must match the exact same art style, lighting, colour palette, and character appearance as all other illustrations in this book.",
     ].filter(Boolean).join(" | ");
 
-    // ─── Step 1b: Style-bridge portrait generation ───────────────────────────
+    // âââ Step 1b: Style-bridge portrait generation âââââââââââââââââââââââââââ
     // For every character with an uploaded photo, generate ONE illustrated portrait
     // in the book's art style by passing the raw photo as originalImages.
     //
@@ -792,23 +808,34 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     //     image model a proper style reference without the collage artifact.
     //
     // APPROACH:
-    //   1. Generate portrait: raw photo → illustrated portrait (style conversion)
+    //   1. Generate portrait: raw photo â illustrated portrait (style conversion)
     //      The prompt explicitly asks to convert the photo to the book's art style
     //      while preserving exact facial features, hair, and build.
     //   2. Store the illustrated portrait in S3.
     //   3. Use the illustrated portrait (not the raw photo) as originalImages for
     //      all subsequent page/panel generation calls.
     //
-    // This is a non-fatal step — if portrait generation fails for any character,
+    // This is a non-fatal step â if portrait generation fails for any character,
     // we fall back to text-only anchoring (the existing PHYSICAL_IDENTITY_LOCK).
     const illustratedPortraits: Array<{ url: string; mimeType: string }> = [];
 
-    await db.update(books).set({ generationStep: "Creating character illustrations…" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Creating character illustrationsâ¦" }).where(eq(books.id, bookId));
 
     for (const char of characters) {
       if (!char.photoUrl) continue;
       try {
         console.log(`[Books] Step 1b: Generating style-bridge portrait for "${char.name}" (bookId=${bookId})`);
+        let portraitPhotoB64: string;
+        let portraitPhotoMime: string;
+        try {
+          const pRes = await fetch(char.photoUrl);
+          if (!pRes.ok) throw new Error(`${pRes.status} ${pRes.statusText}`);
+          portraitPhotoMime = pRes.headers.get("content-type") || "image/jpeg";
+          portraitPhotoB64 = Buffer.from(await pRes.arrayBuffer()).toString("base64");
+        } catch (fetchErr) {
+          console.warn(`[Books] Step 1b: Could not download photo for "${char.name}", skipping portrait:`, fetchErr);
+          continue;
+        }
         const a = photoAnalyses[char.name];
         // Build a precise style-conversion prompt using the extracted appearance axes
         const appearanceHint = a
@@ -824,17 +851,17 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
           : char.name;
         const portraitPrompt = [
           stylePreset,
-          `Convert this photograph into a ${stylePreset} illustration of the same person`,
+          `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${stylePreset} ${category === "comic" ? "comic book" : category === "fairy_tale" ? "illustrated fairy tale" : "illustrated story"} style character while keeping face identity 100% recognizable`,
           `Preserve EXACTLY: the person's face shape, facial features, ${appearanceHint}`,
           `The illustrated character must be immediately recognisable as the same person from the photo`,
           `Full-body or bust portrait, neutral background, character centred`,
-          `Illustration style only — no photographic elements, no photo-realistic rendering`,
+          `Illustration style only â no photographic elements, no photo-realistic rendering`,
           NO_TEXT_CONSTRAINT,
         ].filter(Boolean).join(". ");
 
         const portraitResult = await generateImage({
           prompt: portraitPrompt,
-          originalImages: [{ url: char.photoUrl, mimeType: "image/jpeg" }],
+          originalImages: [{ b64Json: portraitPhotoB64, mimeType: portraitPhotoMime }],
         });
 
         if (portraitResult.url) {
@@ -846,7 +873,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       }
     }
 
-    // ─── Image generation wrapper ───────────────────────────────────────
+    // âââ Image generation wrapper âââââââââââââââââââââââââââââââââââââââ
     // Uses illustrated portraits (Step 1b) as originalImages when available.
     // Illustrated portraits are already in the book's art style so they serve
     // as a proper style/identity reference without causing the photo-collage effect
@@ -868,14 +895,14 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         try {
           if (mergedRefs.length > 0) {
             console.log(
-              `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode — ${mergedRefs.length} image reference(s), attempt ${attempt}/${maxImageAttempts})`
+              `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode â ${mergedRefs.length} image reference(s), attempt ${attempt}/${maxImageAttempts})`
             );
             const result = await generateImage({ prompt, originalImages: mergedRefs });
             if (result?.url) return result;
             lastErr = `Image API returned no URL (attempt ${attempt})`;
           } else {
             console.log(
-              `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode — no usable references, attempt ${attempt}/${maxImageAttempts})`
+              `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode â no usable references, attempt ${attempt}/${maxImageAttempts})`
             );
             const result = await generateImage({ prompt });
             if (result?.url) return result;
@@ -893,24 +920,24 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       throw new Error(`Image generation failed for ${stage} after ${maxImageAttempts} attempts: ${lastErr ?? "unknown error"}`);
     };
 
-    // ─── Step 2: Generate story structure (outline pass) ─────────────────────
+    // âââ Step 2: Generate story structure (outline pass) âââââââââââââââââââââ
     // This pass generates the full branching skeleton. Content is short (1-2
-    // sentences per page) — the per-page expansion pass will enrich it.
-    await db.update(books).set({ generationStep: "Crafting story structure…" }).where(eq(books.id, bookId));
+    // sentences per page) â the per-page expansion pass will enrich it.
+    await db.update(books).set({ generationStep: "Crafting story structureâ¦" }).where(eq(books.id, bookId));
     const structureSystemPrompt = `You are a creative gamebook author. Always respond with valid JSON only.${characterCardBlock}
 
 CONTINUITY RULES:
-- Use character names exactly as defined in the character cards above — no aliases
+- Use character names exactly as defined in the character cards above â no aliases
 - Character appearances and personalities must remain consistent across all pages
 - Every branch path must reach a satisfying ending
-- The story must be internally consistent — no contradictions
+- The story must be internally consistent â no contradictions
 
 UNICODE RULES (MANDATORY):
 - NEVER strip, normalize, transliterate, or replace special characters
 - Preserve ALL Unicode characters exactly as written (Turkish: c with cedilla, g with breve, dotless i, o with umlaut, s with cedilla, u with umlaut; German: a/o/u umlaut, sharp s; French accents; Spanish tilde-n; Cyrillic; Chinese; Japanese; Arabic)
-- Output text in the exact language and script requested — do not substitute ASCII equivalents
+- Output text in the exact language and script requested â do not substitute ASCII equivalents
 
-BRANCHING RULES (MANDATORY — violations will cause story rejection):
+BRANCHING RULES (MANDATORY â violations will cause story rejection):
 - Branches must NEVER merge back together. Once the reader selects A or B, the story continues on a unique, permanently separate branch path.
 - Each page node must belong to exactly ONE branch path. A pageNumber must NEVER appear as the target of nextPageA or nextPageB on more than one page.
 - Do NOT reuse page numbers across different branch paths. Every page is unique and exclusive to its branch.
@@ -942,9 +969,10 @@ Rules:
 - Branch pages: isBranchPage=true, choiceA/choiceB text, nextPageA/nextPageB pointing to page numbers
 - Ending pages: isEnding=true, no choices, no nextPage references
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
-- ALL paths must reach an isEnding=true page — no dead ends
-- STORY BEGINNING: Page 1 MUST be a proper story opening — introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
-- sfxTags: 1-3 English keywords matching the scene sound. Be specific — use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array — every page MUST have at least one relevant sound effect tag.
+- ALL paths must reach an isEnding=true page â no dead ends
+- STORY BEGINNING: Page 1 MUST be a proper story opening â introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.\n" +
+  "  - BRANCH TIMING: The first A/B branch point must NOT appear on page 2. Let the story develop for at least 3-4 pages. For fairy tales first branch on page 3, for others page 4 or later.
+- sfxTags: 1-3 English keywords matching the scene sound. Be specific â use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array â every page MUST have at least one relevant sound effect tag.
 - For fairy tales: 2-3 sentences per page
 - For comics: 3-4 panel descriptions per page
 - For others: 3-5 sentence narrative paragraphs`;
@@ -974,7 +1002,7 @@ Rules:
             { role: "user" as const, content: structurePrompt },
           ],
           response_format: { type: "json_object" },
-          max_tokens: pageCount >= 80 ? 14000 : pageCount >= 18 ? 8000 : 5000,
+          max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
         });
 
         const rawContent = structureResponse.choices[0]?.message?.content || "{}";
@@ -1001,16 +1029,16 @@ Rules:
       throw new Error(`Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`);
     }
 
-    // ─── Step 3: Post-structure validation ───────────────────────────────────
+    // âââ Step 3: Post-structure validation âââââââââââââââââââââââââââââââââââ
     // Verify all branch references resolve, all paths reach an ending, and
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
     const criticalValidationErrors: string[] = [];
 
-    // Build a map of pageId → list of source pages that reference it as a target.
+    // Build a map of pageId â list of source pages that reference it as a target.
     // Any pageId referenced by more than one source = a merge violation.
-    const targetRefCount = new Map<number, number[]>(); // targetPageId → [sourcePageIds]
+    const targetRefCount = new Map<number, number[]>(); // targetPageId â [sourcePageIds]
     for (const page of storyData.pages) {
       if (page.isBranchPage) {
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
@@ -1050,21 +1078,21 @@ Rules:
       }
     }
     if (mergeViolations.length > 0) {
-      console.error(`[Books] GUARDRAIL 1 — No-Merge Branching violations for book ${bookId}:`, mergeViolations);
+      console.error(`[Books] GUARDRAIL 1 â No-Merge Branching violations for book ${bookId}:`, mergeViolations);
     } else {
-      console.log(`[Books] GUARDRAIL 1 — No-Merge Branching: PASSED (book ${bookId}, ${storyData.pages.length} pages, no node reuse detected)`);
+      console.log(`[Books] GUARDRAIL 1 â No-Merge Branching: PASSED (book ${bookId}, ${storyData.pages.length} pages, no node reuse detected)`);
     }
 
     // Check at least one ending exists
     const endingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1));
     if (endingPages.length === 0) {
-      const msg = "No ending pages found — story has no conclusion";
+      const msg = "No ending pages found â story has no conclusion";
       validationErrors.push(msg);
     }
 
     if (validationErrors.length > 0) {
       console.warn(`[Books] Structure validation warnings for book ${bookId}:`, validationErrors);
-      // Non-fatal: log and continue — the story may still be usable
+      // Non-fatal: log and continue â the story may still be usable
     }
 
     // Auto-repair common structure issues instead of hard-failing generation.
@@ -1114,10 +1142,10 @@ Rules:
       validationErrors.push("Auto-repair: forced final page to ending.");
     }
 
-     // ─── Step 4: Per-page expansion pass ───────────────────────────────────
+     // âââ Step 4: Per-page expansion pass âââââââââââââââââââââââââââââââââââ
     // For non-comic categories, enrich each page's content with a dedicated
     // LLM call that injects: character cards + the last 3 pages of context.
-    // GUARDRAIL 2: Rolling context is branch-safe — only pages from the same
+    // GUARDRAIL 2: Rolling context is branch-safe â only pages from the same
     // branchPath lineage are used. Pages from other branches are never injected.
     // Feature A: Fairy tale expansion pass (lightweight, child-appropriate language)
     if (category === "fairy_tale") {
@@ -1139,17 +1167,17 @@ Rules:
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
-        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
+        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}â¦` }).where(eq(books.id, bookId));
         const ancestorNums = getFairyAncestors(page.pageNumber, 3);
         const branchSafeContext = ancestorNums
           .map(num => fairyExpandedByPageNum.get(num))
           .filter((c): c is string => !!c)
-          .join("\n\n---\n\n");
+          .join(". For ending pages use calm ambient sounds (gentle-wind, sunset, peaceful) - NO cheering, applause, celebration or fanfare\n\n---\n\n");
         const contextBlock = branchSafeContext
           ? `\n\nSTORY SO FAR (last ${ancestorNums.length} pages on this branch path):\n${branchSafeContext}`
           : "";
         const branchContext = page.branchPath && page.branchPath !== "root"
-          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here — the narrative must directly reflect that choice.`
+          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here â the narrative must directly reflect that choice.`
           : "";
         try {
           const expandResp = await invokeLLM({
@@ -1163,7 +1191,7 @@ CHILDREN'S WRITING RULES:
 - Keep sentences short and rhythmic (2-3 sentences per paragraph)
 - Use vivid, sensory details: colours, sounds, smells, textures
 - Maintain a warm, hopeful, and whimsical tone throughout
-- Characters must match their descriptions exactly — no aliases
+- Characters must match their descriptions exactly â no aliases
 - If this is page 1 (the very first page of the story), write a proper OPENING that introduces the main characters, sets the scene, and establishes the world. The reader must feel this is the clear beginning of a brand-new adventure.
 - If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}`,
               },
@@ -1173,7 +1201,7 @@ CHILDREN'S WRITING RULES:
 
 Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. Keep prose natural and DO NOT print "Choice A" or "Choice B" inside the story text.` : ""}${page.isEnding ? "\n\nThis is an ending page. Write a warm, satisfying conclusion that feels complete and hopeful." : ""}
 
-Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
+Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
               },
             ],
           });
@@ -1192,10 +1220,10 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
     }
 
     if (!isComic && category !== "fairy_tale") {
-      // Map: pageNumber → expanded content (for branch-safe context lookup)
+      // Map: pageNumber â expanded content (for branch-safe context lookup)
       const expandedByPageNum = new Map<number, string>();
 
-      // Build a parent map: pageNumber → parentPageNumber (via nextPageA/nextPageB)
+      // Build a parent map: pageNumber â parentPageNumber (via nextPageA/nextPageB)
       // This lets us walk up the lineage to find ancestors on the same branch path.
       const parentMap = new Map<number, number>();
       for (const p of storyData.pages) {
@@ -1216,7 +1244,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
-        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
+        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}â¦` }).where(eq(books.id, bookId));
 
         // GUARDRAIL 2: Build rolling context from the last 3 pages on THIS branch path only.
         // We walk up the parent chain to find ancestors, then look up their expanded content.
@@ -1227,7 +1255,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
           .join("\n\n---\n\n");
 
         console.log(
-          `[Books] GUARDRAIL 2 — Branch-safe context for page ${page.pageNumber} (path: ${page.branchPath}): ` +
+          `[Books] GUARDRAIL 2 â Branch-safe context for page ${page.pageNumber} (path: ${page.branchPath}): ` +
           `using ancestors [${ancestorNums.join(", ")}] (${branchSafeContext ? branchSafeContext.length : 0} chars)`
         );
 
@@ -1237,7 +1265,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
 
         // Build branch context if this page follows a choice
         const branchContext = page.branchPath && page.branchPath !== "root"
-          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here — the narrative must directly reflect that choice.`
+          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here â the narrative must directly reflect that choice.`
           : "";;
 
         try {
@@ -1248,14 +1276,14 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
                 content: `You are a skilled ${category.replace(/_/g, " ")} author writing in ${language}. Expand the given page outline into rich, immersive prose.${characterCardBlock}
 
 CONTINUITY RULES:
-- Use character names exactly as in the character cards — no aliases or nickname variations
+- Use character names exactly as in the character cards â no aliases or nickname variations
 - Character appearances and personalities must match the character cards exactly
 - Do NOT introduce new named characters without establishing them
 - Maintain consistent tone and atmosphere for ${category.replace(/_/g, " ")} genre
 - If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}
 - If this is page 1 (the very first page of the story), write a proper OPENING that introduces the main characters, sets the scene, and establishes the world. The reader must feel this is the clear beginning of a brand-new adventure.
 
-UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters. Preserve ALL Unicode exactly as written — Turkish (c-cedilla, g-breve, dotless-i, o-umlaut, s-cedilla, u-umlaut), German (umlauts, sharp-s), French accents, Spanish tilde-n, Cyrillic, Chinese, Japanese, Arabic, and all other scripts must appear verbatim.`,
+UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters. Preserve ALL Unicode exactly as written â Turkish (c-cedilla, g-breve, dotless-i, o-umlaut, s-cedilla, u-umlaut), German (umlauts, sharp-s), French accents, Spanish tilde-n, Cyrillic, Chinese, Japanese, Arabic, and all other scripts must appear verbatim.`,
               },
               {
                 role: "user" as const,
@@ -1263,7 +1291,7 @@ UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters.
 
 Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. Keep prose natural and DO NOT print "Choice A" or "Choice B" inside the story text.` : ""}${page.isEnding ? "\n\nThis is an ending page. Write a satisfying conclusion." : ""}
 
-Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
+Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
               },
             ],
           });
@@ -1288,9 +1316,9 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       content: stripInlineChoiceLabels(page.content ?? ""),
     }));
 
-    await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Generating cover imageâ¦" }).where(eq(books.id, bookId));
 
-    // Generate cover image — uses STYLE_LOCK + full charAnchorBlock for maximum consistency
+    // Generate cover image â uses STYLE_LOCK + full charAnchorBlock for maximum consistency
     // The cover sets the visual "contract" for the whole book; all page illustrations
     // must match the style established here.
     let coverImageUrl: string | null | undefined = null;
@@ -1305,7 +1333,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       horror_thriller: "ominous establishing shot, dark environment, sense of dread",
     }[category] || "dramatic establishing shot, professional book cover composition";
     try {
-      // Guardrail 2A: use wrapper — logs warning if charPhotos is empty
+      // Guardrail 2A: use wrapper â logs warning if charPhotos is empty
       // Guardrail 2B: STYLE_LOCK already contains NO_TEXT_CONSTRAINT; no title/author in prompt
       //               title + author are applied ONLY via addCoverOverlay() below
       const coverResult = await generateImageWithRefCheck(
@@ -1319,7 +1347,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
         ].filter(Boolean).join(" | "),
         charPhotos.length > 0 ? charPhotos : undefined,
       );
-      // Guardrail 2B: title + author name added ONLY as a UI overlay — never inside the image prompt
+      // Guardrail 2B: title + author name added ONLY as a UI overlay â never inside the image prompt
       if (coverResult.url) {
         try {
           const coverResp = await fetch(coverResult.url);
@@ -1351,7 +1379,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       console.error("[Books] Cover image generation failed:", e);
     }
 
-    // ─── Pre-assign which pages get branch images ────────────────────────────────
+    // âââ Pre-assign which pages get branch images ââââââââââââââââââââââââââââââââ
     // For other genres, only the first branchImageCount branch pages get illustrations.
     // We pre-assign here so parallel generation respects the exact count.
     const branchPageNumbers = new Set<number>(
@@ -1361,7 +1389,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
         .map(p => p.pageNumber)
     );
 
-    // ─── Parallel image generation with concurrency limit ────────────────────────
+    // âââ Parallel image generation with concurrency limit ââââââââââââââââââââââââ
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
     // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
     const CONCURRENCY_LIMIT = isOtherGenre ? 1 : 2;
@@ -1387,7 +1415,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       }
     };
 
-    await db.update(books).set({ generationStep: `Generating ${totalPages} illustrations in parallel…` }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: `Generating ${totalPages} illustrations in parallelâ¦` }).where(eq(books.id, bookId));
 
     // Type for per-page image results
     type PageImageResult = { pageNumber: number; imageUrl: string | null; panels: string[] | null };
@@ -1399,9 +1427,9 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       let panels: string[] | null = null;
       try {
         if (isComic) {
-          // ─── COMIC: generate ONE composite page image, then crop into 3 panels ─────
-          // Spec: comic thin = 10 pages × 1 composite image = 10 image calls + 1 cover = 11 total
-          //       comic normal = 18 pages × 1 composite image = 18 image calls + 1 cover = 19 total
+          // âââ COMIC: generate ONE composite page image, then crop into 3 panels âââââ
+          // Spec: comic thin = 10 pages Ã 1 composite image = 10 image calls + 1 cover = 11 total
+          //       comic normal = 18 pages Ã 1 composite image = 18 image calls + 1 cover = 19 total
           // Layout: large top panel (60% height) + two equal bottom panels (40% height each)
           // After generation, sharp crops the composite into panel_top, panel_bottom_left, panel_bottom_right
           // and stores the 3 cropped URLs in panels[] JSON array.
@@ -1486,7 +1514,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
           const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
 
           // Step 2: Generate ONE composite comic page image
-          // NO text in the image — speech bubbles are React overlays, not baked into the image.
+          // NO text in the image â speech bubbles are React overlays, not baked into the image.
           const compositePrompt = [
             STYLE_LOCK,
             NO_TEXT_CONSTRAINT,
@@ -1502,10 +1530,10 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
             CHARACTER_COLOUR_LOCK,
             STRUCTURED_IDENTITY_BLOCK || undefined,
             CHARACTER_LOCK_INSTRUCTION,
-                        "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image — every interior page must look like it belongs to the same book as the cover.",
+                        "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image â every interior page must look like it belongs to the same book as the cover.",
           ].filter(Boolean).join(" | ");
 
-          // ComicPanel metadata objects — speech bubbles rendered as React overlays by ComicPageLayout
+          // ComicPanel metadata objects â speech bubbles rendered as React overlays by ComicPageLayout
           type ComicPanelData = { imageUrl: string; narration: string; dialogue: string | null; speaker: string | null; bubbleType: string | null; position: string | null };
           const panelData: ComicPanelData[] = [];
           const MIN_PANEL_SIZE_BYTES = 1024; // post-crop validation: panel must be > 1KB
@@ -1579,7 +1607,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
           imageUrl = null; // panels stored separately
 
         } else if (category === "fairy_tale") {
-          // ─── FAIRY TALE: one illustration per page (10 pages = 10 illustrations) ──────
+          // âââ FAIRY TALE: one illustration per page (10 pages = 10 illustrations) ââââââ
           const sceneNote = page.isBranchPage
             ? `dramatic decision moment, ${page.content.substring(0, 200)}`
             : page.isEnding
@@ -1594,19 +1622,19 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
               CHARACTER_COLOUR_LOCK,
               STRUCTURED_IDENTITY_BLOCK || undefined,
               CHARACTER_LOCK_INSTRUCTION,
-                          "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image — every interior page must look like it belongs to the same book as the cover",
-              "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY — do NOT alter any facial features or clothing between pages",
+                          "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image â every interior page must look like it belongs to the same book as the cover",
+              "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY â do NOT alter any facial features or clothing between pages",
             ].filter(Boolean).join(" | "),
             charPhotos.length > 0 ? charPhotos : undefined,
           );
           imageUrl = imgResult.url ?? null;
 
         } else if (isOtherGenre) {
-          // ─── OTHER GENRES: images only at branch pages, up to branchImageCount ───────
+          // âââ OTHER GENRES: images only at branch pages, up to branchImageCount âââââââ
           // Spec: normal = 8 branch images, thick = 12 branch images
           // Only isBranchPage pages get illustrations; all other pages are text-only.
           if (branchPageNumbers.has(page.pageNumber)) {
-            const sceneNote = `dramatic decision moment — the protagonist stands at a crossroads, ${page.content.substring(0, 200)}`;
+            const sceneNote = `dramatic decision moment â the protagonist stands at a crossroads, ${page.content.substring(0, 200)}`;
             const imgResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-branch`,
               [
@@ -1616,8 +1644,8 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
                 CHARACTER_COLOUR_LOCK,
                 STRUCTURED_IDENTITY_BLOCK || undefined,
                 CHARACTER_LOCK_INSTRUCTION,
-                              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image — every interior page must look like it belongs to the same book as the cover.",
-                "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY — do NOT alter any facial features or clothing between pages",
+                              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image â every interior page must look like it belongs to the same book as the cover.",
+                "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY â do NOT alter any facial features or clothing between pages",
               ].filter(Boolean).join(" | "),
               charPhotos.length > 0 ? charPhotos : undefined,
             );
@@ -1639,7 +1667,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
     // Run all image generation tasks concurrently (bounded by semaphore)
     const pageImageResults: PageImageResult[] = await Promise.all(imageGenTasks.map(task => task()));
 
-    // Build a lookup from pageNumber → image result
+    // Build a lookup from pageNumber â image result
     const imageResultByPage = new Map<number, PageImageResult>();
     for (const r of pageImageResults) {
       imageResultByPage.set(r.pageNumber, r);
@@ -1673,9 +1701,9 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       }
     }
 
-    // ─── Sequential DB insertion (preserves order, gets correct IDs) ───────────────
+    // âââ Sequential DB insertion (preserves order, gets correct IDs) âââââââââââââââ
     const insertedPageIds: Record<number, number> = {};
-    await db.update(books).set({ generationStep: "Saving pages to library…" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Saving pages to libraryâ¦" }).where(eq(books.id, bookId));
     for (const page of storyData.pages) {
       const result = imageResultByPage.get(page.pageNumber);
       const imageUrl = result?.imageUrl ?? null;
@@ -1722,7 +1750,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
       }
     }
 
-    // Update book status to ready — persist character cards + illustration style lock + portrait URLs
+    // Update book status to ready â persist character cards + illustration style lock + portrait URLs
     // Build portraitUrls mapping from illustratedPortraits array
     const portraitUrlsMap = characterCards.map((char, idx) => ({
       characterName: char.name,
@@ -1825,7 +1853,7 @@ export const booksRouter = router({
         });
       }
 
-      // Calculate cost — always read from shared/pricing.ts (source of truth: shared/pricing.csv)
+      // Calculate cost â always read from shared/pricing.ts (source of truth: shared/pricing.csv)
       const charPhotos = input.characters.filter(c => c.photoBase64 || c.photoUrl).length;
       const { total } = computeTotalCost(input.category, input.length, charPhotos);
 
@@ -2824,7 +2852,7 @@ export const booksRouter = router({
     }),
 
   /**
-   * deleteBook — author-only soft-delete.
+   * deleteBook â author-only soft-delete.
    * Sets status="deleted" and isDelisted=true so the book:
    *   - disappears from the Store (isDelisted=true / status=deleted)
    *   - disappears from the author's own Library view
