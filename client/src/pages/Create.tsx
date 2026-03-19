@@ -48,7 +48,7 @@ const GENRE_LENGTHS: Record<string, string[]> = {
   fantasy_scifi:   ["normal", "thick"],
 };
 
-// Exact page counts per category+length Ã¢ÂÂ must match the generation spec
+// Exact page counts per category+length — must match the generation spec
 const PAGE_COUNT_LABELS: Record<string, Record<string, string>> = {
   fairy_tale:      { thin: "10 pages" },
   comic:           { thin: "10 pages", normal: "18 pages" },
@@ -72,7 +72,7 @@ export default function Create() {
   const [, navigate] = useLocation();
 
   useSEO({
-    title: "Create a Gamebook Ã¢ÂÂ AI-Powered Interactive Story Generator",
+    title: "Create a Gamebook — AI-Powered Interactive Story Generator",
     description: "Design your own AI-generated interactive gamebook. Choose a genre, add characters with photos, set the length, and let AI write your branching story.",
     canonicalPath: "/create",
   });
@@ -186,7 +186,7 @@ export default function Create() {
     });
   };
 
-  // Total cost comes from backend (getCreditCost tRPC query) Ã¢ÂÂ never hardcoded
+  // Total cost comes from backend (getCreditCost tRPC query) — never hardcoded
   const total = costData?.total ?? 0;
   const hasEnoughCredits = (balance?.balance ?? 0) >= total;
 
@@ -384,25 +384,25 @@ export default function Create() {
               <h3 className="font-semibold text-white mb-4">{t("create.creditCost")}</h3>
 
               <div className="space-y-3 mb-4">
-                {/* Base Cost Ã¢ÂÂ always shown, comes from backend pricing.csv */}
+                {/* Base Cost — always shown, comes from backend pricing.csv */}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">{t("create.baseCost")}</span>
                   <span className="text-white">
-                    {costData ? costData.base : <span className="text-gray-500">Ã¢ÂÂ¦</span>} {costData ? t("store.price") : ""}
+                    {costData ? costData.base : <span className="text-gray-500">...</span>} {costData ? t("store.price") : ""}
                   </span>
                 </div>
-                {/* Character Images Ã¢ÂÂ shown only when at least one photo is uploaded */}
+                {/* Character Images — shown only when at least one photo is uploaded */}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">{t("create.photoExtra")}</span>
                   <span className={photoCount > 0 ? "text-[#F59E0B]" : "text-gray-600"}>
-                    {photoCount > 0 ? `+${costData?.photoExtra ?? 0}` : "Ã¢ÂÂ"} {photoCount > 0 ? t("store.price") : ""}
+                    {photoCount > 0 ? `+${costData?.photoExtra ?? 0}` : "—"} {photoCount > 0 ? t("store.price") : ""}
                   </span>
                 </div>
                 {/* Total */}
                 <div className="border-t border-purple-900/30 pt-3 flex justify-between">
                   <span className="font-semibold text-white">{t("create.total")}</span>
                   <span className="font-bold text-[#F59E0B] text-lg">
-                    {costData ? total : "Ã¢ÂÂ¦"} {costData ? t("store.price") : ""}
+                    {costData ? total : "..."} {costData ? t("store.price") : ""}
                   </span>
                 </div>
               </div>
