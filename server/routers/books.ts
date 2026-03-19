@@ -374,7 +374,7 @@ For each character provide:
     9. BODY: height and build (e.g. "tall athletic build with broad shoulders")
    10. FACIAL HAIR: facial hair or 'clean-shaven' (e.g. "short dark stubble" or "clean-shaven")
    11. DISTINCTIVE: any notable features or 'none' (e.g. "small scar above left eyebrow")
-   12. CLOTHING: typical outfit for the story genre (1 sentence)
+   12. CLOTHING: describe the character's SPECIFIC outfit in detail (colours, style, accessories). This exact outfit MUST remain IDENTICAL across every single page — no outfit changes allowed
 - voice: 1-2 sentences describing how they speak and their personality
 - role: one of protagonist, antagonist, supporting
 
@@ -943,7 +943,8 @@ Rules:
 - Ending pages: isEnding=true, no choices, no nextPage references
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
 - ALL paths must reach an isEnding=true page — no dead ends
-- sfxTags: 1-3 English keywords matching the scene sound (e.g. "forest", "rain", "sword fight", "heartbeat")
+- STORY BEGINNING: Page 1 MUST be a proper story opening — introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
+- sfxTags: 1-3 English keywords matching the scene sound. Be specific — use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array — every page MUST have at least one relevant sound effect tag.
 - For fairy tales: 2-3 sentences per page
 - For comics: 3-4 panel descriptions per page
 - For others: 3-5 sentence narrative paragraphs`;
@@ -1163,6 +1164,7 @@ CHILDREN'S WRITING RULES:
 - Use vivid, sensory details: colours, sounds, smells, textures
 - Maintain a warm, hopeful, and whimsical tone throughout
 - Characters must match their descriptions exactly — no aliases
+- If this is page 1 (the very first page of the story), write a proper OPENING that introduces the main characters, sets the scene, and establishes the world. The reader must feel this is the clear beginning of a brand-new adventure.
 - If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}`,
               },
               {
@@ -1251,6 +1253,7 @@ CONTINUITY RULES:
 - Do NOT introduce new named characters without establishing them
 - Maintain consistent tone and atmosphere for ${category.replace(/_/g, " ")} genre
 - If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}
+- If this is page 1 (the very first page of the story), write a proper OPENING that introduces the main characters, sets the scene, and establishes the world. The reader must feel this is the clear beginning of a brand-new adventure.
 
 UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters. Preserve ALL Unicode exactly as written — Turkish (c-cedilla, g-breve, dotless-i, o-umlaut, s-cedilla, u-umlaut), German (umlauts, sharp-s), French accents, Spanish tilde-n, Cyrillic, Chinese, Japanese, Arabic, and all other scripts must appear verbatim.`,
               },
@@ -1499,6 +1502,7 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
             CHARACTER_COLOUR_LOCK,
             STRUCTURED_IDENTITY_BLOCK || undefined,
             CHARACTER_LOCK_INSTRUCTION,
+                        "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image — every interior page must look like it belongs to the same book as the cover.",
           ].filter(Boolean).join(" | ");
 
           // ComicPanel metadata objects — speech bubbles rendered as React overlays by ComicPageLayout
@@ -1590,7 +1594,8 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
               CHARACTER_COLOUR_LOCK,
               STRUCTURED_IDENTITY_BLOCK || undefined,
               CHARACTER_LOCK_INSTRUCTION,
-              "same character appearance as all other illustrations in this book",
+                          "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image — every interior page must look like it belongs to the same book as the cover",
+              "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY — do NOT alter any facial features or clothing between pages",
             ].filter(Boolean).join(" | "),
             charPhotos.length > 0 ? charPhotos : undefined,
           );
@@ -1611,7 +1616,8 @@ Write ONLY the narrative prose — no JSON, no page numbers, no labels.`,
                 CHARACTER_COLOUR_LOCK,
                 STRUCTURED_IDENTITY_BLOCK || undefined,
                 CHARACTER_LOCK_INSTRUCTION,
-                "same character appearance as all other illustrations in this book",
+                              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image — every interior page must look like it belongs to the same book as the cover.",
+                "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY — do NOT alter any facial features or clothing between pages",
               ].filter(Boolean).join(" | "),
               charPhotos.length > 0 ? charPhotos : undefined,
             );

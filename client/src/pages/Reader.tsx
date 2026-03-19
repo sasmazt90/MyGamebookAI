@@ -25,15 +25,17 @@ import { StoryTreeOverlay } from "@/components/StoryTreeOverlay";
 // CSS keyframes injected once for the 3D page-turn animation
 // ---------------------------------------------------------------------------
 const FLIP_STYLES = `
-/* Fairy Tale: 360° rotation animation */
+/* Fairy Tale: vertical bottom-to-top page reveal */
 @keyframes flipForwardFairyTale {
-  0%   { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
-  100% { transform: perspective(1200px) rotateY(180deg); opacity: 1; }
-}
-@keyframes flipBackwardFairyTale {
-  0%   { transform: perspective(1200px) rotateY(0deg); opacity: 1; }
-  100% { transform: perspective(1200px) rotateY(-180deg); opacity: 1; }
-}
+  0%   { transform: perspective(1200px) rotateX(0deg);    opacity: 1; transform-origin: bottom center; }
+    100% { transform: perspective(1200px) rotateX(-90deg);   opacity: 0; transform-origin: bottom center; }
+    }
+    @keyframes flipBackwardFairyTale {
+      0%   { transform: perspective(1200px) rotateX(90deg);    opacity: 0; transform-origin: bottom center; }
+        100% { transform: perspective(1200px) rotateX(0deg);     opacity: 1; transform-origin: bottom center; }
+        }
+        
+        }
 /* Non-Fairy-Tale: Realistic page flip (right page folds onto left, center fixed) */
 @keyframes flipForwardRealistic {
   0%   { transform: perspective(1200px) rotateY(0deg) translateZ(0); opacity: 1; }
@@ -790,11 +792,9 @@ export default function Reader() {
                     return normalised;
                   })()}
                   leftPageNumber={currentPageIndex + 1}
-                  rightPageNumber={currentPageIndex + 2}
                   rightChoiceSlot={
                     hasChoices ? (
                       <div className="space-y-3">
-                        <p className="text-sm font-bold uppercase tracking-wide text-yellow-400" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
@@ -853,7 +853,6 @@ export default function Reader() {
                   choiceSlot={
                     hasChoices && !madeChoice ? (
                       <div className="space-y-3">
-                        <p className="text-sm font-bold uppercase tracking-wide text-yellow-400" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
@@ -937,7 +936,6 @@ export default function Reader() {
                     {/* A/B Choices */}
                     {hasChoices && (
                       <div className="mt-5 space-y-3 max-w-xl mx-auto">
-                        <p className="text-sm font-semibold text-[#2D1B69] text-center">{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
@@ -1042,7 +1040,6 @@ export default function Reader() {
                     {/* A/B Choices */}
                     {hasChoices && (
                       <div className="mt-6 space-y-3">
-                        <p className="text-sm font-semibold text-[#2D1B69]">{t("reader.choice")}</p>
                         {[
                           { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
                           { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },

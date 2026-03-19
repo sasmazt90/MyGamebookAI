@@ -180,7 +180,7 @@ const GENRE_AMBIENCE: Record<string, AmbienceConfig> = {
     hpCutoff: 80,
     lpCutoff: 3500,
   },
-  illustrated_fairy_tale: {
+  fairy_tale: {
     rootHz: 329.6,       // E4 — bright, magical
     droneType: "sine",
     overtones: [[2, 0.4], [3, 0.2], [4, 0.1], [6, 0.05]],
@@ -202,7 +202,7 @@ const GENRE_AMBIENCE: Record<string, AmbienceConfig> = {
     hpCutoff: 40,
     lpCutoff: 4000,
   },
-  comic_book: {
+  comic: {
     rootHz: 196,         // G3 — punchy, energetic
     droneType: "square",
     overtones: [[2, 0.2], [3, 0.1]],
@@ -296,7 +296,10 @@ export function useReaderAudio(category: BookCategory) {
   const playPageTurn = useCallback((sfxTags?: string[]) => {
     if (muted) return;
 
-    // 1. Whoosh effect (page flip motion sound)
+
+                // 1. Whoosh effect (page flip motion sound) — disabled for all categories
+                    if (false) { // disabled: synthesised sounds are too robotic for all categories
+
     try {
       const ctx = getCtx();
       const whooshLen = Math.floor(ctx.sampleRate * 0.35);
@@ -345,6 +348,7 @@ export function useReaderAudio(category: BookCategory) {
       setTimeout(() => src.start(), 200);
     } catch {}
 
+  } // end if (false) — skip synthesised sounds for all categories
     // 3. Google Sound Library SFX — play after page flip animation
     if (sfxTags && sfxTags.length > 0) {
       loadSoundLibrary().then(entries => {
