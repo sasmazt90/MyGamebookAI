@@ -218,7 +218,7 @@ async function generateBookContent(bookId: number, bookData: {
     // âââ Step 1: Generate rich character cards ââââââââââââââââââââââââââââââââ
     // Each character gets a detailed visual + personality anchor used in every
     // subsequent LLM call to maintain consistency.
-    await db.update(books).set({ generationStep: "Building character profilesâ¦" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Building character profiles…" }).where(eq(books.id, bookId));
     type CharacterCard = {
       name: string;
       appearance: string;  // physical description for image prompts
@@ -819,7 +819,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     // we fall back to text-only anchoring (the existing PHYSICAL_IDENTITY_LOCK).
     const illustratedPortraits: Array<{ url: string; mimeType: string }> = [];
 
-    await db.update(books).set({ generationStep: "Creating character illustrationsâ¦" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Creating character illustrations…" }).where(eq(books.id, bookId));
 
     for (const char of characters) {
       if (!char.photoUrl) continue;
@@ -923,7 +923,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     // âââ Step 2: Generate story structure (outline pass) âââââââââââââââââââââ
     // This pass generates the full branching skeleton. Content is short (1-2
     // sentences per page) â the per-page expansion pass will enrich it.
-    await db.update(books).set({ generationStep: "Crafting story structureâ¦" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Crafting story structure…" }).where(eq(books.id, bookId));
     const structureSystemPrompt = `You are a creative gamebook author. Always respond with valid JSON only.${characterCardBlock}
 
 CONTINUITY RULES:
@@ -1167,7 +1167,7 @@ Rules:
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
-        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}â¦` }).where(eq(books.id, bookId));
+        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
         const ancestorNums = getFairyAncestors(page.pageNumber, 3);
         const branchSafeContext = ancestorNums
           .map(num => fairyExpandedByPageNum.get(num))
@@ -1244,7 +1244,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
-        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}â¦` }).where(eq(books.id, bookId));
+        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
 
         // GUARDRAIL 2: Build rolling context from the last 3 pages on THIS branch path only.
         // We walk up the parent chain to find ancestors, then look up their expanded content.
@@ -1316,7 +1316,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       content: stripInlineChoiceLabels(page.content ?? ""),
     }));
 
-    await db.update(books).set({ generationStep: "Generating cover imageâ¦" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
 
     // Generate cover image â uses STYLE_LOCK + full charAnchorBlock for maximum consistency
     // The cover sets the visual "contract" for the whole book; all page illustrations
@@ -1415,7 +1415,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       }
     };
 
-    await db.update(books).set({ generationStep: `Generating ${totalPages} illustrations in parallelâ¦` }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: `Generating ${totalPages} illustrations in parallel…` }).where(eq(books.id, bookId));
 
     // Type for per-page image results
     type PageImageResult = { pageNumber: number; imageUrl: string | null; panels: string[] | null };
@@ -1703,7 +1703,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 
     // âââ Sequential DB insertion (preserves order, gets correct IDs) âââââââââââââââ
     const insertedPageIds: Record<number, number> = {};
-    await db.update(books).set({ generationStep: "Saving pages to libraryâ¦" }).where(eq(books.id, bookId));
+    await db.update(books).set({ generationStep: "Saving pages to library…" }).where(eq(books.id, bookId));
     for (const page of storyData.pages) {
       const result = imageResultByPage.get(page.pageNumber);
       const imageUrl = result?.imageUrl ?? null;
