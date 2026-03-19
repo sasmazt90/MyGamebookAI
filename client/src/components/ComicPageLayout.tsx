@@ -2,11 +2,11 @@
  * ComicPageLayout
  *
  * Renders a single comic book page as a proper panel grid:
- *   ┌──────────┬──────────┐
- *   │ Panel 1  │ Panel 2  │   ← top row: two equal panels side-by-side
- *   ├──────────┴──────────┤
- *   │      Panel 3        │   ← bottom row: one wide panel spanning full width
- *   └─────────────────────┘
+ *   ââââââââââââ¬âââââââââââ
+ *   â Panel 1  â Panel 2  â   â top row: two equal panels side-by-side
+ *   ââââââââââââ´âââââââââââ¤
+ *   â      Panel 3        â   â bottom row: one wide panel spanning full width
+ *   âââââââââââââââââââââââ
  *
  * Each panel shows its image, a narration caption strip at the bottom,
  * and an SVG speech bubble if dialogue was extracted for that panel.
@@ -14,7 +14,7 @@
 
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// âââ Types ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 export interface ComicPanel {
   imageUrl: string;
@@ -37,7 +37,7 @@ interface ComicPageLayoutProps {
   className?: string;
 }
 
-// ─── Main layout ──────────────────────────────────────────────────────────────
+// âââ Main layout ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 export function ComicPageLayout({
   panels,
@@ -59,23 +59,23 @@ export function ComicPageLayout({
       )}
       style={{ fontFamily: "'Bangers', 'Impact', 'Arial Black', sans-serif" }}
     >
-      {/* ── Top row: two panels side by side ─────────────────────────── */}
+      {/* ââ Top row: two panels side by side âââââââââââââââââââââââââââ */}
       <div className="grid grid-cols-2 border-b-4 border-black" style={{ minHeight: "42%" }}>
         <ComicPanelCell panel={panel1} borderClass="border-r-4 border-black" />
         <ComicPanelCell panel={panel2} />
       </div>
 
-      {/* ── Bottom row: one wide panel ───────────────────────────────── */}
+      {/* ââ Bottom row: one wide panel âââââââââââââââââââââââââââââââââ */}
       <div style={{ minHeight: "38%" }}>
         <ComicPanelCell panel={panel3} wide />
       </div>
 
-      {/* ── Footer: page number + choices ────────────────────────────── */}
+      {/* ââ Footer: page number + choices ââââââââââââââââââââââââââââââ */}
       {(pageNumber != null || choiceSlot || endSlot) && (
         <div className="border-t-4 border-black bg-[#FFFDE7] px-4 py-4 flex flex-col gap-3 min-h-fit">
           {pageNumber != null && (
             <div className="text-xs font-bold text-gray-500 text-right tracking-widest">
-              — {pageNumber} —
+              â {pageNumber} â
             </div>
           )}
           {choiceSlot}
@@ -86,7 +86,7 @@ export function ComicPageLayout({
   );
 }
 
-// ─── Internal panel cell ──────────────────────────────────────────────────────
+// âââ Internal panel cell ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 interface ComicPanelCellProps {
   panel?: ComicPanel;
@@ -118,13 +118,13 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
         src={panel.imageUrl}
         alt="Comic panel"
         className={cn(
-          "w-full object-cover block bg-black",
+          "w-full object-contain block bg-black",
           wide ? "h-56 md:h-80" : "h-44 md:h-64",
         )}
         style={{ imageRendering: "auto" }}
       />
 
-      {/* Speech bubble — positioned at the LLM-specified corner */}
+      {/* Speech bubble â positioned at the LLM-specified corner */}
       {hasBubble && (
         <SpeechBubble
           text={panel.dialogue!}
@@ -160,7 +160,7 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
   );
 }
 
-// ─── Speech Bubble ────────────────────────────────────────────────────────────
+// âââ Speech Bubble ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 type BubblePosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
@@ -175,15 +175,15 @@ interface SpeechBubbleProps {
 /**
  * Renders an SVG speech bubble overlaid on a panel image.
  *
- * - "speech"  → classic rounded rectangle with a downward tail
- * - "thought" → cloud-like bubble with small circles as tail
- * - "shout"   → spiky starburst / jagged outline
+ * - "speech"  â classic rounded rectangle with a downward tail
+ * - "thought" â cloud-like bubble with small circles as tail
+ * - "shout"   â spiky starburst / jagged outline
  */
 function SpeechBubble({ text, speaker, type = "speech", position = "top-right", wide }: SpeechBubbleProps) {
   const bubbleType = type ?? "speech";
 
   // Clamp text to avoid overflow
-  const displayText = text.length > 60 ? text.slice(0, 57) + "…" : text;
+  const displayText = text.length > 60 ? text.slice(0, 57) + "â¦" : text;
 
   // Resolve corner coordinates from position
   const inset = wide ? 10 : 7;
@@ -194,7 +194,7 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
   if (pos === "bottom-left") { posStyle.bottom = wide ? 36 : 32; posStyle.left  = inset; }
   if (pos === "bottom-right"){ posStyle.bottom = wide ? 36 : 32; posStyle.right = inset; }
 
-  // Shared container positioning — max-width scales with text length
+  // Shared container positioning â max-width scales with text length
   const containerStyle: React.CSSProperties = {
     position: "absolute",
     maxWidth: scaledMaxWidth(displayText, wide),
@@ -228,7 +228,7 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
   );
 }
 
-// ─── Speech bubble variants ───────────────────────────────────────────────────
+// âââ Speech bubble variants âââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 interface BubbleVariantProps {
   text: string;
@@ -241,11 +241,11 @@ interface BubbleVariantProps {
  * Returns a font size (px) that scales inversely with text length.
  *
  * Breakpoints (narrow / wide panel):
- *   ≤ 15 chars  → 14 / 16 px  (big, punchy)
- *   ≤ 30 chars  → 12 / 14 px
- *   ≤ 45 chars  → 10.5 / 12 px
- *   ≤ 60 chars  →  9.5 / 11 px  (current default)
- *   > 60 chars  →  8.5 / 10 px  (small, fits long lines)
+ *   â¤ 15 chars  â 14 / 16 px  (big, punchy)
+ *   â¤ 30 chars  â 12 / 14 px
+ *   â¤ 45 chars  â 10.5 / 12 px
+ *   â¤ 60 chars  â  9.5 / 11 px  (current default)
+ *   > 60 chars  â  8.5 / 10 px  (small, fits long lines)
  */
 function scaledFontSize(text: string, wide: boolean | undefined): number {
   const len = text.length;
@@ -260,11 +260,11 @@ function scaledFontSize(text: string, wide: boolean | undefined): number {
  * Returns a max-width percentage string that widens the bubble for longer text.
  *
  * Breakpoints (narrow / wide panel):
- *   ≤ 15 chars  → 38% / 34%  (compact — short punchy lines don't need much room)
- *   ≤ 30 chars  → 46% / 42%
- *   ≤ 45 chars  → 54% / 50%
- *   ≤ 60 chars  → 60% / 56%  (previous fixed default)
- *   > 60 chars  → 68% / 64%  (wide — long lines need room to breathe)
+ *   â¤ 15 chars  â 38% / 34%  (compact â short punchy lines don't need much room)
+ *   â¤ 30 chars  â 46% / 42%
+ *   â¤ 45 chars  â 54% / 50%
+ *   â¤ 60 chars  â 60% / 56%  (previous fixed default)
+ *   > 60 chars  â 68% / 64%  (wide â long lines need room to breathe)
  */
 function scaledMaxWidth(text: string, wide: boolean | undefined): string {
   const len = text.length;
@@ -299,10 +299,10 @@ function scaledPadding(text: string, wide: boolean | undefined): { v: number; h:
  * (toward the center of the panel, i.e. away from the bubble's own corner).
  *
  * Corner layout:
- *   top-left     → tail points down-right  (bottom-right of bubble)
- *   top-right    → tail points down-left   (bottom-left of bubble)
- *   bottom-left  → tail points up-right    (top-right of bubble)
- *   bottom-right → tail points up-left     (top-left of bubble)
+ *   top-left     â tail points down-right  (bottom-right of bubble)
+ *   top-right    â tail points down-left   (bottom-left of bubble)
+ *   bottom-left  â tail points up-right    (top-right of bubble)
+ *   bottom-right â tail points up-left     (top-left of bubble)
  */
 function tailProps(pos: BubblePosition, outer: boolean): React.CSSProperties {
   const size = outer ? 10 : 9;
