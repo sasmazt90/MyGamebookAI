@@ -107,7 +107,7 @@ STRIPE_SECRET_KEY
 VITE_APP_ID
 ```
 
-## Notable Patterns
+## Notable Pattern
 
 - **Credits are deducted before generation begins** — rollback on failure is handled explicitly in `generationWorker.ts`
 - **Genre-specific rendering** — `Reader.tsx` uses the book's `category` field to switch between visual styles (flip-book, comic panels, desk-calendar, etc.) with Framer Motion animations
