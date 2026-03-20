@@ -227,7 +227,7 @@ async function fetchCharacterPhotoFromUrl(rawUrl: string): Promise<{ base64Data:
 }
 
 
-async function generateBookContent(bookId: number, bookData: {
+export async function generateBookContent(bookId: number, bookData: {
   title: string;
   category: string;
   length: string;
@@ -1315,7 +1315,7 @@ Rules:
         const contextBlock = branchSafeContext
           ? `\n\nSTORY SO FAR (last ${ancestorNums.length} pages on this branch path):\n${branchSafeContext}`
           : "";
-        const otherParentPageNum = parentMap.get(page.pageNumber);
+        const otherParentPageNum = fairyParentMap.get(page.pageNumber);
         const otherParentPage = otherParentPageNum ? storyData.pages.find(p => p.pageNumber === otherParentPageNum) : null;
         const otherChoiceTaken = otherParentPage
           ? (otherParentPage.nextPageA === page.pageNumber ? otherParentPage.choiceA : otherParentPage.choiceB)
