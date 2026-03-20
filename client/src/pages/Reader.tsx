@@ -377,6 +377,7 @@ export default function Reader() {
     musicEnabled, setMusicEnabled,
     volume, setVolume,
     isPlaying, playPageTurn, startAmbience, stopAmbience,
+    startPageSfx, stopPageSfx,
   } = useReaderAudio(bookCategory);
 
   useEffect(() => {
@@ -386,6 +387,20 @@ export default function Reader() {
     if (!showCover && !showBackCover && !muted && musicEnabled && currentPageIndex >= 3) startAmbience();
     else if (showCover || showBackCover || muted || !musicEnabled) stopAmbience();
   }, [showCover, showBackCover, currentPageIndex, muted, musicEnabled, startAmbience, stopAmbience]);
+
+  // Per-page looping SFX: starts/restarts when page changes, stops on cover/back cover
+  useEffect(() => {
+    if (showCover || showBackCover) {
+      stopPageSfx();
+      return;
+    }
+    const sfxTags = (currentPage?.sfxTags as string[] | null) ?? [];
+    if (sfxTags.length > 0) {
+      startPageSfx(sfxTags);
+    } else {
+      stopPageSfx();
+    }
+  }, [currentPageIndex, showCover, showBackCover, startPageSfx, stopPageSfx]);
 
   // ---------------------------------------------------------------------------
   // Navigation helpers
@@ -434,7 +449,8 @@ export default function Reader() {
   const handleEndReached = useCallback(() => {
     setShowBackCover(true);
     stopAmbience();
-  }, [stopAmbience]);
+    stopPageSfx();
+  }, [stopAmbience, stopPageSfx]);
 
   const handleRestart = useCallback(() => {
     setCurrentPageIndex(0);
@@ -444,8 +460,9 @@ export default function Reader() {
     setMadeChoice(false);
     setCameFromBranch(false);
     stopAmbience();
+    stopPageSfx();
     saveProgress.mutate({ bookId, currentPageId: 0, branchPath: "root" });
-  }, [bookId, saveProgress, stopAmbience]);
+  }, [bookId, saveProgress, stopAmbience, stopPageSfx]);
 
   const handleBeginReading = useCallback(() => {
     // Don't play sound on first 2 pages (pages 0-2)
@@ -478,7 +495,8 @@ export default function Reader() {
     // Don't play sound when returning to cover
     setShowCover(true);
     stopAmbience();
-  }, [stopAmbience]);
+    stopPageSfx();
+  }, [stopAmbience, stopPageSfx]);
 
   const {
     flipDirection,
