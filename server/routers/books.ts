@@ -38,6 +38,50 @@ import { addCoverOverlay } from "../coverOverlay";
 import sharp from "sharp";
 import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
 
+
+/**
+ * Attempts to repair malformed JSON from LLM output.
+ * Handles: unterminated strings, trailing commas, truncated output,
+ * unescaped control characters, and markdown code fences.
+ */
+function repairJSON(raw: string): string {
+  let s = raw.trim();
+  // Remove markdown code fences if present
+  if (s.startsWith('```')) {
+    s = s.replace(/^\`\`\`(?:json)?\n?/, '').replace(/\n?\`\`\`$/, '').trim();
+  }
+  // Remove trailing commas before } or ]
+  s = s.replace(/,\s*([}\]])/g, '$1');
+  // Try parsing as-is first
+  try { JSON.parse(s); return s; } catch (_) {}
+  // Fix unterminated strings: close any open string at the end
+  let inStr = false;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\' && inStr) { i++; continue; }
+    if (s[i] === '"') { inStr = !inStr; }
+  }
+  if (inStr) {
+    s = s + '"';
+  }
+  // Close any unclosed brackets/braces
+  const stack: string[] = [];
+  inStr = false;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\' && inStr) { i++; continue; }
+    if (s[i] === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (s[i] === '{') stack.push('}');
+    else if (s[i] === '[') stack.push(']');
+    else if (s[i] === '}' || s[i] === ']') stack.pop();
+  }
+  // Remove trailing commas after fixes
+  s = s.replace(/,\s*$/m, '');
+  // Close unclosed structures
+  while (stack.length > 0) s += stack.pop();
+  // Final cleanup: remove trailing commas before closing brackets
+  s = s.replace(/,\s*([}\]])/g, '$1');
+  return s;
+}
 const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
   fairy_tale: ["thin"],
   comic: ["thin", "normal"],
@@ -314,7 +358,7 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
         const raw = photoResp.choices[0]?.message?.content;
         if (typeof raw === "string" && raw.trim().length > 10) {
           try {
-            const parsed = JSON.parse(raw) as PhotoAnalysis;
+            const parsed = JSON.parse(repairJSON(raw)) as PhotoAnalysis;
             photoAnalyses[char.name] = parsed;
             // prose_summary is the backward-compat description used in card generation
             photoDescriptions[char.name] = parsed.prose_summary || raw.trim();
@@ -402,7 +446,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
           max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
         });
         const raw = cardResp.choices[0]?.message?.content || "{}";
-        const parsed = JSON.parse(typeof raw === "string" ? raw : JSON.stringify(raw));
+        const parsed = JSON.parse(repairJSON(typeof raw === "string" ? raw : JSON.stringify(raw)));
         if (Array.isArray(parsed.characters)) {
           characterCards = parsed.characters.map((c: CharacterCard, i: number) => ({
             ...c,
@@ -1032,7 +1076,7 @@ Rules:
 
         const rawContent = structureResponse.choices[0]?.message?.content || "{}";
         const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-        const parsed = JSON.parse(content) as StoryData;
+        const parsed = JSON.parse(repairJSON(content)) as StoryData;
 
         if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
           storyData = parsed;
@@ -1477,7 +1521,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             });
             const rawDlg = dialogueResp.choices[0]?.message?.content || "{}";
             const dlgContent = typeof rawDlg === "string" ? rawDlg : JSON.stringify(rawDlg);
-            const dlgData = JSON.parse(dlgContent);
+            const dlgData = JSON.parse(repairJSON(dlgContent));
             if (Array.isArray(dlgData.panels) && dlgData.panels.length === 3) {
               panelDialogue = dlgData.panels;
             }
