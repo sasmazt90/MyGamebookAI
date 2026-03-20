@@ -1174,6 +1174,7 @@ Rules:
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
     const criticalValidationErrors: string[] = [];
+    const repairActions: string[] = [];
 
     // Build a map of pageId â list of source pages that reference it as a target.
     // Any pageId referenced by more than one source = a merge violation.
@@ -1216,12 +1217,6 @@ Rules:
         criticalValidationErrors.push(violation);
       }
     }
-    if (mergeViolations.length > 0) {
-      console.error(`[Books] GUARDRAIL 1 â No-Merge Branching violations for book ${bookId}:`, mergeViolations);
-    } else {
-      console.log(`[Books] GUARDRAIL 1 â No-Merge Branching: PASSED (book ${bookId}, ${storyData.pages.length} pages, no node reuse detected)`);
-    }
-
     // Check at least one ending exists
     const endingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1));
     if (endingPages.length === 0) {
@@ -1230,36 +1225,77 @@ Rules:
     }
 
     if (validationErrors.length > 0) {
-      console.warn(`[Books] Structure validation warnings for book ${bookId}:`, validationErrors);
-      // Non-fatal: log and continue â the story may still be usable
+      console.warn(`[Books][Post-structure validation] detected violations`, {
+        bookId,
+        violations: validationErrors,
+      });
+      // Non-fatal violations are logged and can still be auto-repaired below.
     }
 
-    // Auto-repair common structure issues instead of hard-failing generation.
+    if (criticalValidationErrors.length > 0) {
+      console.error(`[Books][Post-structure validation] detected violations`, {
+        bookId,
+        violations: criticalValidationErrors,
+      });
+      console.info(`[Books][Post-structure validation] applied repair actions`, {
+        bookId,
+        actions: [],
+        note: "fail-fast: no auto-repair executed for critical violations",
+      });
+      console.info(`[Books][Post-structure validation] final structure status`, {
+        bookId,
+        status: "failed",
+      });
+      throw new Error(
+        `Structure validation failed: merge violations detected (${criticalValidationErrors.join(" | ")})`
+      );
+    }
+
+    // Auto-repair common non-critical structure issues instead of hard-failing generation.
     // This keeps generation resilient to imperfect but recoverable LLM JSON.
     const usedTargets = new Set<number>();
     for (const page of storyData.pages) {
       // Drop dangling references
-      if (page.nextPageA && !pageNumbers.has(page.nextPageA)) page.nextPageA = null;
-      if (page.nextPageB && !pageNumbers.has(page.nextPageB)) page.nextPageB = null;
+      if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
+        repairActions.push(`Page ${page.pageNumber}: cleared dangling nextPageA=${page.nextPageA}`);
+        page.nextPageA = null;
+      }
+      if (page.nextPageB && !pageNumbers.has(page.nextPageB)) {
+        repairActions.push(`Page ${page.pageNumber}: cleared dangling nextPageB=${page.nextPageB}`);
+        page.nextPageB = null;
+      }
 
       // Enforce no-merge by keeping the first reference to each target
       if (page.nextPageA) {
-        if (usedTargets.has(page.nextPageA)) page.nextPageA = null;
+        if (usedTargets.has(page.nextPageA)) {
+          repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageA target=${page.nextPageA}`);
+          page.nextPageA = null;
+        }
         else usedTargets.add(page.nextPageA);
       }
       if (page.nextPageB) {
-        if (usedTargets.has(page.nextPageB)) page.nextPageB = null;
+        if (usedTargets.has(page.nextPageB)) {
+          repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageB target=${page.nextPageB}`);
+          page.nextPageB = null;
+        }
         else usedTargets.add(page.nextPageB);
       }
 
       const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
       if (page.isBranchPage && hasBranchTargets) {
-        if (!page.choiceA && page.nextPageA) page.choiceA = "Option A";
-        if (!page.choiceB && page.nextPageB) page.choiceB = "Option B";
+        if (!page.choiceA && page.nextPageA) {
+          repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceA`);
+          page.choiceA = "Option A";
+        }
+        if (!page.choiceB && page.nextPageB) {
+          repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceB`);
+          page.choiceB = "Option B";
+        }
       }
 
       // If no valid targets remain, downgrade to non-branch ending page
       if (!hasBranchTargets) {
+        repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
         page.isBranchPage = false;
         page.choiceA = null;
         page.choiceB = null;
@@ -1279,7 +1315,17 @@ Rules:
       last.nextPageB = null;
       last.isEnding = true;
       validationErrors.push("Auto-repair: forced final page to ending.");
+      repairActions.push(`Page ${last.pageNumber}: forced final page to ending`);
     }
+
+    console.info(`[Books][Post-structure validation] applied repair actions`, {
+      bookId,
+      actions: repairActions,
+    });
+    console.info(`[Books][Post-structure validation] final structure status`, {
+      bookId,
+      status: repairActions.length > 0 || validationErrors.length > 0 ? "repaired" : "clean",
+    });
 
      // âââ Step 4: Per-page expansion pass âââââââââââââââââââââââââââââââââââ
     // For non-comic categories, enrich each page's content with a dedicated
