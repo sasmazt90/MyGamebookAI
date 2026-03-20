@@ -152,6 +152,16 @@ function repairJSON(raw: string): string {
 
   return s;
 }
+
+function extractLikelyJsonObject(raw: string): string {
+  const input = raw.trim();
+  const firstBrace = input.indexOf("{");
+  const lastBrace = input.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return input.slice(firstBrace, lastBrace + 1);
+  }
+  return input;
+}
 const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
   fairy_tale: ["thin"],
   comic: ["thin", "normal"],
@@ -1109,8 +1119,8 @@ Rules:
 - Ending pages: isEnding=true, no choices, no nextPage references
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
 - ALL paths must reach an isEnding=true page â no dead ends
-- STORY BEGINNING: Page 1 MUST be a proper story opening â introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.\n" +
-  "  - BRANCH TIMING: The first A/B branch point must NOT appear on page 2. Let the story develop for at least 3-4 pages. For fairy tales first branch on page 3, for others page 4 or later.
+- STORY BEGINNING: Page 1 MUST be a proper story opening â introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
+- BRANCH TIMING: The first A/B branch point must NOT appear on page 2. Let the story develop for at least 3-4 pages. For fairy tales first branch on page 3, for others page 4 or later.
 - sfxTags: 1-3 English keywords matching the scene sound. Be specific â use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array â every page MUST have at least one relevant sound effect tag.
 - For fairy tales: 2-3 sentences per page
 - For comics: 3-4 panel descriptions per page
@@ -1146,7 +1156,17 @@ Rules:
 
         const rawContent = structureResponse.choices[0]?.message?.content || "{}";
         const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-        const parsed = JSON.parse(repairJSON(content)) as StoryData;
+        let parsed: StoryData;
+        try {
+          parsed = JSON.parse(repairJSON(content)) as StoryData;
+        } catch (primaryParseErr) {
+          const extracted = extractLikelyJsonObject(content);
+          parsed = JSON.parse(repairJSON(extracted)) as StoryData;
+          console.warn(`[Books] Structure JSON recovered from wrapped/non-JSON output for book ${bookId} (attempt ${attempt})`);
+          if (primaryParseErr instanceof Error) {
+            console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr.message}`);
+          }
+        }
 
         if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
           storyData = parsed;
@@ -1294,14 +1314,25 @@ Rules:
       }
 
       // If no valid targets remain, downgrade to non-branch ending page
+      // only when this actually mutates the page.
       if (!hasBranchTargets) {
-        repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
-        page.isBranchPage = false;
-        page.choiceA = null;
-        page.choiceB = null;
-        page.nextPageA = null;
-        page.nextPageB = null;
-        page.isEnding = true;
+        const needsDowngradeMutation =
+          page.isBranchPage ||
+          page.choiceA !== null ||
+          page.choiceB !== null ||
+          page.nextPageA !== null ||
+          page.nextPageB !== null ||
+          !page.isEnding;
+
+        if (needsDowngradeMutation) {
+          repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
+          page.isBranchPage = false;
+          page.choiceA = null;
+          page.choiceB = null;
+          page.nextPageA = null;
+          page.nextPageB = null;
+          page.isEnding = true;
+        }
       }
     }
 
