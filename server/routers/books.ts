@@ -1037,14 +1037,16 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
     ) => {
       const explicitRefs = (refImages ?? []).filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
-      // Fallback to illustrated portraits only when the caller passes no explicit refs.
-      // Raw uploaded photos are the canonical identity source; illustrated portraits
-      // (Step 1b) are kept for cover/character-card display but must NOT replace raw
-      // photos as the page-generation reference — doing so would create a second
-      // derivation hop (photo → portrait → page) that degrades face identity.
-      const fallbackPortraitRefs = Array.from(illustratedPortraitsMap.values());
-      const mergedRefs = (explicitRefs.length > 0 ? explicitRefs : fallbackPortraitRefs)
-        .filter((img): img is { url?: string; mimeType?: string } => !!img?.url)
+      const rawPhotoRefs = charPhotos.filter((img): img is { url: string; mimeType: string } => !!img?.url);
+      const fallbackPortraitRefs = Array.from(illustratedPortraitsMap.values())
+        .filter((img): img is { url: string; mimeType: string } => !!img?.url);
+      const candidateRefs =
+        explicitRefs.length > 0
+          ? explicitRefs
+          : rawPhotoRefs.length > 0
+          ? rawPhotoRefs
+          : fallbackPortraitRefs;
+      const mergedRefs = candidateRefs
         .filter((img, idx, arr) => arr.findIndex(x => x.url === img.url) === idx);
 
       const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
@@ -1104,6 +1106,7 @@ BRANCHING RULES (MANDATORY  violations will cause story rejection):
 - branchPath values must reflect the lineage: "root", "A", "B", "A-A", "A-B", "B-A", "B-B", etc.
 - ILLEGAL merge example (FORBIDDEN): page 3 has nextPageA=7 AND page 5 also has nextPageA=7. Page 7 appears as a target twice — this is a merge violation. NEVER let any pageNumber appear as the value of nextPageA or nextPageB on more than one page across the ENTIRE story.
 - The page immediately reached after a branch choice (nextPageA target and nextPageB target) MUST be a narrative page with isBranchPage=false. Do NOT chain branch pages — no branch target may itself be a branch page.
+- TWO CHOICES MANDATORY: Every branch page (isBranchPage=true) MUST have non-null choiceA AND non-null choiceB. NEVER generate a branch page with only one choice. Both choices must lead to different next pages and must represent meaningfully different narrative directions.
 - The LAST page on EVERY branch path MUST have isEnding=true and null nextPageA/nextPageB.`;
 
     // Pre-compute evenly distributed branch page numbers so the LLM cannot cluster them.
@@ -1142,7 +1145,7 @@ Format as JSON:
 }
 
 Rules:
-- Branch pages: isBranchPage=true, choiceA/choiceB text, nextPageA/nextPageB pointing to page numbers
+- Branch pages: isBranchPage=true. MANDATORY: BOTH choiceA AND choiceB MUST be non-null text strings. BOTH nextPageA AND nextPageB MUST point to different valid page numbers. A branch page with only one choice is STRICTLY INVALID - always provide exactly two distinct choices with distinct targets.
 - Ending pages: isEnding=true, no choices, no nextPage references
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
 - ALL paths must reach an isEnding=true page  no dead ends
@@ -1320,7 +1323,7 @@ Rules:
     }
 
     // Auto-repair common non-critical structure issues instead of hard-failing generation.
-    // This keeps generation resilient to imperfect but recoverable LLM JSON.
+    // Branch pages must always end with both A and B choices.
     const usedTargets = new Set<number>();
     for (const page of storyData.pages) {
       // Drop dangling references
@@ -1334,13 +1337,11 @@ Rules:
       }
 
       // Enforce no-merge by keeping the first reference to each target.
-      // When a target is cleared, also clear the corresponding choice text so the UI
-      // never shows a choice button with no valid destination.
       if (page.nextPageA) {
         if (usedTargets.has(page.nextPageA)) {
           repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageA target=${page.nextPageA}`);
           page.nextPageA = null;
-          page.choiceA = null; // clear orphaned choice text
+          page.choiceA = null;
         }
         else usedTargets.add(page.nextPageA);
       }
@@ -1348,7 +1349,7 @@ Rules:
         if (usedTargets.has(page.nextPageB)) {
           repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageB target=${page.nextPageB}`);
           page.nextPageB = null;
-          page.choiceB = null; // clear orphaned choice text
+          page.choiceB = null;
         }
         else usedTargets.add(page.nextPageB);
       }
@@ -1363,11 +1364,43 @@ Rules:
           repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceB`);
           page.choiceB = "Option B";
         }
+
+        if (page.choiceA && page.nextPageA && !page.choiceB && !page.nextPageB) {
+          const candidate = storyData.pages.find(
+            p => p.pageNumber > page.pageNumber && !usedTargets.has(p.pageNumber)
+          );
+          if (candidate) {
+            page.nextPageB = candidate.pageNumber;
+            page.choiceB = "Try a different approach";
+            usedTargets.add(candidate.pageNumber);
+            repairActions.push(`Page ${page.pageNumber}: synthesised missing choiceB -> page ${candidate.pageNumber}`);
+          } else {
+            page.choiceB = "Reconsider and try another way";
+            page.nextPageB = page.nextPageA;
+            repairActions.push(`Page ${page.pageNumber}: synthesised choiceB fallback (mirrors A target)`);
+          }
+        }
+
+        if (page.choiceB && page.nextPageB && !page.choiceA && !page.nextPageA) {
+          const candidate = storyData.pages.find(
+            p => p.pageNumber > page.pageNumber && !usedTargets.has(p.pageNumber)
+          );
+          if (candidate) {
+            page.nextPageA = candidate.pageNumber;
+            page.choiceA = "Proceed with the plan";
+            usedTargets.add(candidate.pageNumber);
+            repairActions.push(`Page ${page.pageNumber}: synthesised missing choiceA -> page ${candidate.pageNumber}`);
+          } else {
+            page.choiceA = "Face it directly";
+            page.nextPageA = page.nextPageB;
+            repairActions.push(`Page ${page.pageNumber}: synthesised choiceA fallback (mirrors B target)`);
+          }
+        }
       }
 
-      // If no valid targets remain, downgrade to non-branch ending page
-      // only when this actually mutates the page.
-      if (!hasBranchTargets) {
+      // If no valid targets remain, downgrade to non-branch ending page.
+      const hasBranchTargetsNow = !!(page.nextPageA || page.nextPageB);
+      if (!hasBranchTargetsNow) {
         const needsDowngradeMutation =
           page.isBranchPage ||
           page.choiceA !== null ||
@@ -1638,6 +1671,9 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           coverFramingNote,
           descSnippet,
           "professional publishing quality, full-bleed composition",
+          charPhotos.length > 0
+            ? `CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the EXACT SAME individuals from their reference photos. Preserve without any modification: exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness. Do NOT genericise, idealise, or redesign any facial feature.`
+            : null,
         ].filter(Boolean).join(" | "),
         charPhotos.length > 0 ? charPhotos : undefined,
       );
@@ -1937,7 +1973,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
                           "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover",
               "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
             ].filter(Boolean).join(" | "),
-            illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : (charPhotos.length > 0 ? charPhotos : undefined),
+            charPhotos.length > 0 ? charPhotos : (illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : undefined),
           );
           imageUrl = imgResult.url ?? null;
 
@@ -1959,7 +1995,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
                               "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
                 "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
               ].filter(Boolean).join(" | "),
-              illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : (charPhotos.length > 0 ? charPhotos : undefined),
+              charPhotos.length > 0 ? charPhotos : (illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : undefined),
             );
             imageUrl = imgResult.url ?? null;
             console.log(`[Books] Branch image generated for page ${page.pageNumber}`);

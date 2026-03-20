@@ -138,11 +138,11 @@ function CharactersPanel({ cards, onClose }: { cards: CharacterCard[]; onClose: 
           ) : (
             cards.map((card, i) => (
               <div key={i} className="flex gap-4 p-4 bg-[#0F0A1E] rounded-xl border border-purple-900/20">
-                {/* Avatar or role icon */}
-                {card.portraitUrl && card.portraitUrl.trim() ? (
-                  <img src={card.portraitUrl} alt={card.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40" />
-                ) : card.photoUrl && card.photoUrl.trim() ? (
+                {/* Avatar - prefer the original uploaded photo when available */}
+                {card.photoUrl && card.photoUrl.trim() ? (
                   <img src={card.photoUrl} alt={card.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40" />
+                ) : card.portraitUrl && card.portraitUrl.trim() ? (
+                  <img src={card.portraitUrl} alt={card.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40" />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-purple-900/40 flex items-center justify-center flex-shrink-0 border-2 border-purple-600/40">
                     <span className="text-2xl">{card.role === "protagonist" ? "★" : card.role === "antagonist" ? "✖" : "◆"}</span>
