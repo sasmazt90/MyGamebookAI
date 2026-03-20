@@ -1203,6 +1203,15 @@ Rules:
             console.warn(`[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`);
           } catch (fixErr) {
             console.warn(`[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`);
+        let parsed: StoryData;
+        try {
+          parsed = JSON.parse(repairJSON(content)) as StoryData;
+        } catch (primaryParseErr) {
+          const extracted = extractLikelyJsonObject(content);
+          parsed = JSON.parse(repairJSON(extracted)) as StoryData;
+          console.warn(`[Books] Structure JSON recovered from wrapped/non-JSON output for book ${bookId} (attempt ${attempt})`);
+          if (primaryParseErr instanceof Error) {
+            console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr.message}`);
           }
         }
 
