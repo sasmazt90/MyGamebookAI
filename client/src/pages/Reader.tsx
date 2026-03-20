@@ -334,6 +334,7 @@ export default function Reader() {
   const [choiceHistory, setChoiceHistory] = useState<number[]>([]);
   const [showCover, setShowCover] = useState(true);
   const [madeChoice, setMadeChoice] = useState(false);
+  const [cameFromBranch, setCameFromBranch] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
   const [showTreeMap, setShowTreeMap] = useState(false);
   const [showCharacters, setShowCharacters] = useState(false);
@@ -418,6 +419,7 @@ export default function Reader() {
     setChoiceHistory(prev => [...prev, currentPageIndex]);
     setCurrentPageIndex(targetIndex);
     setMadeChoice(true);
+    setCameFromBranch(true);
     const isEnding = isEndingPage(targetIndex);
     if (isEnding) setJustCompleted(true);
     saveProgress.mutate({
@@ -433,6 +435,7 @@ export default function Reader() {
     setChoiceHistory([]);
     setShowCover(true);
     setMadeChoice(false);
+    setCameFromBranch(false);
     stopAmbience();
     saveProgress.mutate({ bookId, currentPageId: 0, branchPath: "root" });
   }, [bookId, saveProgress, stopAmbience]);
@@ -457,6 +460,7 @@ export default function Reader() {
       const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
       playPageTurn(sfxTags);
     }
+    setCameFromBranch(false);
     setCurrentPageIndex(index);
     const isEnding = isEndingPage(index);
     if (isEnding) setJustCompleted(true);
@@ -640,7 +644,7 @@ export default function Reader() {
       {/* Two-page spread ÃÂ¢ÃÂÃÂ drag/swipe container */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative">
         {/* Left edge zone (click to go back) */}
-        {!showCover && !madeChoice && (
+        {!showCover && !cameFromBranch && (
           <button
             onClick={flipBackward}
             disabled={isAnimating}
@@ -1102,10 +1106,10 @@ export default function Reader() {
                 {/* Prev button */}
                 <button
                   onClick={flipBackward}
-                  disabled={isAnimating || currentPageIndex === 0}
+                  disabled={isAnimating || currentPageIndex === 0 || cameFromBranch}
                   className={cn(
                     "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
-                    currentPageIndex === 0
+                    (currentPageIndex === 0 || cameFromBranch)
                       ? "text-gray-600 cursor-not-allowed opacity-40"
                       : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
                   )}

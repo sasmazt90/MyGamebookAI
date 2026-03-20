@@ -831,7 +831,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     //
     // This is a non-fatal step â if portrait generation fails for any character,
     // we fall back to text-only anchoring (the existing PHYSICAL_IDENTITY_LOCK).
-    const illustratedPortraits: Array<{ url: string; mimeType: string }> = [];
+    const illustratedPortraitsMap = new Map<string, { url: string; mimeType: string }>();
 
     await db.update(books).set({ generationStep: "Creating character illustrations…" }).where(eq(books.id, bookId));
 
@@ -863,11 +863,18 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
               a.distinctive !== "none" ? a.distinctive : "",
             ].filter(Boolean).join(", ")
           : char.name;
-        const portraitPrompt = [
+        const genreStyleLabel = category === "comic" ? "classic American comic book"
+        : category === "fairy_tale" ? "children's illustrated fairy tale"
+        : category === "horror_thriller" ? "dark cinematic illustrated"
+        : category === "romance" ? "warm painterly illustrated"
+        : category === "fantasy_scifi" ? "epic cinematic illustrated"
+        : category === "crime_mystery" ? "dark graphic-novel noir"
+        : "cinematic illustrated";
+      const portraitPrompt = [
           IDENTITY_LOCK,
           STYLE_BRIDGE_RULE,
           stylePreset,
-          `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${stylePreset} ${category === "comic" ? "comic book" : category === "fairy_tale" ? "illustrated fairy tale" : "illustrated story"} style character while keeping face identity 100% recognizable`,
+          `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${genreStyleLabel} style character while keeping face identity 100% recognizable`,
           `Preserve EXACTLY: the person's face shape, facial features, ${appearanceHint}`,
           `The illustrated character must be immediately recognisable as the same person from the photo`,
           `Full-body or bust portrait, neutral background, character centred`,
@@ -881,7 +888,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         });
 
         if (portraitResult.url) {
-          illustratedPortraits.push({ url: portraitResult.url, mimeType: "image/png" });
+          illustratedPortraitsMap.set(char.name, { url: portraitResult.url, mimeType: "image/png" });
           console.log(`[Books] Step 1b: Style-bridge portrait for "${char.name}" stored at ${portraitResult.url}`);
         }
       } catch (portraitErr) {
@@ -902,7 +909,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     ) => {
       const mergedRefs = [
         ...(refImages ?? []),
-        ...illustratedPortraits,
+        ...Array.from(illustratedPortraitsMap.values()),
       ].filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
 
       const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
@@ -1194,8 +1201,13 @@ Rules:
         const contextBlock = branchSafeContext
           ? `\n\nSTORY SO FAR (last ${ancestorNums.length} pages on this branch path):\n${branchSafeContext}`
           : "";
+        const otherParentPageNum = parentMap.get(page.pageNumber);
+        const otherParentPage = otherParentPageNum ? storyData.pages.find(p => p.pageNumber === otherParentPageNum) : null;
+        const otherChoiceTaken = otherParentPage
+          ? (otherParentPage.nextPageA === page.pageNumber ? otherParentPage.choiceA : otherParentPage.choiceB)
+          : null;
         const branchContext = page.branchPath && page.branchPath !== "root"
-          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here â the narrative must directly reflect that choice.`
+          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader chose: "${otherChoiceTaken || page.branchPath}". The narrative must directly continue from and reflect that choice.`
           : "";
         try {
           const expandResp = await invokeLLM({
@@ -1772,7 +1784,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
     // Build portraitUrls mapping from illustratedPortraits array
     const portraitUrlsMap = characterCards.map((char, idx) => ({
       characterName: char.name,
-      url: illustratedPortraits[idx]?.url || null,
+      url: illustratedPortraitsMap.get(char.name)?.url || null,
     })).filter(p => p.url);
 
     await db
