@@ -343,6 +343,115 @@ export async function generateBookContent(bookId: number, bookData: {
       ].join(", "),
     };
     const stylePreset = STYLE_PRESETS[category] || "cinematic digital illustration, consistent character design, no text, no letters";
+    type GlobalStyleProfile = {
+      medium: string;
+      lighting: string;
+      palette: string;
+      linework: string;
+      composition: string;
+      renderingRules: string[];
+      continuityRules: string[];
+    };
+    const globalStyleProfile: GlobalStyleProfile = (() => {
+      const byCategory: Record<string, GlobalStyleProfile> = {
+        fairy_tale: {
+          medium: "classic children's storybook gouache illustration",
+          lighting: "warm natural storybook lighting with cozy gentle glow",
+          palette: "rich but gentle child-friendly palette with clean contrast",
+          linework: "crisp storybook outlines with soft painted texture",
+          composition: "readable full-page storybook composition with expressive silhouettes",
+          renderingRules: [
+            "preserve one stable illustrated storybook finish from cover through final page",
+            "favour clarity of action over abstract magical atmosphere",
+            "keep backgrounds supportive, not noisy or textural clutter",
+          ],
+          continuityRules: [
+            "do not drift into realism, anime, 3D, sketch, collage, or photobash",
+            "maintain the same brush texture, colour handling, and edge treatment on every page",
+          ],
+        },
+        comic: {
+          medium: "classic American comic illustration",
+          lighting: "strong directional side-lighting with graphic contrast",
+          palette: "vibrant saturated comic palette with controlled primaries",
+          linework: "bold black ink outlines with flat cel shading and halftone accents",
+          composition: "dynamic action-forward framing with readable character staging",
+          renderingRules: [
+            "keep comic rendering uniform across all panels and pages",
+            "prioritise readable action beats and panel clarity",
+            "avoid painterly softness or drifting into generic fantasy art",
+          ],
+          continuityRules: [
+            "maintain the same outline thickness, halftone treatment, and colour finish everywhere",
+            "do not vary character design language between panels",
+          ],
+        },
+        crime_mystery: {
+          medium: "dark cinematic graphic-novel illustration",
+          lighting: "dramatic chiaroscuro with cool shadows and warm highlights",
+          palette: "desaturated noir palette with charcoal, slate, amber, and teal accents",
+          linework: "precise ink-wash detailing with fine cross-hatching",
+          composition: "tight atmospheric framing with strong focal character",
+          renderingRules: [
+            "keep the same noir graphic-novel treatment across the book",
+            "make scene evidence and actions visually legible",
+          ],
+          continuityRules: [
+            "avoid switching to bright fantasy palettes or soft children's-book rendering",
+          ],
+        },
+        fantasy_scifi: {
+          medium: "epic cinematic digital painting",
+          lighting: "dramatic rim-lighting with cool key light and warm fill",
+          palette: "jewel-tone palette with luminous accents",
+          linework: "detailed painterly rendering with sharp focal forms",
+          composition: "heroic wide or three-quarter framing with clear action read",
+          renderingRules: [
+            "keep one stable cinematic illustrated finish through the whole book",
+            "show the exact story action, not just generic wonder imagery",
+          ],
+          continuityRules: [
+            "do not mutate technology, costumes, or props between pages",
+          ],
+        },
+        romance: {
+          medium: "warm painterly illustration",
+          lighting: "soft golden-hour back-lighting with gentle glow",
+          palette: "warm honey, rose, peach, and ivory palette",
+          linework: "soft painterly edges with visible paint texture",
+          composition: "intimate medium-close framing with emotional readability",
+          renderingRules: [
+            "keep emotional clarity and stable painterly finish on every page",
+          ],
+          continuityRules: [
+            "avoid style drift into comic, 3D, or generic fantasy rendering",
+          ],
+        },
+        horror_thriller: {
+          medium: "dark atmospheric illustration",
+          lighting: "harsh directional light with deep shadow contrast",
+          palette: "desaturated near-black palette with sickly green and blood-red accents",
+          linework: "scratchy textured brushwork with heavy vignette",
+          composition: "tight ominous framing with clear threat focus",
+          renderingRules: [
+            "keep the same oppressive visual language from page to page",
+            "preserve object and character readability despite darkness",
+          ],
+          continuityRules: [
+            "avoid accidental bright cheerful palettes or softened rendering",
+          ],
+        },
+      };
+      return byCategory[category] ?? {
+        medium: "cinematic illustrated storybook rendering",
+        lighting: "consistent directed illustration lighting",
+        palette: "controlled cohesive colour palette",
+        linework: "consistent clean illustrative line and texture handling",
+        composition: "readable action-first composition",
+        renderingRules: ["preserve a single stable illustration finish across the full book"],
+        continuityRules: ["do not drift styles or redesign characters"],
+      };
+    })();
 
     //  Step 1: Generate rich character cards 
     // Each character gets a detailed visual + personality anchor used in every
@@ -354,6 +463,7 @@ export async function generateBookContent(bookId: number, bookData: {
       voice: string;       // speech style / personality for narrative
       role: string;        // protagonist / antagonist / supporting
       photoUrl?: string;
+      canonicalProfile?: CanonicalCharacterProfile;
     };
 
     let characterCards: CharacterCard[] = [];
@@ -387,6 +497,22 @@ export async function generateBookContent(bookId: number, bookData: {
       facial_hair: string;
       distinctive: string;
       prose_summary: string;  // 2-3 sentence flowing description for the card
+    };
+    type CanonicalCharacterProfile = {
+      name: string;
+      role: string;
+      faceShape: string;
+      skinTone: string;
+      hairColor: string;
+      hairStyle: string;
+      eyeColor: string;
+      bodyBuild: string;
+      signatureClothing: string;
+      signatureAccessories: string;
+      personalityLinkedVisualCues: string;
+      referencePhotoDerivedTraits: string[];
+      traitsToAvoidChanging: string[];
+      exactIdentityStatement: string;
     };
     const photoAnalyses: Record<string, PhotoAnalysis> = {};
     const photoDescriptions: Record<string, string> = {}; // kept for backward compat
@@ -562,6 +688,140 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       }
     }
 
+    const splitIntoSentences = (input: string): string[] =>
+      input
+        .split(/(?<=[.!?])\s+/)
+        .map(part => part.trim())
+        .filter(Boolean);
+
+    const firstMatchingSentence = (input: string, patterns: RegExp[]): string => {
+      const sentences = splitIntoSentences(input);
+      return sentences.find(sentence => patterns.some(pattern => pattern.test(sentence))) ?? "";
+    };
+
+    const compactList = (values: Array<string | null | undefined> = []): string[] =>
+      Array.from(
+        new Set(
+          values
+            .map(value => (value ?? "").trim())
+            .filter(Boolean)
+        )
+      );
+
+    const buildFallbackCanonicalProfile = (card: CharacterCard): CanonicalCharacterProfile => {
+      const analysis = photoAnalyses[card.name];
+      const clothingSentence = firstMatchingSentence(card.appearance, [
+        /\b(?:shirt|dress|coat|jacket|hoodie|sweater|uniform|robe|armor|armour|outfit|jeans|trousers|pants|skirt|shoes|boots|cape|scarf|hat)\b/i,
+      ]);
+      const accessorySentence = firstMatchingSentence(card.appearance, [
+        /\b(?:glasses|goggles|hat|backpack|map|rocket|necklace|bracelet|watch|amulet|earrings|bag|satchel|belt|wand|sword)\b/i,
+      ]);
+      const voiceCue = splitIntoSentences(card.voice)[0] ?? card.voice;
+      const referenceTraits = compactList([
+        analysis?.skin_tone,
+        analysis?.face_shape,
+        analysis?.hair_colour,
+        analysis?.hair_style,
+        analysis?.eye_colour,
+        analysis?.body_shape,
+        analysis?.distinctive,
+      ]);
+      const immutableTraits = compactList([
+        analysis?.face_shape,
+        analysis?.skin_tone,
+        analysis?.hair_colour,
+        analysis?.hair_style,
+        analysis?.eye_colour,
+        clothingSentence,
+        accessorySentence,
+      ]);
+
+      return {
+        name: card.name,
+        role: card.role,
+        faceShape: analysis?.face_shape || firstMatchingSentence(card.appearance, [/\b(?:face|jaw|chin|cheekbones?)\b/i]) || "same face shape as established earlier",
+        skinTone: analysis?.skin_tone || firstMatchingSentence(card.appearance, [/\b(?:skin|complexion|undertone)\b/i]) || "same skin tone as established earlier",
+        hairColor: analysis?.hair_colour || firstMatchingSentence(card.appearance, [/\bhair\b/i]) || "same hair color as established earlier",
+        hairStyle: analysis?.hair_style || firstMatchingSentence(card.appearance, [/\b(?:hair|braid|bob|curl|ponytail|afro|fringe|bangs)\b/i]) || "same hairstyle as established earlier",
+        eyeColor: analysis?.eye_colour || firstMatchingSentence(card.appearance, [/\beyes?\b/i]) || "same eye color as established earlier",
+        bodyBuild: analysis?.body_shape || firstMatchingSentence(card.appearance, [/\b(?:build|frame|body|height|shoulders|physique)\b/i]) || "same body build as established earlier",
+        signatureClothing: clothingSentence || "keep the same signature outfit already described in the character card",
+        signatureAccessories: accessorySentence || "no additional accessories unless explicitly called for by the story",
+        personalityLinkedVisualCues: voiceCue || `${card.name} should visually read as ${card.role}`,
+        referencePhotoDerivedTraits: referenceTraits,
+        traitsToAvoidChanging: immutableTraits,
+        exactIdentityStatement: `${card.name} must remain the exact same recognisable individual across the entire book with unchanged face, age impression, hair, build, outfit, and distinctive traits.`,
+      };
+    };
+
+    let canonicalCharacterProfiles: CanonicalCharacterProfile[] = characterCards.map(buildFallbackCanonicalProfile);
+    if (characterCards.length > 0) {
+      try {
+        const canonicalResp = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content: "You create canonical illustration continuity profiles. Return valid JSON only. Be conservative: preserve traits, do not invent redesigns.",
+            },
+            {
+              role: "user" as const,
+              content: `Create one canonical character profile for each character below. These profiles will be reused unchanged across every page illustration.
+
+Return JSON in this exact shape:
+{"characters":[{"name":"","role":"","faceShape":"","skinTone":"","hairColor":"","hairStyle":"","eyeColor":"","bodyBuild":"","signatureClothing":"","signatureAccessories":"","personalityLinkedVisualCues":"","referencePhotoDerivedTraits":[""],"traitsToAvoidChanging":[""],"exactIdentityStatement":""}]}
+
+Rules:
+- Preserve uploaded photo traits exactly when present.
+- signatureClothing must describe the outfit that should stay stable through the whole book.
+- signatureAccessories must capture recurring wearable items only. If none, say "none".
+- personalityLinkedVisualCues should express how personality shows visually without changing identity.
+- traitsToAvoidChanging must explicitly list the visual traits most likely to drift.
+- exactIdentityStatement must be a one-sentence non-negotiable identity lock.
+
+CHARACTERS:
+${characterCards.map(card => {
+  const analysis = photoAnalyses[card.name];
+  return [
+    `Name: ${card.name}`,
+    `Role: ${card.role}`,
+    `Appearance: ${card.appearance}`,
+    `Voice/personality: ${card.voice}`,
+    analysis ? `Reference photo traits: skin=${analysis.skin_tone}; face=${analysis.face_shape}; hair colour=${analysis.hair_colour}; hair style=${analysis.hair_style}; eyes=${analysis.eye_colour}; body=${analysis.body_shape}; distinctive=${analysis.distinctive}` : "Reference photo traits: none",
+  ].join("\n");
+}).join("\n\n---\n\n")}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
+        });
+        const canonicalRaw = canonicalResp.choices[0]?.message?.content || "{}";
+        const canonicalParsed = JSON.parse(repairJSON(typeof canonicalRaw === "string" ? canonicalRaw : JSON.stringify(canonicalRaw)));
+        if (Array.isArray(canonicalParsed.characters) && canonicalParsed.characters.length > 0) {
+          const fallbackByName = new Map(canonicalCharacterProfiles.map(profile => [profile.name, profile]));
+          const parsedByName = new Map<string, CanonicalCharacterProfile>(
+            canonicalParsed.characters.map((profile: CanonicalCharacterProfile) => [profile.name, profile])
+          );
+          canonicalCharacterProfiles = characterCards.map(card => {
+            const profile = parsedByName.get(card.name);
+            const fallback = fallbackByName.get(card.name) ?? buildFallbackCanonicalProfile(card);
+            return {
+              ...fallback,
+              ...(profile ?? {}),
+              referencePhotoDerivedTraits: compactList(profile?.referencePhotoDerivedTraits ?? fallback.referencePhotoDerivedTraits),
+              traitsToAvoidChanging: compactList(profile?.traitsToAvoidChanging ?? fallback.traitsToAvoidChanging),
+            };
+          });
+        }
+      } catch (canonicalErr) {
+        console.warn("[Books] Canonical character profile generation failed, using fallback continuity profiles:", canonicalErr);
+      }
+    }
+
+    characterCards = characterCards.map(card => ({
+      ...card,
+      canonicalProfile: canonicalCharacterProfiles.find(profile => profile.name === card.name) ?? buildFallbackCanonicalProfile(card),
+    }));
+
     // Build character card block for injection into every LLM call
     const characterCardBlock = characterCards.length > 0
       ? `\n\nCHARACTER CARDS (maintain these descriptions exactly throughout the story):\n${characterCards.map(c =>
@@ -612,22 +872,37 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       ? `PHOTO-BASED CHARACTER REFERENCE:\n${STRUCTURED_IDENTITY_BLOCK}`
       : "";
 
-    const charAnchorBlock = characterCards.length > 0
+    const canonicalCharacterLayer = canonicalCharacterProfiles.length > 0
       ? [
-          `CHARACTERS (render exactly as described, same appearance in every illustration): ${characterCards.map(c =>
-            `${c.name} (${c.role}): ${c.appearance}`
-          ).join(" | ")}`,
+          "CANONICAL CHARACTER PROFILES (reuse these unchanged on every illustrated page):",
+          ...canonicalCharacterProfiles.map(profile => [
+            `${profile.name} (${profile.role})`,
+            `face shape: ${profile.faceShape}`,
+            `skin tone: ${profile.skinTone}`,
+            `hair color: ${profile.hairColor}`,
+            `hair style: ${profile.hairStyle}`,
+            `eye color: ${profile.eyeColor}`,
+            `body build: ${profile.bodyBuild}`,
+            `signature clothing: ${profile.signatureClothing}`,
+            `signature accessories: ${profile.signatureAccessories}`,
+            `personality-linked visual cues: ${profile.personalityLinkedVisualCues}`,
+            `reference-photo-derived traits: ${profile.referencePhotoDerivedTraits.join(", ") || "none"}`,
+            `traits to avoid changing: ${profile.traitsToAvoidChanging.join(", ") || "none"}`,
+            `identity lock: ${profile.exactIdentityStatement}`,
+          ].join(" | ")),
           photoAnchorInstruction,
-        ].filter(Boolean).join(" | ")
+        ].filter(Boolean).join("\n")
       : (characters.length > 0
           ? `CHARACTERS (use reference photos for consistent appearance): ${charNames}`
           : "");
 
+    const charAnchorBlock = canonicalCharacterLayer;
+
     // Fix 1: charVisualAnchor previously truncated appearance to the first sentence only
     // via .split(".")[0]  silently dropping hair colour, eye colour, and clothing from
     // comic panel prompts. Now uses the FULL appearance string, same as charAnchorBlock.
-    const charVisualAnchor = characterCards.length > 0
-      ? `CHARACTERS (exact appearance, every panel): ${characterCards.map(c => `${c.name} (${c.role}): ${c.appearance}`).join(" | ")}. Maintain exact character appearance in every panel.`
+    const charVisualAnchor = canonicalCharacterProfiles.length > 0
+      ? `CHARACTERS (exact appearance, every panel): ${canonicalCharacterProfiles.map(c => `${c.name} (${c.role}): face ${c.faceShape}, skin ${c.skinTone}, hair ${c.hairColor} / ${c.hairStyle}, eyes ${c.eyeColor}, build ${c.bodyBuild}, clothing ${c.signatureClothing}, accessories ${c.signatureAccessories}`).join(" | ")}. Maintain exact character appearance in every panel.`
       : (characters.length > 0 ? `Characters: ${charNames}. Maintain exact character appearance.` : "");
 
     // Fix 3 + Regex Expansion: Build a CHARACTER_COLOUR_LOCK by extracting explicit hair
@@ -679,8 +954,17 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       "dark-brown|light-brown" +
       ")[\\s-]+)?";
 
-    const colourKeywords = characterCards.map(c => {
-      const app = c.appearance;
+    const colourKeywords = canonicalCharacterProfiles.map(c => {
+      const app = [
+        `${c.faceShape} face`,
+        `${c.skinTone} skin`,
+        `${c.hairColor} hair`,
+        `${c.hairStyle} hair`,
+        `${c.eyeColor} eyes`,
+        c.bodyBuild,
+        c.signatureClothing,
+        c.signatureAccessories,
+      ].join(". ");
 
       //  Hair colour 
       // Pattern: <optional multi-word colour prefix> + <core colour word> + optional
@@ -930,6 +1214,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       "Change only the artistic rendering style. Preserve all facial features, identity markers, and personal likeness without exception.";
 
     const STYLE_LOCK = [
+      `GLOBAL STYLE PROFILE: medium=${globalStyleProfile.medium}; lighting=${globalStyleProfile.lighting}; palette=${globalStyleProfile.palette}; linework=${globalStyleProfile.linework}; composition=${globalStyleProfile.composition}`,
       stylePreset,
       NO_TEXT_CONSTRAINT,
       charAnchorBlock,
@@ -1025,6 +1310,27 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       }
     }
 
+    const getCharacterReferenceImages = (characterNames?: string[]): Array<{ url: string; mimeType: string }> => {
+      const names = characterNames && characterNames.length > 0
+        ? Array.from(new Set(characterNames))
+        : canonicalCharacterProfiles.map(profile => profile.name);
+      const refs: Array<{ url: string; mimeType: string }> = [];
+      for (const name of names) {
+        const illustrated = illustratedPortraitsMap.get(name);
+        const raw = photoRefByName.get(name);
+        if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
+        if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
+      }
+      if (refs.length === 0) {
+        refs.push(
+          ...Array.from(illustratedPortraitsMap.values())
+            .filter((img): img is { url: string; mimeType: string } => !!img?.url),
+          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
+        );
+      }
+      return refs.filter((img, idx, arr) => arr.findIndex(candidate => candidate.url === img.url) === idx);
+    };
+
     //  Image generation wrapper 
     // Uses illustrated portraits (Step 1b) as originalImages when available.
     // Illustrated portraits are already in the book's art style so they serve
@@ -1037,16 +1343,13 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
     ) => {
       const explicitRefs = (refImages ?? []).filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
-      const rawPhotoRefs = charPhotos.filter((img): img is { url: string; mimeType: string } => !!img?.url);
       const fallbackPortraitRefs = Array.from(illustratedPortraitsMap.values())
         .filter((img): img is { url: string; mimeType: string } => !!img?.url);
-      const candidateRefs =
-        explicitRefs.length > 0
-          ? explicitRefs
-          : rawPhotoRefs.length > 0
-          ? rawPhotoRefs
-          : fallbackPortraitRefs;
-      const mergedRefs = candidateRefs
+      const mergedRefs = [
+        ...explicitRefs,
+        ...fallbackPortraitRefs,
+        ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
+      ]
         .filter((img, idx, arr) => arr.findIndex(x => x.url === img.url) === idx);
 
       const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
@@ -1162,6 +1465,7 @@ Rules:
       isBranchPage: boolean;
       isEnding?: boolean;
       content: string;
+      outlineContent?: string;
       sfxTags: string[];
       choiceA: string | null;
       choiceB: string | null;
@@ -1249,6 +1553,11 @@ Rules:
     if (!storyData?.pages?.length) {
       throw new Error(`Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`);
     }
+
+    storyData.pages = storyData.pages.map(page => ({
+      ...page,
+      outlineContent: page.content,
+    }));
 
     // Step 3: Post-structure validation 
     // Verify all branch references resolve, all paths reach an ending, and
@@ -1645,6 +1954,319 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
 
     await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
 
+    type RecurringObjectProfile = {
+      id: string;
+      name: string;
+      canonicalAppearance: string;
+      continuityRules: string[];
+      traitsToAvoidChanging: string[];
+      introducedOnPage: number | null;
+      requiredPageNumbers: number[];
+    };
+
+    type SceneSpec = {
+      pageNumber: number;
+      location: string;
+      mainAction: string;
+      emotionalTone: string;
+      requiredObjects: string[];
+      forbiddenObjects: string[];
+      cameraFraming: string;
+      continuityRequirementsFromPreviousPage: string[];
+      featuredCharacters: string[];
+      actionMoments: string[];
+    };
+
+    const branchPageNumbers = new Set<number>(
+      storyData.pages
+        .filter(p => p.isBranchPage)
+        .slice(0, branchImageCount)
+        .map(p => p.pageNumber)
+    );
+
+    const shouldIllustratePage = (pageNumber: number): boolean => {
+      if (isComic || category === "fairy_tale") return true;
+      return branchPageNumbers.has(pageNumber);
+    };
+
+    const illustratedStoryPages = storyData.pages.filter(page => shouldIllustratePage(page.pageNumber));
+    const extractMentionedCharactersFromText = (text: string): string[] => {
+      const matches = canonicalCharacterProfiles
+        .filter(profile => new RegExp(`\\b${profile.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text))
+        .map(profile => profile.name);
+      return matches.length > 0 ? matches : canonicalCharacterProfiles.map(profile => profile.name);
+    };
+
+    const keywordSeeds = ["rocket", "backpack", "map", "helmet", "lantern", "key", "book", "sword", "wand", "ship", "spaceship"];
+    const fallbackRecurringObjects = (): RecurringObjectProfile[] => {
+      const detected: RecurringObjectProfile[] = [];
+      for (const keyword of keywordSeeds) {
+        const relatedPages = storyData.pages.filter(page => {
+          const sourceText = `${page.outlineContent ?? ""} ${page.content ?? ""}`.toLowerCase();
+          return sourceText.includes(keyword.toLowerCase());
+        });
+        if (relatedPages.length >= 1) {
+          detected.push({
+            id: keyword.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+            name: keyword,
+            canonicalAppearance: `the same ${keyword} design established earlier in the book`,
+            continuityRules: [
+              `if the ${keyword} appears again, keep its silhouette, colours, and material details consistent`,
+            ],
+            traitsToAvoidChanging: [`do not redesign or recolor the ${keyword}`, `do not omit the ${keyword} when the story references it`],
+            introducedOnPage: relatedPages[0]?.pageNumber ?? null,
+            requiredPageNumbers: relatedPages.map(page => page.pageNumber),
+          });
+        }
+      }
+      return detected;
+    };
+
+    let recurringObjectMemory: RecurringObjectProfile[] = fallbackRecurringObjects();
+    if (illustratedStoryPages.length > 0) {
+      try {
+        const objectResp = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content: "You extract recurring visual continuity objects for illustrated stories. Return valid JSON only.",
+            },
+            {
+              role: "user" as const,
+              content: `Identify recurring visual objects or assets that should remain stable across this book. Focus on items such as rocket, backpack, map, signature tools, vehicles, magical objects, or clearly repeated props.
+
+Return JSON:
+{"objects":[{"id":"","name":"","canonicalAppearance":"","continuityRules":[""],"traitsToAvoidChanging":[""],"introducedOnPage":1,"requiredPageNumbers":[1,2]}]}
+
+Rules:
+- Include an object only if it is narratively important or repeated.
+- canonicalAppearance must define what should stay visually stable.
+- traitsToAvoidChanging should mention the most likely drift problems.
+- requiredPageNumbers should include the pages where the object is explicitly needed.
+
+PAGES:
+${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineContent ?? page.content).slice(0, 260)}`).join("\n")}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 8000,
+        });
+        const objectRaw = objectResp.choices[0]?.message?.content || "{}";
+        const objectParsed = JSON.parse(repairJSON(typeof objectRaw === "string" ? objectRaw : JSON.stringify(objectRaw)));
+        if (Array.isArray(objectParsed.objects) && objectParsed.objects.length > 0) {
+          recurringObjectMemory = objectParsed.objects.map((obj: RecurringObjectProfile) => ({
+            ...obj,
+            continuityRules: compactList(obj.continuityRules),
+            traitsToAvoidChanging: compactList(obj.traitsToAvoidChanging),
+            requiredPageNumbers: Array.from(new Set((obj.requiredPageNumbers ?? []).filter((num: number) => Number.isFinite(num)))),
+            introducedOnPage: Number.isFinite(obj.introducedOnPage) ? obj.introducedOnPage : null,
+          }));
+        }
+      } catch (objectErr) {
+        console.warn("[Books] Recurring object continuity extraction failed, using keyword-based fallback:", objectErr);
+      }
+    }
+
+    const recurringObjectsByPage = new Map<number, RecurringObjectProfile[]>();
+    for (const objectProfile of recurringObjectMemory) {
+      for (const pageNumber of objectProfile.requiredPageNumbers) {
+        const existing = recurringObjectsByPage.get(pageNumber) ?? [];
+        recurringObjectsByPage.set(pageNumber, [...existing, objectProfile]);
+      }
+    }
+
+    const fallbackSceneSpec = (page: StoryData["pages"][number], previousPage?: StoryData["pages"][number]): SceneSpec => {
+      const sourceText = `${page.outlineContent ?? page.content} ${page.content}`.trim();
+      const requiredObjects = (recurringObjectsByPage.get(page.pageNumber) ?? []).map(objectProfile => objectProfile.name);
+      return {
+        pageNumber: page.pageNumber,
+        location: page.isEnding ? "final story location from the text" : "location described in the page text",
+        mainAction: sourceText.slice(0, 180),
+        emotionalTone: page.isEnding ? "resolved and emotionally complete" : page.isBranchPage ? "tense decision moment" : "story-specific emotional tone from the page text",
+        requiredObjects,
+        forbiddenObjects: ["random text", "unexplained extra props"],
+        cameraFraming: isComic ? "dynamic comic composition matching the action" : page.isBranchPage ? "clear dramatic decision framing" : "storybook framing focused on the page action",
+        continuityRequirementsFromPreviousPage: previousPage
+          ? [`continue visual continuity from page ${previousPage.pageNumber}`, `preserve the same character identities, outfits, and props seen previously when still present`]
+          : ["establish the canonical look cleanly on first appearance"],
+        featuredCharacters: extractMentionedCharactersFromText(sourceText),
+        actionMoments: [sourceText.slice(0, 140)],
+      };
+    };
+
+    const sceneSpecs = new Map<number, SceneSpec>();
+    for (let i = 0; i < illustratedStoryPages.length; i++) {
+      const page = illustratedStoryPages[i];
+      const previousIllustratedPage = i > 0 ? illustratedStoryPages[i - 1] : undefined;
+      try {
+        const sceneResp = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content: "You create scene specifications for illustrators. Return valid JSON only. Be concrete and page-specific.",
+            },
+            {
+              role: "user" as const,
+              content: `Create a precise illustration scene specification for this page.
+
+Return JSON:
+{"pageNumber":${page.pageNumber},"location":"","mainAction":"","emotionalTone":"","requiredObjects":[""],"forbiddenObjects":[""],"cameraFraming":"","continuityRequirementsFromPreviousPage":[""],"featuredCharacters":[""],"actionMoments":[""]}
+
+Rules:
+- mainAction must describe what is visibly happening on this page, not generic atmosphere.
+- requiredObjects must include recurring props that must appear.
+- forbiddenObjects must exclude objects that would contradict the page text.
+- continuityRequirementsFromPreviousPage must mention carry-over outfit, prop, pose-direction, or scene-state constraints when relevant.
+- featuredCharacters must use only these names: ${canonicalCharacterProfiles.map(profile => profile.name).join(", ") || "none"}.
+
+PREVIOUS ILLUSTRATED PAGE:
+${previousIllustratedPage ? `Page ${previousIllustratedPage.pageNumber}: ${(previousIllustratedPage.outlineContent ?? previousIllustratedPage.content).slice(0, 220)}` : "none"}
+
+RECURRING OBJECT MEMORY:
+${recurringObjectMemory.length > 0 ? recurringObjectMemory.map(objectProfile => `${objectProfile.name}: ${objectProfile.canonicalAppearance}; required pages=${objectProfile.requiredPageNumbers.join(", ")}`).join("\n") : "none"}
+
+CURRENT PAGE:
+Page ${page.pageNumber}
+Outline: ${page.outlineContent ?? page.content}
+Expanded text: ${page.content.slice(0, 700)}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 4000,
+        });
+        const sceneRaw = sceneResp.choices[0]?.message?.content || "{}";
+        const sceneParsed = JSON.parse(repairJSON(typeof sceneRaw === "string" ? sceneRaw : JSON.stringify(sceneRaw)));
+        const fallbackSpec = fallbackSceneSpec(page, previousIllustratedPage);
+        sceneSpecs.set(page.pageNumber, {
+          ...fallbackSpec,
+          ...sceneParsed,
+          requiredObjects: compactList(sceneParsed.requiredObjects ?? fallbackSpec.requiredObjects),
+          forbiddenObjects: compactList(sceneParsed.forbiddenObjects ?? fallbackSpec.forbiddenObjects),
+          continuityRequirementsFromPreviousPage: compactList(sceneParsed.continuityRequirementsFromPreviousPage ?? fallbackSpec.continuityRequirementsFromPreviousPage),
+          featuredCharacters: compactList(sceneParsed.featuredCharacters ?? fallbackSpec.featuredCharacters),
+          actionMoments: compactList(sceneParsed.actionMoments ?? fallbackSpec.actionMoments),
+        });
+      } catch (sceneErr) {
+        console.warn(`[Books] Scene specification generation failed for page ${page.pageNumber}, using fallback scene spec:`, sceneErr);
+        sceneSpecs.set(page.pageNumber, fallbackSceneSpec(page, previousIllustratedPage));
+      }
+    }
+
+    const NEGATIVE_PROMPT_GUARDRAILS = [
+      "NEGATIVE GUARDRAILS: no hairstyle changes on later pages",
+      "no age drift, no younger or older redesign",
+      "no outfit redesign, no color swaps, no missing signature clothing",
+      "no missing backpack, map, rocket, or other required recurring object when specified",
+      "no random symbols, letters, words, numbers, logos, captions, watermarks, or background signage",
+      "no extra unexplained props, duplicate characters, lookalikes, or blended faces",
+      "no generic magical filler scene that ignores the page action",
+      "no style drift, no switch in medium, line quality, palette, or rendering finish",
+    ].join(" | ");
+
+    const buildGlobalStyleLayer = () => [
+      "GLOBAL STYLE PROFILE",
+      `medium: ${globalStyleProfile.medium}`,
+      `lighting: ${globalStyleProfile.lighting}`,
+      `palette: ${globalStyleProfile.palette}`,
+      `linework: ${globalStyleProfile.linework}`,
+      `composition: ${globalStyleProfile.composition}`,
+      ...globalStyleProfile.renderingRules.map(rule => `rendering rule: ${rule}`),
+      ...globalStyleProfile.continuityRules.map(rule => `style continuity rule: ${rule}`),
+    ].join(" | ");
+
+    const buildCanonicalCharacterLayer = (featuredNames?: string[]) => {
+      const relevantProfiles = featuredNames && featuredNames.length > 0
+        ? canonicalCharacterProfiles.filter(profile => featuredNames.includes(profile.name))
+        : canonicalCharacterProfiles;
+      return relevantProfiles.length > 0
+        ? [
+            "CANONICAL CHARACTER LAYER",
+            ...relevantProfiles.map(profile => [
+              `${profile.name}`,
+              `face=${profile.faceShape}`,
+              `skin=${profile.skinTone}`,
+              `hair=${profile.hairColor}; style=${profile.hairStyle}`,
+              `eyes=${profile.eyeColor}`,
+              `build=${profile.bodyBuild}`,
+              `clothing=${profile.signatureClothing}`,
+              `accessories=${profile.signatureAccessories}`,
+              `visual cues=${profile.personalityLinkedVisualCues}`,
+              `avoid changing=${profile.traitsToAvoidChanging.join(", ") || "none"}`,
+              `identity=${profile.exactIdentityStatement}`,
+            ].join(" | ")),
+            STRUCTURED_IDENTITY_BLOCK || undefined,
+          ].filter(Boolean).join(" | ")
+        : "";
+    };
+
+    const buildRecurringObjectLayer = (requiredObjects: string[]) => {
+      const relevantObjects = recurringObjectMemory.filter(objectProfile =>
+        requiredObjects.some(required =>
+          required.toLowerCase().includes(objectProfile.name.toLowerCase()) ||
+          objectProfile.name.toLowerCase().includes(required.toLowerCase())
+        )
+      );
+      return relevantObjects.length > 0
+        ? [
+            "RECURRING OBJECT CONTINUITY MEMORY",
+            ...relevantObjects.map(objectProfile => [
+              `${objectProfile.name}`,
+              `canonical appearance=${objectProfile.canonicalAppearance}`,
+              ...objectProfile.continuityRules.map(rule => `rule=${rule}`),
+              ...objectProfile.traitsToAvoidChanging.map(rule => `avoid=${rule}`),
+            ].join(" | ")),
+          ].join(" | ")
+        : "";
+    };
+
+    const buildSceneSpecificLayer = (sceneSpec?: SceneSpec) => {
+      if (!sceneSpec) return "";
+      return [
+        "SCENE-SPECIFIC PROMPT SPEC",
+        `location: ${sceneSpec.location}`,
+        `main action: ${sceneSpec.mainAction}`,
+        `emotional tone: ${sceneSpec.emotionalTone}`,
+        `camera framing: ${sceneSpec.cameraFraming}`,
+        `featured characters: ${sceneSpec.featuredCharacters.join(", ") || "none"}`,
+        `required objects: ${sceneSpec.requiredObjects.join(", ") || "none"}`,
+        `forbidden objects: ${sceneSpec.forbiddenObjects.join(", ") || "none"}`,
+        ...sceneSpec.actionMoments.map(moment => `action beat: ${moment}`),
+        ...sceneSpec.continuityRequirementsFromPreviousPage.map(requirement => `previous-page continuity: ${requirement}`),
+      ].join(" | ");
+    };
+
+    const buildContinuityConstraintLayer = (sceneSpec?: SceneSpec) => [
+      CHARACTER_COLOUR_LOCK,
+      CHARACTER_LOCK_INSTRUCTION,
+      sceneSpec?.requiredObjects?.length ? `MANDATORY OBJECT PRESENCE: show these exact recurring objects if story-relevant: ${sceneSpec.requiredObjects.join(", ")}` : "",
+      sceneSpec?.forbiddenObjects?.length ? `FORBIDDEN VISUAL ELEMENTS: do not show ${sceneSpec.forbiddenObjects.join(", ")}` : "",
+      "CHARACTER CONTINUITY: same face shape, hair, age impression, clothing design, and silhouette across the entire book",
+      "PROP CONTINUITY: recurring objects must keep the same design language, shape, colors, markings, and scale across pages",
+      "SCENE ACCURACY: depict the concrete page action, not a generic magical or atmospheric substitute",
+    ].filter(Boolean).join(" | ");
+
+    const assembleIllustrationPrompt = (options: {
+      purpose: string;
+      sceneSpec?: SceneSpec;
+      featuredCharacterNames?: string[];
+      extraLayers?: Array<string | null | undefined>;
+    }): string => {
+      const featuredNames = options.featuredCharacterNames && options.featuredCharacterNames.length > 0
+        ? options.featuredCharacterNames
+        : options.sceneSpec?.featuredCharacters;
+      return [
+        buildGlobalStyleLayer(),
+        `PURPOSE: ${options.purpose}`,
+        buildCanonicalCharacterLayer(featuredNames),
+        buildSceneSpecificLayer(options.sceneSpec),
+        buildRecurringObjectLayer(options.sceneSpec?.requiredObjects ?? []),
+        buildContinuityConstraintLayer(options.sceneSpec),
+        NO_TEXT_CONSTRAINT,
+        NEGATIVE_PROMPT_GUARDRAILS,
+        ...((options.extraLayers ?? []).filter(Boolean) as string[]),
+      ].filter(Boolean).join(" | ");
+    };
+
     // Generate cover image  uses STYLE_LOCK + full charAnchorBlock for maximum consistency
     // The cover sets the visual "contract" for the whole book; all page illustrations
     // must match the style established here.
@@ -1660,22 +2282,36 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
       horror_thriller: "ominous establishing shot, dark environment, sense of dread",
     }[category] || "dramatic establishing shot, professional book cover composition";
     try {
+      const coverSceneSpec: SceneSpec = {
+        pageNumber: 0,
+        location: "cover establishing setting for the whole book",
+        mainAction: `heroic cover moment introducing the central adventure of "${title}"`,
+        emotionalTone: "inviting, polished, and representative of the whole book",
+        requiredObjects: recurringObjectMemory.filter(objectProfile => (objectProfile.introducedOnPage ?? 9999) <= 2).map(objectProfile => objectProfile.name),
+        forbiddenObjects: ["title text inside the art", "random background symbols"],
+        cameraFraming: coverFramingNote,
+        continuityRequirementsFromPreviousPage: ["establish the canonical look that all later pages must match"],
+        featuredCharacters: canonicalCharacterProfiles.map(profile => profile.name),
+        actionMoments: [descSnippet],
+      };
       // Guardrail 2A: use wrapper  logs warning if charPhotos is empty
       // Guardrail 2B: STYLE_LOCK already contains NO_TEXT_CONSTRAINT; no title/author in prompt
       //               title + author are applied ONLY via addCoverOverlay() below
       const coverResult = await generateImageWithRefCheck(
         "cover",
-        [
-          STYLE_LOCK,
-          `book cover illustration for a gamebook`,
-          coverFramingNote,
-          descSnippet,
-          "professional publishing quality, full-bleed composition",
-          charPhotos.length > 0
-            ? `CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the EXACT SAME individuals from their reference photos. Preserve without any modification: exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness. Do NOT genericise, idealise, or redesign any facial feature.`
-            : null,
-        ].filter(Boolean).join(" | "),
-        charPhotos.length > 0 ? charPhotos : undefined,
+        assembleIllustrationPrompt({
+          purpose: "book cover illustration for a gamebook",
+          sceneSpec: coverSceneSpec,
+          featuredCharacterNames: canonicalCharacterProfiles.map(profile => profile.name),
+          extraLayers: [
+            STYLE_LOCK,
+            "professional publishing quality, full-bleed composition",
+            charPhotos.length > 0
+              ? "CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the exact same individuals from their reference photos. Preserve exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness, and age impression."
+              : null,
+          ],
+        }),
+        getCharacterReferenceImages(canonicalCharacterProfiles.map(profile => profile.name)),
       );
       // Guardrail 2B: title + author name added ONLY as a UI overlay  never inside the image prompt
       if (coverResult.url) {
@@ -1708,16 +2344,6 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
     } catch (e) {
       console.error("[Books] Cover image generation failed:", e);
     }
-
-    // Pre-assign which pages get branch images
-    // For other genres, only the first branchImageCount branch pages get illustrations.
-    // We pre-assign here so parallel generation respects the exact count.
-    const branchPageNumbers = new Set<number>(
-      storyData.pages
-        .filter(p => p.isBranchPage)
-        .slice(0, branchImageCount)
-        .map(p => p.pageNumber)
-    );
 
     // Parallel image generation with concurrency limit
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
@@ -1755,6 +2381,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
       await acquireSemaphore();
       let imageUrl: string | null = null;
       let panels: string[] | null = null;
+      const pageSceneSpec = sceneSpecs.get(page.pageNumber);
       try {
         if (isComic) {
           // COMIC: generate ONE composite page image, then crop into 3 panels
@@ -1816,20 +2443,20 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           // Build filtered character anchor blocks for each panel
           // ENHANCED: Explicit character count enforcement, negative prompts, visual distinctness
           const buildFilteredCharAnchor = (charNames: string[]): string => {
-            const relevantChars = characterCards.filter(c => charNames.includes(c.name));
+            const relevantChars = canonicalCharacterProfiles.filter(c => charNames.includes(c.name));
             if (relevantChars.length === 0) return charAnchorBlock;
             
             const charDescriptions = relevantChars.map((c, idx) => {
               const distinctMarker = relevantChars.length > 1
                 ? ` [CHARACTER ${idx + 1}/${relevantChars.length} - MUST BE VISUALLY COMPLETELY DIFFERENT]`
                 : "";
-              return `${c.name} (${c.role}): ${c.appearance}${distinctMarker}`;
+              return `${c.name} (${c.role}): face ${c.faceShape}, skin ${c.skinTone}, hair ${c.hairColor} / ${c.hairStyle}, eyes ${c.eyeColor}, build ${c.bodyBuild}, clothing ${c.signatureClothing}, accessories ${c.signatureAccessories}${distinctMarker}`;
             }).join(" || ");
             const charList = relevantChars.map(c => c.name).join(", ");
             return [
               `PANEL CHARACTERS: ${charDescriptions}`,
-              relevantChars.some(c => c.photoUrl && photoAnalyses[c.name])
-                ? `PHOTO REFERENCES (EXACT FACIAL MATCH): ${relevantChars.filter(c => c.photoUrl).map(c => c.name).join(", ")}. Render EXACTLY as photographed.`
+              relevantChars.some(c => photoRefByName.has(c.name))
+                ? `PHOTO REFERENCES (EXACT FACIAL MATCH): ${relevantChars.filter(c => photoRefByName.has(c.name)).map(c => c.name).join(", ")}. Render EXACTLY as photographed.`
                 : "",
               `CHARACTER COUNT: Render EXACTLY ${relevantChars.length} distinct character(s). EXACTLY ${relevantChars.length}.`,
               relevantChars.length > 1
@@ -1843,30 +2470,28 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           const p2CharAnchor = buildFilteredCharAnchor(p2Chars);
           const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
           const panelCharacterNames = Array.from(new Set([...p1Chars, ...p2Chars, ...p3Chars]));
-          const comicRelevantRefs = panelCharacterNames
-            .map((name) => illustratedPortraitsMap.get(name) || photoRefByName.get(name))
-            .filter((img): img is { url: string; mimeType: string } => !!img?.url);
+          const comicRelevantRefs = getCharacterReferenceImages(panelCharacterNames);
 
           // Step 2: Generate ONE composite comic page image
           // NO text in the image speech bubbles are React overlays, not baked into the image.
-          const compositePrompt = [
-            STYLE_LOCK,
-            NO_TEXT_CONSTRAINT,
-            "Single comic book PAGE with EXACTLY 3 panels arranged as follows: ONE large panel on TOP (spanning full width, 60% of page height), then TWO equal panels side by side on the BOTTOM (each 50% width, 40% of page height). Thick black borders between all panels.",
-            `TOP PANEL (large): ${p1Narr}`,
-            `BOTTOM-LEFT PANEL: ${p2Narr}`,
-            `BOTTOM-RIGHT PANEL: ${p3Narr}`,
-            "Bold black panel borders, halftone dot shading, vivid colours, professional comic art, white gutters between panels, NO text, NO letters, NO speech bubbles baked into the image",
-            // Filtered character anchors per panel (prevents character blending)
-            p1CharAnchor,
-            p2CharAnchor,
-            p3CharAnchor,
-            "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
-            CHARACTER_COLOUR_LOCK,
-            STRUCTURED_IDENTITY_BLOCK || undefined,
-            CHARACTER_LOCK_INSTRUCTION,
-                        "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
-          ].filter(Boolean).join(" | ");
+          const compositePrompt = assembleIllustrationPrompt({
+            purpose: `single comic page with exact 3-panel layout for page ${page.pageNumber}`,
+            sceneSpec: pageSceneSpec,
+            featuredCharacterNames: panelCharacterNames,
+            extraLayers: [
+              STYLE_LOCK,
+              "Single comic book PAGE with EXACTLY 3 panels arranged as follows: ONE large panel on TOP (spanning full width, 60% of page height), then TWO equal panels side by side on the BOTTOM (each 50% width, 40% of page height). Thick black borders between all panels.",
+              `TOP PANEL (large): ${p1Narr}`,
+              `BOTTOM-LEFT PANEL: ${p2Narr}`,
+              `BOTTOM-RIGHT PANEL: ${p3Narr}`,
+              "Bold black panel borders, halftone dot shading, vivid colours, professional comic art, white gutters between panels, NO text, NO letters, NO speech bubbles baked into the image",
+              p1CharAnchor,
+              p2CharAnchor,
+              p3CharAnchor,
+              "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
+              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image so every interior page looks like part of the same comic.",
+            ],
+          });
 
           // ComicPanel metadata objects  speech bubbles rendered as React overlays by ComicPageLayout
           type ComicPanelData = { imageUrl: string; narration: string; dialogue: string | null; speaker: string | null; bubbleType: string | null; position: string | null };
@@ -1878,7 +2503,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
             const compositeResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-composite`,
               compositePrompt,
-              comicRelevantRefs.length > 0 ? comicRelevantRefs : (charPhotos.length > 0 ? charPhotos : undefined),
+              comicRelevantRefs.length > 0 ? comicRelevantRefs : getCharacterReferenceImages(panelCharacterNames),
             );
 
             if (compositeResult.url) {
@@ -1956,24 +2581,19 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
 
         } else if (category === "fairy_tale") {
           // FAIRY TALE: one illustration per page (10 pages = 10 illustrations) 
-          const sceneNote = page.isBranchPage
-            ? `dramatic decision moment, ${page.content.substring(0, 200)}`
-            : page.isEnding
-            ? `final scene, emotional resolution, ${page.content.substring(0, 200)}`
-            : `scene: ${page.content.substring(0, 220)}`;
           const imgResult = await generateImageWithRefCheck(
             `page-${page.pageNumber}`,
-            [
-              STYLE_LOCK,
-              sceneNote,
-              charAnchorBlock,
-              CHARACTER_COLOUR_LOCK,
-              STRUCTURED_IDENTITY_BLOCK || undefined,
-              CHARACTER_LOCK_INSTRUCTION,
-                          "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover",
-              "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
-            ].filter(Boolean).join(" | "),
-            charPhotos.length > 0 ? charPhotos : (illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : undefined),
+            assembleIllustrationPrompt({
+              purpose: `full-page fairy tale illustration for page ${page.pageNumber}`,
+              sceneSpec: pageSceneSpec,
+              featuredCharacterNames: pageSceneSpec?.featuredCharacters,
+              extraLayers: [
+                STYLE_LOCK,
+                "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image so every interior page belongs to the same book",
+                "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing must match their canonical profiles exactly",
+              ],
+            }),
+            getCharacterReferenceImages(pageSceneSpec?.featuredCharacters),
           );
           imageUrl = imgResult.url ?? null;
 
@@ -1982,20 +2602,19 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           // Spec: normal = 8 branch images, thick = 12 branch images
           // Only isBranchPage pages get illustrations; all other pages are text-only.
           if (branchPageNumbers.has(page.pageNumber)) {
-            const sceneNote = `dramatic decision moment  the protagonist stands at a crossroads, ${page.content.substring(0, 200)}`;
             const imgResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-branch`,
-              [
-                STYLE_LOCK,
-                sceneNote,
-                charAnchorBlock,
-                CHARACTER_COLOUR_LOCK,
-                STRUCTURED_IDENTITY_BLOCK || undefined,
-                CHARACTER_LOCK_INSTRUCTION,
-                              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
-                "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
-              ].filter(Boolean).join(" | "),
-              charPhotos.length > 0 ? charPhotos : (illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : undefined),
+              assembleIllustrationPrompt({
+                purpose: `branch decision illustration for page ${page.pageNumber}`,
+                sceneSpec: pageSceneSpec,
+                featuredCharacterNames: pageSceneSpec?.featuredCharacters,
+                extraLayers: [
+                  STYLE_LOCK,
+                  "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image so every interior page belongs to the same book.",
+                  "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing must match their canonical profiles exactly",
+                ],
+              }),
+              getCharacterReferenceImages(pageSceneSpec?.featuredCharacters),
             );
             imageUrl = imgResult.url ?? null;
             console.log(`[Books] Branch image generated for page ${page.pageNumber}`);
