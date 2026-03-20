@@ -53,6 +53,23 @@ function detectMergeViolations(pages: PageStub[]): string[] {
   return violations;
 }
 
+function resolveStructureStatusForRuntime(pages: PageStub[]): {
+  status: "continue" | "failed";
+  reason: string;
+} {
+  const mergeViolations = detectMergeViolations(pages);
+  if (mergeViolations.length > 0) {
+    return {
+      status: "failed",
+      reason: "merge violations detected",
+    };
+  }
+  return {
+    status: "continue",
+    reason: "structure is valid",
+  };
+}
+
 describe("GUARDRAIL 1 — No-Merge Branching", () => {
   it("passes a clean linear story with no branches", () => {
     const pages: PageStub[] = [
@@ -90,6 +107,10 @@ describe("GUARDRAIL 1 — No-Merge Branching", () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain("Page 4");
     expect(violations[0]).toContain("MERGE VIOLATION");
+
+    const runtimeResult = resolveStructureStatusForRuntime(pages);
+    expect(runtimeResult.status).toBe("failed");
+    expect(runtimeResult.reason).toContain("merge violations");
   });
 
   it("flags multiple merge violations when several pages are reused", () => {
