@@ -152,6 +152,16 @@ function repairJSON(raw: string): string {
 
   return s;
 }
+
+function extractLikelyJsonObject(raw: string): string {
+  const input = raw.trim();
+  const firstBrace = input.indexOf("{");
+  const lastBrace = input.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return input.slice(firstBrace, lastBrace + 1);
+  }
+  return input;
+}
 const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
   fairy_tale: ["thin"],
   comic: ["thin", "normal"],
@@ -270,6 +280,11 @@ export async function generateBookContent(bookId: number, bookData: {
     const charPhotos = characters
       .filter(c => c.photoUrl)
       .map(c => ({ url: c.photoUrl!, mimeType: "image/jpeg" as const }));
+    const photoRefByName = new Map(
+      characters
+        .filter(c => c.photoUrl)
+        .map(c => [c.name, { url: c.photoUrl!, mimeType: "image/jpeg" as const }])
+    );
 
     // âââ Global Style Lock ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     // Each genre gets a rich, multi-axis style descriptor assembled ONCE and
@@ -1021,10 +1036,11 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       prompt: string,
       refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
     ) => {
-      const mergedRefs = [
-        ...(refImages ?? []),
-        ...Array.from(illustratedPortraitsMap.values()),
-      ].filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
+      const explicitRefs = (refImages ?? []).filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
+      const fallbackPortraitRefs = Array.from(illustratedPortraitsMap.values());
+      const mergedRefs = (explicitRefs.length > 0 ? explicitRefs : fallbackPortraitRefs)
+        .filter((img): img is { url?: string; mimeType?: string } => !!img?.url)
+        .filter((img, idx, arr) => arr.findIndex(x => x.url === img.url) === idx);
 
       const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
 
@@ -1109,8 +1125,8 @@ Rules:
 - Ending pages: isEnding=true, no choices, no nextPage references
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
 - ALL paths must reach an isEnding=true page â no dead ends
-- STORY BEGINNING: Page 1 MUST be a proper story opening â introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.\n" +
-  "  - BRANCH TIMING: The first A/B branch point must NOT appear on page 2. Let the story develop for at least 3-4 pages. For fairy tales first branch on page 3, for others page 4 or later.
+- STORY BEGINNING: Page 1 MUST be a proper story opening â introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
+- BRANCH TIMING: The first A/B branch point must NOT appear on page 2. Let the story develop for at least 3-4 pages. For fairy tales first branch on page 3, for others page 4 or later.
 - sfxTags: 1-3 English keywords matching the scene sound. Be specific â use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array â every page MUST have at least one relevant sound effect tag.
 - For fairy tales: 2-3 sentences per page
 - For comics: 3-4 panel descriptions per page
@@ -1132,6 +1148,14 @@ Rules:
     let storyData: StoryData | null = null;
     let structureErr: string | null = null;
     const maxStructureAttempts = 3;
+    const parseStoryDataFromRaw = (raw: string): StoryData => {
+      try {
+        return JSON.parse(repairJSON(raw)) as StoryData;
+      } catch (_) {
+        const extracted = extractLikelyJsonObject(raw);
+        return JSON.parse(repairJSON(extracted)) as StoryData;
+      }
+    };
 
     for (let attempt = 1; attempt <= maxStructureAttempts; attempt++) {
       try {
@@ -1146,9 +1170,43 @@ Rules:
 
         const rawContent = structureResponse.choices[0]?.message?.content || "{}";
         const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-        const parsed = JSON.parse(repairJSON(content)) as StoryData;
+        let parsed: StoryData | null = null;
+        try {
+          parsed = parseStoryDataFromRaw(content);
+        } catch (primaryParseErr) {
+          const preview = content.slice(0, 240).replace(/\s+/g, " ");
+          console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`);
+          console.warn(`[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`);
 
-        if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+          // Last-chance normalization pass: ask the LLM to convert malformed output
+          // into strict JSON with the expected schema.
+          try {
+            const fixerResp = await invokeLLM({
+              messages: [
+                {
+                  role: "system" as const,
+                  content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
+                },
+                {
+                  role: "user" as const,
+                  content:
+                    `Repair this malformed gamebook JSON into valid JSON object with key "pages". Do not add commentary.\n\n` +
+                    `MALFORMED_INPUT:\n${content.slice(0, 12000)}`,
+                },
+              ],
+              response_format: { type: "json_object" },
+              max_tokens: 12000,
+            });
+            const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
+            const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
+            parsed = parseStoryDataFromRaw(fixedContent);
+            console.warn(`[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`);
+          } catch (fixErr) {
+            console.warn(`[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`);
+          }
+        }
+
+        if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
           storyData = parsed;
           structureErr = null;
           break;
@@ -1294,14 +1352,25 @@ Rules:
       }
 
       // If no valid targets remain, downgrade to non-branch ending page
+      // only when this actually mutates the page.
       if (!hasBranchTargets) {
-        repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
-        page.isBranchPage = false;
-        page.choiceA = null;
-        page.choiceB = null;
-        page.nextPageA = null;
-        page.nextPageB = null;
-        page.isEnding = true;
+        const needsDowngradeMutation =
+          page.isBranchPage ||
+          page.choiceA !== null ||
+          page.choiceB !== null ||
+          page.nextPageA !== null ||
+          page.nextPageB !== null ||
+          !page.isEnding;
+
+        if (needsDowngradeMutation) {
+          repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
+          page.isBranchPage = false;
+          page.choiceA = null;
+          page.choiceB = null;
+          page.nextPageA = null;
+          page.nextPageB = null;
+          page.isEnding = true;
+        }
       }
     }
 
@@ -1702,6 +1771,10 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
           const p1CharAnchor = buildFilteredCharAnchor(p1Chars);
           const p2CharAnchor = buildFilteredCharAnchor(p2Chars);
           const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
+          const panelCharacterNames = Array.from(new Set([...p1Chars, ...p2Chars, ...p3Chars]));
+          const comicRelevantRefs = panelCharacterNames
+            .map((name) => illustratedPortraitsMap.get(name) || photoRefByName.get(name))
+            .filter((img): img is { url: string; mimeType: string } => !!img?.url);
 
           // Step 2: Generate ONE composite comic page image
           // NO text in the image â speech bubbles are React overlays, not baked into the image.
@@ -1717,6 +1790,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             p1CharAnchor,
             p2CharAnchor,
             p3CharAnchor,
+            "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
             CHARACTER_COLOUR_LOCK,
             STRUCTURED_IDENTITY_BLOCK || undefined,
             CHARACTER_LOCK_INSTRUCTION,
@@ -1733,7 +1807,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             const compositeResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-composite`,
               compositePrompt,
-              charPhotos.length > 0 ? charPhotos : undefined,
+              comicRelevantRefs.length > 0 ? comicRelevantRefs : (charPhotos.length > 0 ? charPhotos : undefined),
             );
 
             if (compositeResult.url) {
@@ -1791,6 +1865,19 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             }
           } catch (compositeErr) {
             console.error(`[Books] Composite page generation failed for page ${page.pageNumber}:`, compositeErr);
+            const fallbackPanelUrl =
+              comicRelevantRefs[0]?.url ||
+              coverImageUrl ||
+              Array.from(illustratedPortraitsMap.values())[0]?.url ||
+              null;
+            if (fallbackPanelUrl) {
+              panelData.push(
+                { imageUrl: fallbackPanelUrl, narration: p1Narr, dialogue: p1?.dialogue ?? null, speaker: p1?.speaker ?? null, bubbleType: "speech", position: "top-right" },
+                { imageUrl: fallbackPanelUrl, narration: p2Narr, dialogue: p2?.dialogue ?? null, speaker: p2?.speaker ?? null, bubbleType: "speech", position: "top-left" },
+                { imageUrl: fallbackPanelUrl, narration: p3Narr, dialogue: p3?.dialogue ?? null, speaker: p3?.speaker ?? null, bubbleType: "speech", position: "top-right" },
+              );
+              console.warn(`[Books] Page ${page.pageNumber}: used fallback panel placeholders after composite generation failure`);
+            }
           }
           // Store full ComicPanel objects (not plain string URLs) so React overlay can render speech bubbles
           panels = panelData.length > 0 ? (panelData as unknown as string[]) : null;
