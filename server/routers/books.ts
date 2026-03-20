@@ -1148,6 +1148,14 @@ Rules:
     let storyData: StoryData | null = null;
     let structureErr: string | null = null;
     const maxStructureAttempts = 3;
+    const parseStoryDataFromRaw = (raw: string): StoryData => {
+      try {
+        return JSON.parse(repairJSON(raw)) as StoryData;
+      } catch (_) {
+        const extracted = extractLikelyJsonObject(raw);
+        return JSON.parse(repairJSON(extracted)) as StoryData;
+      }
+    };
 
     for (let attempt = 1; attempt <= maxStructureAttempts; attempt++) {
       try {
@@ -1162,6 +1170,39 @@ Rules:
 
         const rawContent = structureResponse.choices[0]?.message?.content || "{}";
         const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        let parsed: StoryData | null = null;
+        try {
+          parsed = parseStoryDataFromRaw(content);
+        } catch (primaryParseErr) {
+          const preview = content.slice(0, 240).replace(/\s+/g, " ");
+          console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`);
+          console.warn(`[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`);
+
+          // Last-chance normalization pass: ask the LLM to convert malformed output
+          // into strict JSON with the expected schema.
+          try {
+            const fixerResp = await invokeLLM({
+              messages: [
+                {
+                  role: "system" as const,
+                  content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
+                },
+                {
+                  role: "user" as const,
+                  content:
+                    `Repair this malformed gamebook JSON into valid JSON object with key "pages". Do not add commentary.\n\n` +
+                    `MALFORMED_INPUT:\n${content.slice(0, 12000)}`,
+                },
+              ],
+              response_format: { type: "json_object" },
+              max_tokens: 12000,
+            });
+            const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
+            const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
+            parsed = parseStoryDataFromRaw(fixedContent);
+            console.warn(`[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`);
+          } catch (fixErr) {
+            console.warn(`[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`);
         let parsed: StoryData;
         try {
           parsed = JSON.parse(repairJSON(content)) as StoryData;
@@ -1174,7 +1215,7 @@ Rules:
           }
         }
 
-        if (Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+        if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
           storyData = parsed;
           structureErr = null;
           break;
