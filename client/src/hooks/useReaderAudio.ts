@@ -259,6 +259,8 @@ export function useReaderAudio(category: BookCategory) {
   const sfxAudioRef = useRef<HTMLAudioElement | null>(null);
   // Looping per-page SFX (separate from one-shot flip sounds)
   const pageSfxRef = useRef<HTMLAudioElement | null>(null);
+  // Cancellation counter: incremented on every startPageSfx call so stale async callbacks abort
+  const pageSfxCallId = useRef(0);
 
   // Keep category ref in sync
   useEffect(() => {
@@ -299,6 +301,8 @@ export function useReaderAudio(category: BookCategory) {
   // ---------------------------------------------------------------------------
 
   const stopPageSfx = useCallback(() => {
+    // Invalidate any in-flight startPageSfx async load
+    pageSfxCallId.current++;
     if (pageSfxRef.current) {
       pageSfxRef.current.pause();
       pageSfxRef.current.currentTime = 0;
@@ -315,7 +319,12 @@ export function useReaderAudio(category: BookCategory) {
     }
     if (muted || sfxTags.length === 0) return;
 
+    // Increment call ID so any in-flight async callbacks for previous pages abort
+    const thisCallId = ++pageSfxCallId.current;
+
     loadSoundLibrary().then(entries => {
+      // If a newer startPageSfx call happened while we were loading, abort
+      if (thisCallId !== pageSfxCallId.current) return;
       const url = findBestSoundUrl(entries, sfxTags);
       if (!url) return;
       try {

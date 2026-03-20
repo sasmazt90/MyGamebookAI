@@ -118,7 +118,7 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
         src={panel.imageUrl}
         alt="Comic panel"
         className={cn(
-          "w-full object-contain block bg-white",
+          "w-full object-cover block bg-white",
           wide ? "h-56 md:h-80" : "h-44 md:h-64",
         )}
         style={{ imageRendering: "auto" }}
@@ -147,12 +147,22 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
         <div
           className="absolute bottom-0 left-0 right-0 bg-white border-t-2 border-black px-2 py-1"
           style={{
-            fontSize: wide ? "0.8rem" : "0.7rem",
-            lineHeight: 1.3,
+            fontSize: wide ? "0.75rem" : "0.65rem",
+            lineHeight: 1.35,
             letterSpacing: "0.01em",
+            maxHeight: wide ? "4.5rem" : "3.8rem",
+            overflow: "hidden",
           }}
         >
-          <span className="font-bold uppercase tracking-wide">{panel.narration}</span>
+          <span
+            className="font-bold uppercase tracking-wide"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            } as React.CSSProperties}
+          >{panel.narration}</span>
         </div>
       )}
 
@@ -203,7 +213,7 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
 
   // Strip leading "Name: " prefix the LLM may bake into dialogue, then clamp
   const cleanText = stripSpeakerPrefix(text.trim());
-  const displayText = cleanText.length > 45 ? cleanText.slice(0, 42) + "â¦" : cleanText;
+  const displayText = cleanText.length > 90 ? cleanText.slice(0, 87) + "â¦" : cleanText;
 
   // Resolve corner coordinates from position
   const inset = wide ? 10 : 7;
@@ -276,7 +286,8 @@ function scaledFontSize(text: string, wide: boolean | undefined): number {
   if (len <= 30) return wide ? 14 : 12;
   if (len <= 45) return wide ? 12 : 10.5;
   if (len <= 60) return wide ? 11 : 9.5;
-  return wide ? 10 : 8.5;
+  if (len <= 75) return wide ? 9.5 : 8.5;
+  return wide ? 8.5 : 7.5;
 }
 
 /**
@@ -295,7 +306,8 @@ function scaledMaxWidth(text: string, wide: boolean | undefined): string {
   if (len <= 30) return wide ? "32%" : "36%";
   if (len <= 45) return wide ? "40%" : "44%";
   if (len <= 60) return wide ? "46%" : "50%";
-  return wide ? "52%" : "56%";
+  if (len <= 75) return wide ? "58%" : "62%";
+  return wide ? "68%" : "72%";
 }
 
 /**

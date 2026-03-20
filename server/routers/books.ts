@@ -1101,7 +1101,10 @@ BRANCHING RULES (MANDATORY  violations will cause story rejection):
 - Branches must NEVER merge back together. Once the reader selects A or B, the story continues on a unique, permanently separate branch path.
 - Each page node must belong to exactly ONE branch path. A pageNumber must NEVER appear as the target of nextPageA or nextPageB on more than one page.
 - Do NOT reuse page numbers across different branch paths. Every page is unique and exclusive to its branch.
-- branchPath values must reflect the lineage: "root", "A", "B", "A-A", "A-B", "B-A", "B-B", etc.`;
+- branchPath values must reflect the lineage: "root", "A", "B", "A-A", "A-B", "B-A", "B-B", etc.
+- ILLEGAL merge example (FORBIDDEN): page 3 has nextPageA=7 AND page 5 also has nextPageA=7. Page 7 appears as a target twice — this is a merge violation. NEVER let any pageNumber appear as the value of nextPageA or nextPageB on more than one page across the ENTIRE story.
+- The page immediately reached after a branch choice (nextPageA target and nextPageB target) MUST be a narrative page with isBranchPage=false. Do NOT chain branch pages — no branch target may itself be a branch page.
+- The LAST page on EVERY branch path MUST have isEnding=true and null nextPageA/nextPageB.`;
 
     // Pre-compute evenly distributed branch page numbers so the LLM cannot cluster them.
     // Reserve the first pages for setup and leave at least 2 pages at the end for endings.
@@ -1330,11 +1333,14 @@ Rules:
         page.nextPageB = null;
       }
 
-      // Enforce no-merge by keeping the first reference to each target
+      // Enforce no-merge by keeping the first reference to each target.
+      // When a target is cleared, also clear the corresponding choice text so the UI
+      // never shows a choice button with no valid destination.
       if (page.nextPageA) {
         if (usedTargets.has(page.nextPageA)) {
           repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageA target=${page.nextPageA}`);
           page.nextPageA = null;
+          page.choiceA = null; // clear orphaned choice text
         }
         else usedTargets.add(page.nextPageA);
       }
@@ -1342,6 +1348,7 @@ Rules:
         if (usedTargets.has(page.nextPageB)) {
           repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageB target=${page.nextPageB}`);
           page.nextPageB = null;
+          page.choiceB = null; // clear orphaned choice text
         }
         else usedTargets.add(page.nextPageB);
       }
@@ -1377,6 +1384,27 @@ Rules:
           page.nextPageA = null;
           page.nextPageB = null;
           page.isEnding = true;
+        }
+      }
+    }
+
+    // GUARDRAIL 3: No consecutive branch pages — a branch target must not itself be a branch page.
+    // Demote any such target page to a narrative (non-branch) page.
+    {
+      const pageByNum = new Map(storyData.pages.map(p => [p.pageNumber, p]));
+      for (const page of storyData.pages) {
+        if (!page.isBranchPage) continue;
+        for (const targetNum of [page.nextPageA, page.nextPageB]) {
+          if (!targetNum) continue;
+          const targetPage = pageByNum.get(targetNum);
+          if (targetPage && targetPage.isBranchPage) {
+            repairActions.push(`Page ${targetPage.pageNumber}: demoted from branch to narrative (was direct target of branch page ${page.pageNumber})`);
+            targetPage.isBranchPage = false;
+            targetPage.choiceA = null;
+            targetPage.choiceB = null;
+            targetPage.nextPageA = null;
+            targetPage.nextPageB = null;
+          }
         }
       }
     }
@@ -1909,7 +1937,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
                           "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover",
               "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
             ].filter(Boolean).join(" | "),
-            charPhotos.length > 0 ? charPhotos : undefined,
+            illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : (charPhotos.length > 0 ? charPhotos : undefined),
           );
           imageUrl = imgResult.url ?? null;
 
@@ -1931,7 +1959,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
                               "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
                 "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
               ].filter(Boolean).join(" | "),
-              charPhotos.length > 0 ? charPhotos : undefined,
+              illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : (charPhotos.length > 0 ? charPhotos : undefined),
             );
             imageUrl = imgResult.url ?? null;
             console.log(`[Books] Branch image generated for page ${page.pageNumber}`);
@@ -2290,13 +2318,7 @@ export const booksRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) {
-        return {
-          bestSellers: [],
-          newArrivals: [],
-          mostPopular: [],
-        };
-      }
+      if (!db) return [];
 
       const owned = await db
         .select({ bookId: userBooks.bookId })
