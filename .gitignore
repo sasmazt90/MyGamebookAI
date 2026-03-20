@@ -108,3 +108,6 @@ temp/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+.claude/
+patch-books.ps1
+patch-clean.ps1
