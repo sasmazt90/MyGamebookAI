@@ -247,6 +247,9 @@ export function useReaderAudio(category: BookCategory) {
   const [musicEnabled, setMusicEnabledState] = useState(prefs.musicEnabled);
   const [volume, setVolumeState] = useState(prefs.volume);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Ref so startAmbience can guard against double-invocation without waiting for
+  // the async setState cycle (avoids the pop caused by two concurrent starts).
+  const isStartingRef = useRef(false);
 
   // Refs for the audio graph (so we don't recreate on every render)
   const ctxRef = useRef<AudioContext | null>(null);
@@ -380,6 +383,9 @@ export function useReaderAudio(category: BookCategory) {
 
   const startAmbience = useCallback(() => {
     if (!musicEnabled || muted) return;
+    // Guard: prevent concurrent starts (double-call from effect + direct button handler)
+    if (isPlaying || isStartingRef.current) return;
+    isStartingRef.current = true;
     try {
       const ctx = getCtx();
       const cfg = getAmbienceConfig(categoryRef.current);
@@ -388,9 +394,9 @@ export function useReaderAudio(category: BookCategory) {
 
       const nodes: AudioNode[] = [];
 
-      // Master gain
+      // Master gain — start at 0 to prevent click on context resume
       const master = ctx.createGain();
-      master.gain.value = cfg.masterGain * volume;
+      master.gain.value = 0;
       masterGainRef.current = master;
 
       // Reverb
@@ -426,7 +432,7 @@ export function useReaderAudio(category: BookCategory) {
       lfoGain.gain.value = cfg.lfoDepth * 0.5;
       lfo.connect(lfoGain);
       lfoGain.connect(master.gain);
-      lfo.start();
+      lfo.start(ctx.currentTime + 0.05); // slight delay prevents gain-modulation click
       nodes.push(lfo, lfoGain);
 
       // Root drone + overtones
@@ -456,7 +462,7 @@ export function useReaderAudio(category: BookCategory) {
         // Wet (reverb) path
         prev.connect(convolver);
 
-        osc.start();
+        osc.start(ctx.currentTime + 0.05); // start after master gain is at 0
         nodes.push(osc, oscGain);
       });
 
@@ -478,8 +484,10 @@ export function useReaderAudio(category: BookCategory) {
       setIsPlaying(true);
     } catch (e) {
       // Silently ignore
+    } finally {
+      isStartingRef.current = false;
     }
-  }, [musicEnabled, muted, volume]);
+  }, [musicEnabled, muted, volume, isPlaying]);
 
   const stopAmbience = useCallback(() => {
     try {

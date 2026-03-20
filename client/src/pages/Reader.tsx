@@ -25,25 +25,24 @@ import { StoryTreeOverlay } from "@/components/StoryTreeOverlay";
 // CSS keyframes injected once for the 3D page-turn animation
 // ---------------------------------------------------------------------------
 const FLIP_STYLES = `
-/* Fairy Tale: vertical bottom-to-top page reveal */
+/* Fairy Tale: vertical top-edge-fixed rotateX (bottom swings up toward viewer) */
 @keyframes flipForwardFairyTale {
-  0%   { transform: perspective(1200px) rotateX(0deg);    opacity: 1; transform-origin: top center; }
-    100% { transform: perspective(1200px) rotateX(90deg);    opacity: 0; transform-origin: top center; }
-    }
-    @keyframes flipBackwardFairyTale {
-      0%   { transform: perspective(1200px) rotateX(-90deg);   opacity: 0; transform-origin: top center; }
-        100% { transform: perspective(1200px) rotateX(0deg);     opacity: 1; transform-origin: top center; }
-        }
-        
-        }
-/* Non-Fairy-Tale: Realistic page flip (right page folds onto left, center fixed) */
+  0%   { transform: perspective(1200px) rotateX(0deg);   opacity: 1; transform-origin: top center; }
+  100% { transform: perspective(1200px) rotateX(90deg);  opacity: 0; transform-origin: top center; }
+}
+@keyframes flipBackwardFairyTale {
+  0%   { transform: perspective(1200px) rotateX(-90deg); opacity: 0; transform-origin: top center; }
+  100% { transform: perspective(1200px) rotateX(0deg);   opacity: 1; transform-origin: top center; }
+}
+/* Non-fairy-tale: right page rotates around its left edge (spine).
+   Applied to the right-page div only — left page stays stationary. */
 @keyframes flipForwardRealistic {
-  0%   { transform: perspective(1200px) rotateY(0deg) translateZ(0); opacity: 1; }
-  100% { transform: perspective(1200px) rotateY(-180deg) translateZ(0); opacity: 1; }
+  0%   { transform: perspective(1200px) rotateY(0deg);    opacity: 1; transform-origin: left center; }
+  100% { transform: perspective(1200px) rotateY(-180deg); opacity: 1; transform-origin: left center; }
 }
 @keyframes flipBackwardRealistic {
-  0%   { transform: perspective(1200px) rotateY(0deg) translateZ(0); opacity: 1; }
-  100% { transform: perspective(1200px) rotateY(180deg) translateZ(0); opacity: 1; }
+  0%   { transform: perspective(1200px) rotateY(0deg);   opacity: 1; transform-origin: left center; }
+  100% { transform: perspective(1200px) rotateY(180deg); opacity: 1; transform-origin: left center; }
 }
 @keyframes musicBar1 { 0%,100%{height:40%} 50%{height:90%} }
 @keyframes musicBar2 { 0%,100%{height:70%} 50%{height:30%} }
@@ -333,6 +332,7 @@ export default function Reader() {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [choiceHistory, setChoiceHistory] = useState<number[]>([]);
   const [showCover, setShowCover] = useState(true);
+  const [showBackCover, setShowBackCover] = useState(false);
   const [madeChoice, setMadeChoice] = useState(false);
   const [cameFromBranch, setCameFromBranch] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
@@ -380,11 +380,12 @@ export default function Reader() {
   } = useReaderAudio(bookCategory);
 
   useEffect(() => {
-    // Only start ambience from page 3 onwards (skip pages 0, 1, 2)
-    if (!showCover && !muted && musicEnabled && currentPageIndex >= 3) startAmbience();
-    else if (showCover || muted || !musicEnabled) stopAmbience();
-    return () => { stopAmbience(); };
-  }, [showCover, currentPageIndex, muted, musicEnabled, startAmbience, stopAmbience]);
+    // Only start ambience from page 3 onwards (skip pages 0, 1, 2).
+    // startAmbience has an isPlaying guard so page-turn re-runs are no-ops.
+    // No cleanup return here — stopping on every dep change would kill music mid-page.
+    if (!showCover && !showBackCover && !muted && musicEnabled && currentPageIndex >= 3) startAmbience();
+    else if (showCover || showBackCover || muted || !musicEnabled) stopAmbience();
+  }, [showCover, showBackCover, currentPageIndex, muted, musicEnabled, startAmbience, stopAmbience]);
 
   // ---------------------------------------------------------------------------
   // Navigation helpers
@@ -430,10 +431,16 @@ export default function Reader() {
     });
   }, [currentPageIndex, bookId, playPageTurn, saveProgress, isEndingPage, findPageIndexById, pages, step]);
 
+  const handleEndReached = useCallback(() => {
+    setShowBackCover(true);
+    stopAmbience();
+  }, [stopAmbience]);
+
   const handleRestart = useCallback(() => {
     setCurrentPageIndex(0);
     setChoiceHistory([]);
     setShowCover(true);
+    setShowBackCover(false);
     setMadeChoice(false);
     setCameFromBranch(false);
     stopAmbience();
@@ -485,8 +492,9 @@ export default function Reader() {
     currentPageIndex,
     onGoTo: handleGoTo,
     hasChoices,
-    showCover,
+    showCover: showCover || showBackCover,
     onReturnToCover: handleReturnToCover,
+    onEnd: handleEndReached,
     step,
   });
 
@@ -496,7 +504,7 @@ export default function Reader() {
     onFlipForward: flipForward,
     onFlipBackward: flipBackward,
     isAnimating,
-    showCover,
+    showCover: showCover || showBackCover,
     hasChoices,
   });
 
@@ -594,7 +602,7 @@ export default function Reader() {
         <div className="text-center">
           <h1 className="text-sm font-semibold text-white line-clamp-1">{bookTitle}</h1>
           <p className="text-xs text-gray-400">
-            {showCover ? "Cover" : `Page ${currentPageIndex + 1} of ${pages.length}`}
+            {showCover ? "Cover" : showBackCover ? "Back Cover" : `Page ${currentPageIndex + 1} of ${pages.length}`}
           </p>
         </div>
 
@@ -644,7 +652,7 @@ export default function Reader() {
       {/* Two-page spread ÃÂ¢ÃÂÃÂ drag/swipe container */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative">
         {/* Left edge zone (click to go back) */}
-        {!showCover && !cameFromBranch && (
+        {!showCover && !showBackCover && !cameFromBranch && (
           <button
             onClick={flipBackward}
             disabled={isAnimating}
@@ -658,7 +666,7 @@ export default function Reader() {
         )}
 
         {/* Right edge zone (click to go forward) */}
-        {!showCover && !hasChoices && (
+        {!showCover && !showBackCover && !hasChoices && (
           <button
             onClick={flipForward}
             disabled={isAnimating}
@@ -678,11 +686,11 @@ export default function Reader() {
           className={cn(
             "w-full relative",
             isComic && !showCover && !effectiveSpreadMode ? "max-w-xl" : "max-w-5xl",
-            flipAnimClass,
+            isFairyTale ? flipAnimClass : "",
           )}
           style={{
             ...curlStyle,
-            ...(isDraggingCorner ? {} : { transformOrigin: isFairyTale ? "top center" : "left center" }),
+            ...(isDraggingCorner ? {} : { transformOrigin: isFairyTale ? "top center" : undefined }),
             perspective: "1200px",
             cursor: cornerCursorStyle,
           }}
@@ -690,7 +698,49 @@ export default function Reader() {
           {/* Corner drag indicator */}
           <div style={cornerIndicatorStyle} />
           {/* Content */}
-          {showCover ? (
+          {showBackCover ? (
+            /* ── Back Cover ──────────────────────────────────────────────────────── */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
+              {/* Left: decorative back page */}
+              <div className="bg-[#F5F0E8] text-[#1A1033] p-10 min-h-[500px] flex flex-col justify-center items-center text-center">
+                <div className="w-full max-w-xs">
+                  <div className="w-16 h-1 bg-[#F59E0B] mx-auto mb-8" />
+                  <p className="text-4xl font-serif italic text-[#2D1B69] mb-6">{t("reader.theEnd")}</p>
+                  <p className="text-sm text-gray-600 mb-10">{bookTitle}</p>
+                  <div className="w-16 h-1 bg-[#7C3AED] mx-auto mb-10" />
+                  <div className="flex flex-col gap-3">
+                    <Button onClick={handleRestart} variant="outline" className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm">
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      {t("reader.restart")}
+                    </Button>
+                    <Link href="/library">
+                      <Button className="w-full bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
+                        <Home className="w-4 h-4 mr-2" />
+                        {t("reader.backToLibrary")}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+              {/* Right: back cover image (same as front, slightly dimmed) */}
+              <div className="relative bg-[#0D0B1A] min-h-[500px] overflow-hidden">
+                {coverUrl ? (
+                  <img
+                    src={coverUrl}
+                    alt={bookTitle || "Book Cover"}
+                    className="w-full h-full object-cover absolute inset-0 opacity-40"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center min-h-[500px]">
+                    <BookOpen className="w-20 h-20 text-purple-700 opacity-30" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-end justify-center pb-10">
+                  <p className="text-xs uppercase tracking-widest text-white/60">{genreLabel}</p>
+                </div>
+              </div>
+            </div>
+          ) : showCover ? (
             /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Cover Spread ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
@@ -808,7 +858,7 @@ export default function Reader() {
                             <button
                               key={idx}
                               onClick={() => handleChoice(idx, choice.nextId)}
-                              className="w-full text-left px-3 py-2 bg-black text-white rounded text-xs hover:bg-gray-800 transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
                               style={{ fontFamily: "'Bangers', 'Impact', sans-serif", letterSpacing: "0.05em" }}
                             >
                               <span className="font-bold text-yellow-400 flex-shrink-0">{String.fromCharCode(65 + idx)}.</span>
@@ -866,7 +916,7 @@ export default function Reader() {
                             <button
                               key={idx}
                               onClick={() => handleChoice(idx, choice.nextId)}
-                              className="w-full text-left px-3 py-2 bg-black text-white rounded text-xs hover:bg-gray-800 transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
                               style={{ fontFamily: "'Bangers', 'Impact', sans-serif", letterSpacing: "0.05em" }}
                             >
                               <span className="font-bold text-yellow-400 flex-shrink-0">{String.fromCharCode(65 + idx)}.</span>
@@ -1011,7 +1061,10 @@ export default function Reader() {
                   </div>
 
                   {/* Right page */}
-                  <div className="bg-[#EDE8DC] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative">
+                  <div
+                    className={cn("bg-[#EDE8DC] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative", flipAnimClass)}
+                    style={flipAnimClass ? { transformOrigin: "left center" } : undefined}
+                  >
                     <div className="absolute bottom-4 right-6 text-xs text-gray-500">
                       {currentPageIndex + 2}
                     </div>

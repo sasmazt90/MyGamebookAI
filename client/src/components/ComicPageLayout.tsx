@@ -118,7 +118,7 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
         src={panel.imageUrl}
         alt="Comic panel"
         className={cn(
-          "w-full object-contain block bg-black",
+          "w-full object-contain block bg-white",
           wide ? "h-56 md:h-80" : "h-44 md:h-64",
         )}
         style={{ imageRendering: "auto" }}
@@ -130,7 +130,14 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
           text={panel.dialogue!}
           speaker={panel.speaker ?? undefined}
           type={panel.bubbleType ?? "speech"}
-          position={panel.position ?? "top-right"}
+          position={(() => {
+            const raw = panel.position ?? "top-right";
+            if (panel.narration && (raw === "bottom-left" || raw === "bottom-right")) {
+              return raw.replace("bottom-", "top-") as typeof raw;
+            }
+            return raw;
+          })()}
+          hasCaption={!!panel.narration}
           wide={wide}
         />
       )}
@@ -164,12 +171,24 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
 
 type BubblePosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
+/**
+ * Removes a leading "Name: " speaker prefix the LLM sometimes injects into
+ * dialogue strings (e.g. "Alex: Let's go!" → "Let's go!").
+ * Matches up to 30 word-chars (incl. Turkish letters, spaces, hyphens) + colon.
+ */
+const SPEAKER_PREFIX_RE = /^[\p{L}\p{N}_ -]{1,30}:\s*/u;
+function stripSpeakerPrefix(s: string): string {
+  return s.replace(SPEAKER_PREFIX_RE, "");
+}
+
 interface SpeechBubbleProps {
   text: string;
   speaker?: string;
   type?: "speech" | "thought" | "shout" | null;
   position?: BubblePosition;
   wide?: boolean;
+  /** True when a narration caption strip is rendered at the bottom of the panel */
+  hasCaption?: boolean;
 }
 
 /**
@@ -179,20 +198,24 @@ interface SpeechBubbleProps {
  * - "thought" â cloud-like bubble with small circles as tail
  * - "shout"   â spiky starburst / jagged outline
  */
-function SpeechBubble({ text, speaker, type = "speech", position = "top-right", wide }: SpeechBubbleProps) {
+function SpeechBubble({ text, speaker, type = "speech", position = "top-right", wide, hasCaption }: SpeechBubbleProps) {
   const bubbleType = type ?? "speech";
 
-  // Clamp text to avoid overflow
-  const displayText = text.length > 60 ? text.slice(0, 57) + "â¦" : text;
+  // Strip leading "Name: " prefix the LLM may bake into dialogue, then clamp
+  const cleanText = stripSpeakerPrefix(text.trim());
+  const displayText = cleanText.length > 45 ? cleanText.slice(0, 42) + "â¦" : cleanText;
 
   // Resolve corner coordinates from position
   const inset = wide ? 10 : 7;
   const posStyle: React.CSSProperties = {};
   const pos = position ?? "top-right";
-  if (pos === "top-left")    { posStyle.top = inset;    posStyle.left  = inset; }
-  if (pos === "top-right")   { posStyle.top = inset;    posStyle.right = inset; }
-  if (pos === "bottom-left") { posStyle.bottom = wide ? 36 : 32; posStyle.left  = inset; }
-  if (pos === "bottom-right"){ posStyle.bottom = wide ? 36 : 32; posStyle.right = inset; }
+  // Extra clearance when a narration caption strip sits at the bottom of the panel
+  // (caption ~28-36px tall + 8px gap = safe bottom offset)
+  const captionClearance = hasCaption ? (wide ? 52 : 44) : (wide ? 36 : 32);
+  if (pos === "top-left")    { posStyle.top = inset;              posStyle.left  = inset; }
+  if (pos === "top-right")   { posStyle.top = inset;              posStyle.right = inset; }
+  if (pos === "bottom-left") { posStyle.bottom = captionClearance; posStyle.left  = inset; }
+  if (pos === "bottom-right"){ posStyle.bottom = captionClearance; posStyle.right = inset; }
 
   // Shared container positioning â max-width scales with text length
   const containerStyle: React.CSSProperties = {
@@ -268,11 +291,11 @@ function scaledFontSize(text: string, wide: boolean | undefined): number {
  */
 function scaledMaxWidth(text: string, wide: boolean | undefined): string {
   const len = text.length;
-  if (len <= 15) return wide ? "34%" : "38%";
-  if (len <= 30) return wide ? "42%" : "46%";
-  if (len <= 45) return wide ? "50%" : "54%";
-  if (len <= 60) return wide ? "56%" : "60%";
-  return wide ? "64%" : "68%";
+  if (len <= 15) return wide ? "24%" : "28%";
+  if (len <= 30) return wide ? "32%" : "36%";
+  if (len <= 45) return wide ? "40%" : "44%";
+  if (len <= 60) return wide ? "46%" : "50%";
+  return wide ? "52%" : "56%";
 }
 
 /**
@@ -419,21 +442,6 @@ function RegularSpeechBubble({ text, speaker, wide, position = "top-right" }: Bu
         wordBreak: "break-word",
       }}
     >
-      {speaker && (
-        <span
-          style={{
-            display: "block",
-            fontSize: fontSize - 1,
-            color: "#555",
-            fontWeight: "bold",
-            marginBottom: 2,
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}
-        >
-          {speaker}:
-        </span>
-      )}
       {text}
       {/* Outer border triangle */}
       <span style={tailProps(pos, true)} />
@@ -464,20 +472,6 @@ function ThoughtBubble({ text, speaker, wide, position = "top-right" }: BubbleVa
           fontStyle: "italic",
         }}
       >
-        {speaker && (
-          <span
-            style={{
-              display: "block",
-              fontSize: fontSize - 1,
-              color: "#555",
-              fontWeight: "bold",
-              marginBottom: 2,
-              textTransform: "uppercase",
-            }}
-          >
-            {speaker}:
-          </span>
-        )}
         {text}
       </div>
       {/* Thought circles trailing toward the character */}
@@ -530,19 +524,6 @@ function ShoutBubble({ text, speaker, wide }: BubbleVariantProps) {
         justifyContent: "center",
       }}
     >
-      {speaker && (
-        <span
-          style={{
-            display: "block",
-            fontSize: fontSize - 1,
-            color: "#555",
-            fontWeight: "bold",
-            textTransform: "uppercase",
-          }}
-        >
-          {speaker}:
-        </span>
-      )}
       {text}
     </div>
   );

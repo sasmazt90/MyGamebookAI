@@ -992,13 +992,13 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
               a.distinctive !== "none" ? a.distinctive : "",
             ].filter(Boolean).join(", ")
           : char.name;
-        const genreStyleLabel = category === "comic" ? "classic American comic book"
-        : category === "fairy_tale" ? "children's illustrated fairy tale"
-        : category === "horror_thriller" ? "dark cinematic illustrated"
-        : category === "romance" ? "warm painterly illustrated"
-        : category === "fantasy_scifi" ? "epic cinematic illustrated"
-        : category === "crime_mystery" ? "dark graphic-novel noir"
-        : "cinematic illustrated";
+        // Three-tier style mapping: fairy_tale → cartoon/storybook,
+        // comic → American comic, all others → cinematic/realistic.
+        const genreStyleLabel = category === "comic"
+          ? "classic American comic book illustration"
+          : category === "fairy_tale"
+          ? "classic children's storybook cartoon illustration"
+          : "cinematic realistic illustrated";
       const portraitPrompt = [
           IDENTITY_LOCK,
           STYLE_BRIDGE_RULE,
@@ -1037,6 +1037,11 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
     ) => {
       const explicitRefs = (refImages ?? []).filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
+      // Fallback to illustrated portraits only when the caller passes no explicit refs.
+      // Raw uploaded photos are the canonical identity source; illustrated portraits
+      // (Step 1b) are kept for cover/character-card display but must NOT replace raw
+      // photos as the page-generation reference — doing so would create a second
+      // derivation hop (photo → portrait → page) that degrades face identity.
       const fallbackPortraitRefs = Array.from(illustratedPortraitsMap.values());
       const mergedRefs = (explicitRefs.length > 0 ? explicitRefs : fallbackPortraitRefs)
         .filter((img): img is { url?: string; mimeType?: string } => !!img?.url)
@@ -1098,6 +1103,19 @@ BRANCHING RULES (MANDATORY â violations will cause story rejection):
 - Do NOT reuse page numbers across different branch paths. Every page is unique and exclusive to its branch.
 - branchPath values must reflect the lineage: "root", "A", "B", "A-A", "A-B", "B-A", "B-B", etc.`;
 
+    // Pre-compute evenly distributed branch page numbers so the LLM cannot cluster them.
+    // Reserve the first pages for setup and leave at least 2 pages at the end for endings.
+    const branchStartPage = category === "fairy_tale" ? 3 : 4;
+    const branchEndPage   = Math.max(branchStartPage + branchCount, pageCount - 2);
+    const branchSpacing   = branchCount > 1
+      ? Math.floor((branchEndPage - branchStartPage) / (branchCount - 1))
+      : 0;
+    const precomputedBranchPages = Array.from({ length: branchCount }, (_, i) =>
+      branchCount === 1
+        ? Math.round((branchStartPage + branchEndPage) / 2)   // single branch: place in middle
+        : branchStartPage + i * branchSpacing
+    );
+
     const structurePrompt = `Generate a ${category.replace(/_/g, " ")} interactive gamebook titled "${title}" in ${language} language.
 Description: ${description}
 
@@ -1126,7 +1144,7 @@ Rules:
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
 - ALL paths must reach an isEnding=true page â no dead ends
 - STORY BEGINNING: Page 1 MUST be a proper story opening â introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
-- BRANCH TIMING: The first A/B branch point must NOT appear on page 2. Let the story develop for at least 3-4 pages. For fairy tales first branch on page 3, for others page 4 or later.
+- MANDATORY BRANCH POSITIONS (CRITICAL): Place your ${branchCount} A/B branch point(s) on EXACTLY these page numbers: [${precomputedBranchPages.join(", ")}]. Do NOT place branch points on any other pages. Do NOT cluster branch points on consecutive pages. Each branch point must be separated by at least ${Math.max(2, branchSpacing - 1)} pages of narrative.
 - sfxTags: 1-3 English keywords matching the scene sound. Be specific â use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array â every page MUST have at least one relevant sound effect tag.
 - For fairy tales: 2-3 sentences per page
 - For comics: 3-4 panel descriptions per page
@@ -1231,7 +1249,6 @@ Rules:
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
-    const criticalValidationErrors: string[] = [];
     const repairActions: string[] = [];
 
     // Build a map of pageId â list of source pages that reference it as a target.
@@ -1265,14 +1282,16 @@ Rules:
       }
     }
 
-    // GUARDRAIL 1: Detect any page node referenced by more than one branch source (merge violation)
+    // GUARDRAIL 1: Detect any page node referenced by more than one branch source (merge violation).
+    // These are non-critical: the auto-repair loop below resolves them by clearing the duplicate
+    // reference and downgrading the now-targetless page to an ending page.
     const mergeViolations: string[] = [];
     for (const [targetId, sourceIds] of Array.from(targetRefCount.entries())) {
       if (sourceIds.length > 1) {
-        const violation = `MERGE VIOLATION: Page ${targetId} is referenced as a branch target by multiple pages: [${sourceIds.join(", ")}]. Branches must never merge.`;
+        const violation = `MERGE VIOLATION: Page ${targetId} is referenced as a branch target by multiple pages: [${sourceIds.join(", ")}]. Auto-repairing.`;
         mergeViolations.push(violation);
         validationErrors.push(violation);
-        criticalValidationErrors.push(violation);
+        // NOTE: intentionally NOT pushed to criticalValidationErrors — let auto-repair handle it.
       }
     }
     // Check at least one ending exists
@@ -1290,23 +1309,11 @@ Rules:
       // Non-fatal violations are logged and can still be auto-repaired below.
     }
 
-    if (criticalValidationErrors.length > 0) {
-      console.error(`[Books][Post-structure validation] detected violations`, {
+    if (mergeViolations.length > 0) {
+      console.warn(`[Books][Post-structure validation] merge violations detected — routing to auto-repair`, {
         bookId,
-        violations: criticalValidationErrors,
+        violations: mergeViolations,
       });
-      console.info(`[Books][Post-structure validation] applied repair actions`, {
-        bookId,
-        actions: [],
-        note: "fail-fast: no auto-repair executed for critical violations",
-      });
-      console.info(`[Books][Post-structure validation] final structure status`, {
-        bookId,
-        status: "failed",
-      });
-      throw new Error(
-        `Structure validation failed: merge violations detected (${criticalValidationErrors.join(" | ")})`
-      );
     }
 
     // Auto-repair common non-critical structure issues instead of hard-failing generation.
@@ -1700,7 +1707,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             const dialogueResp = await invokeLLM({
               messages: [
                 { role: "system" as const, content: "You are a comic book writer. Always respond with valid JSON only. UNICODE RULE: NEVER strip or replace special characters. Preserve all Unicode exactly as written (Turkish, German, French, Spanish, Cyrillic, Chinese, Japanese, Arabic)." },
-                { role: "user" as const, content: `Split this comic page content into exactly 3 panels. Characters: ${charNames || "none"}.\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description","dialogue":"spoken words or null (max 8 words)","speaker":"character name or null"}]}` },
+                { role: "user" as const, content: `Split this comic page content into exactly 3 panels. Characters: ${charNames || "none"}.\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description","dialogue":"spoken words only, no character name prefix, max 6 words, or null","speaker":"character name or null"}]}\n\nCRITICAL: dialogue must be raw spoken words only. NEVER prefix with character name (e.g. never write "Alex: Let's go" — write only "Let's go").` },
               ],
               response_format: { type: "json_object" },
             });
@@ -1953,9 +1960,10 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
     // Enforce required illustration counts to avoid shipping "ready" books without images.
     if (category === "fairy_tale") {
       const generatedFairy = storyData.pages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
-      if (generatedFairy < pageCount) {
+      const minRequired = Math.floor(pageCount * 0.75); // allow up to 25% image failures
+      if (generatedFairy < minRequired) {
         const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Fairy tale illustration shortfall: expected ${pageCount}, got ${generatedFairy}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        throw new Error(`Fairy tale illustration shortfall: expected ${pageCount}, got ${generatedFairy} (min ${minRequired})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 
@@ -1972,9 +1980,10 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 
     if (isOtherGenre && branchImageCount > 0) {
       const generatedBranch = Array.from(branchPageNumbers).filter((n) => !!imageResultByPage.get(n)?.imageUrl).length;
-      if (generatedBranch < branchImageCount) {
+      const minBranch = Math.floor(branchImageCount * 0.75); // allow up to 25% image failures
+      if (generatedBranch < minBranch) {
         const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        throw new Error(`Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch} (min ${minBranch})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 
