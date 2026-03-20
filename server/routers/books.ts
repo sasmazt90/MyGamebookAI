@@ -41,7 +41,6 @@ import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/
 function repairJSON(raw: string): string {
   let s = raw.trim();
 
-  // Remove markdown code fences if present
   if (s.startsWith("```")) {
     s = s.replace(/^\`\`\`(?:json)?\n?/, "").replace(/\n?\`\`\`$/, "").trim();
   }
