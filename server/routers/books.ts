@@ -1294,14 +1294,25 @@ Rules:
       }
 
       // If no valid targets remain, downgrade to non-branch ending page
+      // only when this actually mutates the page.
       if (!hasBranchTargets) {
-        repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
-        page.isBranchPage = false;
-        page.choiceA = null;
-        page.choiceB = null;
-        page.nextPageA = null;
-        page.nextPageB = null;
-        page.isEnding = true;
+        const needsDowngradeMutation =
+          page.isBranchPage ||
+          page.choiceA !== null ||
+          page.choiceB !== null ||
+          page.nextPageA !== null ||
+          page.nextPageB !== null ||
+          !page.isEnding;
+
+        if (needsDowngradeMutation) {
+          repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
+          page.isBranchPage = false;
+          page.choiceA = null;
+          page.choiceB = null;
+          page.nextPageA = null;
+          page.nextPageB = null;
+          page.isEnding = true;
+        }
       }
     }
 
