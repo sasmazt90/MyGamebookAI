@@ -38,12 +38,6 @@ import { addCoverOverlay } from "../coverOverlay";
 import sharp from "sharp";
 import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
 
-
-/**
- * Attempts to repair malformed JSON from LLM output.
- * Handles: unterminated strings, trailing commas, truncated output,
- * unescaped control characters, and markdown code fences.
- */
 function repairJSON(raw: string): string {
   let s = raw.trim();
 
@@ -52,13 +46,11 @@ function repairJSON(raw: string): string {
     s = s.replace(/^\`\`\`(?:json)?\n?/, "").replace(/\n?\`\`\`$/, "").trim();
   }
 
-  // Try parsing as-is first before mutating valid JSON
   try {
     JSON.parse(s);
     return s;
   } catch (_) {}
 
-  // Remove trailing commas before } or ] ONLY when outside strings
   const stripTrailingCommasOutsideStrings = (input: string): string => {
     let result = "";
     let inStr = false;
@@ -102,13 +94,11 @@ function repairJSON(raw: string): string {
 
   s = stripTrailingCommasOutsideStrings(s);
 
-  // Try parsing again after safe trailing-comma cleanup
   try {
     JSON.parse(s);
     return s;
   } catch (_) {}
 
-  // Fix unterminated strings
   let inStr = false;
   for (let i = 0; i < s.length; i++) {
     if (s[i] === "\\" && inStr) {
@@ -123,7 +113,6 @@ function repairJSON(raw: string): string {
     s = s + '"';
   }
 
-  // Close any unclosed brackets/braces
   const stack: string[] = [];
   inStr = false;
   for (let i = 0; i < s.length; i++) {
@@ -141,13 +130,10 @@ function repairJSON(raw: string): string {
     else if (s[i] === "}" || s[i] === "]") stack.pop();
   }
 
-  // Remove trailing commas at end
   s = s.replace(/,\s*$/m, "");
 
-  // Close structures
   while (stack.length > 0) s += stack.pop();
 
-  // Final safe cleanup (again outside strings)
   s = stripTrailingCommasOutsideStrings(s);
 
   return s;
@@ -200,7 +186,7 @@ export function normaliseCharacterPhotoUrl(rawUrl: string): string {
     const fromQuery = url.searchParams.get("id") ?? undefined;
     const fileId = fromPath || fromQuery;
     if (fileId) {
-      // Use Googleusercontent endpoint because preview links are HTML pages.
+
       return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
     }
   }
@@ -255,15 +241,9 @@ export async function generateBookContent(bookId: number, bookData: {
     const isComic = category === "comic";
     const isOtherGenre = ["crime_mystery", "fantasy_scifi", "romance", "horror_thriller"].includes(category);
 
-    // âââ Spec-compliant page and image counts ââââââââââââââââââââââââââââââââ
-    // fairy_tale:        10 pages, 10 page illustrations + 1 cover = 11 total images
-    // comic thin:        10 pages Ã 3 panels = 30 panel images + 1 cover = 31 total
-    // comic normal:      18 pages Ã 3 panels = 54 panel images + 1 cover = 55 total
-    // other normal:      80 pages, 8 branch images + 1 cover = 9 total
-    // other thick:       120 pages, 12 branch images + 1 cover = 13 total
-    let pageCount = 10;   // fairy_tale default
-    let branchCount = 3;  // number of A/B branch points
-    // Number of branch images to generate for non-comic, non-fairy-tale genres
+    let pageCount = 10;
+    let branchCount = 3;
+
     let branchImageCount = 0;
     if (category === "comic") {
       pageCount = length === "thin" ? 10 : 18;
@@ -276,7 +256,6 @@ export async function generateBookContent(bookId: number, bookData: {
 
     const charNames = characters.map(c => c.name).join(", ");
 
-    // Character photos for image consistency â passed as originalImages to every generateImage call
     const charPhotos = characters
       .filter(c => c.photoUrl)
       .map(c => ({ url: c.photoUrl!, mimeType: "image/jpeg" as const }));
@@ -286,12 +265,6 @@ export async function generateBookContent(bookId: number, bookData: {
         .map(c => [c.name, { url: c.photoUrl!, mimeType: "image/jpeg" as const }])
     );
 
-    // âââ Global Style Lock ââââââââââââââââââââââââââââââââââââââââââââââââââââ
-    // Each genre gets a rich, multi-axis style descriptor assembled ONCE and
-    // injected verbatim into every image prompt (cover, per-page, comic panels).
-    // Axes: art medium Â· lighting direction Â· colour temperature Â· palette Â·
-    //       brush/line style Â· framing rule Â· negative constraints.
-    // This is the primary mechanism for visual consistency across all illustrations.
     const STYLE_PRESETS: Record<string, string> = {
       fairy_tale: [
         "classic children's storybook illustration",
@@ -344,36 +317,17 @@ export async function generateBookContent(bookId: number, bookData: {
     };
     const stylePreset = STYLE_PRESETS[category] || "cinematic digital illustration, consistent character design, no text, no letters";
 
-    // âââ Step 1: Generate rich character cards ââââââââââââââââââââââââââââââââ
-    // Each character gets a detailed visual + personality anchor used in every
-    // subsequent LLM call to maintain consistency.
     await db.update(books).set({ generationStep: "Building character profiles…" }).where(eq(books.id, bookId));
     type CharacterCard = {
       name: string;
-      appearance: string;  // physical description for image prompts
-      voice: string;       // speech style / personality for narrative
-      role: string;        // protagonist / antagonist / supporting
+      appearance: string;  
+      voice: string;       
+      role: string;    
       photoUrl?: string;
     };
 
     let characterCards: CharacterCard[] = [];
 
-    // âââ Step 1a: Photo analysis pass ââââââââââââââââââââââââââââââââââââââââ
-    // For every character that has an uploaded photo, use the multimodal LLM to
-    // extract concrete visual descriptors across ALL 8 physical identity axes:
-    //   1. skin_tone      â complexion, undertone, texture
-    //   2. face_shape     â overall shape, jaw, chin, cheekbones
-    //   3. hair_colour    â primary + secondary colour, highlights
-    //   4. hair_style     â length, texture, cut style
-    //   5. eye_colour     â iris colour + any ring/fleck detail
-    //   6. eye_shape      â shape, size, lid type, lash density
-    //   7. nose_shape     â bridge, tip, width, profile
-    //   8. eyebrows       â thickness, arch, colour, spacing
-    //   9. body_shape     â height estimate, build, posture
-    //  10. facial_hair    â present/absent, style, colour
-    //  11. distinctive    â scars, freckles, moles, glasses, tattoos
-    // The structured JSON output is used both to build the character card
-    // appearance field and to populate the per-axis PHYSICAL_IDENTITY_LOCK.
     type PhotoAnalysis = {
       skin_tone: string;
       face_shape: string;
@@ -386,10 +340,10 @@ export async function generateBookContent(bookId: number, bookData: {
       body_shape: string;
       facial_hair: string;
       distinctive: string;
-      prose_summary: string;  // 2-3 sentence flowing description for the card
+      prose_summary: string; 
     };
     const photoAnalyses: Record<string, PhotoAnalysis> = {};
-    const photoDescriptions: Record<string, string> = {}; // kept for backward compat
+    const photoDescriptions: Record<string, string> = {}; 
     for (const char of characters) {
       if (!char.photoUrl) continue;
       try {
@@ -445,11 +399,11 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
           try {
             const parsed = JSON.parse(repairJSON(raw)) as PhotoAnalysis;
             photoAnalyses[char.name] = parsed;
-            // prose_summary is the backward-compat description used in card generation
+
             photoDescriptions[char.name] = parsed.prose_summary || raw.trim();
             console.log(`[Books] Photo analysis for "${char.name}": ${photoDescriptions[char.name].substring(0, 120)}â¦`);
           } catch {
-            // JSON parse failed â fall back to raw text
+
             photoDescriptions[char.name] = raw.trim();
             console.warn(`[Books] Photo analysis JSON parse failed for "${char.name}", using raw text.`);
           }
@@ -461,9 +415,6 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
 
     if (characters.length > 0) {
       try {
-        // Build a rich per-character photo hint block using the structured analysis.
-        // For each character with a photo, we inject ALL 11 axes so the card LLM
-        // can produce a structured, axis-complete appearance sentence.
         const buildPhotoHintBlock = () => {
           const hints = characters
             .filter(c => photoAnalyses[c.name] || photoDescriptions[c.name])
@@ -535,9 +486,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         if (Array.isArray(parsed.characters)) {
           characterCards = parsed.characters.map((c: CharacterCard, i: number) => ({
             ...c,
-            // For characters with photo analyses, prepend the structured prose_summary
-            // as the very first sentence so the most precise visual anchor leads.
-            // The card LLM's axis-structured sentences follow immediately after.
+
             appearance: photoAnalyses[c.name]?.prose_summary
               ? `${photoAnalyses[c.name].prose_summary} ${c.appearance}`
               : photoDescriptions[c.name]
@@ -562,28 +511,17 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       }
     }
 
-    // Build character card block for injection into every LLM call
     const characterCardBlock = characterCards.length > 0
       ? `\n\nCHARACTER CARDS (maintain these descriptions exactly throughout the story):\n${characterCards.map(c =>
           `- ${c.name} (${c.role}): ${c.appearance} Voice/personality: ${c.voice}`
         ).join("\n")}`
       : "";
 
-    // âââ Character Anchor Block for image prompts âââââââââââââââââââââââââââââ
-    // Uses the FULL appearance description (not just the first sentence) so the
-    // image model receives every visual detail: hair, eyes, build, clothing,
-    // distinguishing features. Assembled ONCE and injected into every image prompt.
-    // Build a photo-reference note for the image prompt â lists which characters
-    // have uploaded reference photos so the image model knows to use them as
-    // face/identity anchors, not just style references.
     const photoRefNote = characterCards
       .filter(c => c.photoUrl)
       .map(c => c.name)
       .join(", ");
-    // Build a STRUCTURED_IDENTITY_BLOCK from the raw PhotoAnalysis JSON for each character
-    // that has an uploaded photo. This block is injected verbatim into every image prompt
-    // so the image model receives the most precise possible face/body description.
-    // Each axis is listed on its own line so the model cannot miss any trait.
+
     const buildStructuredIdentityBlock = (): string => {
       const blocks = characterCards
         .filter(c => c.photoUrl && photoAnalyses[c.name])
@@ -623,58 +561,25 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
           ? `CHARACTERS (use reference photos for consistent appearance): ${charNames}`
           : "");
 
-    // Fix 1: charVisualAnchor previously truncated appearance to the first sentence only
-    // via .split(".")[0] â silently dropping hair colour, eye colour, and clothing from
-    // comic panel prompts. Now uses the FULL appearance string, same as charAnchorBlock.
     const charVisualAnchor = characterCards.length > 0
       ? `CHARACTERS (exact appearance, every panel): ${characterCards.map(c => `${c.name} (${c.role}): ${c.appearance}`).join(" | ")}. Maintain exact character appearance in every panel.`
       : (characters.length > 0 ? `Characters: ${charNames}. Maintain exact character appearance.` : "");
 
-    // Fix 3 + Regex Expansion: Build a CHARACTER_COLOUR_LOCK by extracting explicit hair
-    // and eye colour keywords from each character's appearance field. The regex vocabulary
-    // is intentionally broad so that LLM-generated appearance strings (which often use
-    // evocative food/nature metaphors like "espresso", "honey", "ocean-blue") are captured
-    // reliably. Matched phrases are repeated verbatim in every image prompt so the model
-    // has a concrete colour anchor that survives style-preset competition.
-    //
-    // Hair colour adjective vocabulary (prefix group before "hair"):
-    //   Basic:       black, brown, blonde/blond, brunette, red, orange, yellow, white, grey/gray
-    //   Modifiers:   dark, light, medium, deep, pale, warm, cool, rich, bright, vivid
-    //   Shades:      jet, ebony, charcoal, raven, sable (dark blacks)
-    //                espresso, coffee, chocolate, mocha, mahogany, walnut, chestnut,
-    //                toffee, caramel, cinnamon, hazel, warm-brown, ash-brown (browns)
-    //                golden, honey, amber, caramel, tawny, sandy, wheat, flaxen,
-    //                strawberry-blonde, dirty-blonde, platinum-blonde (blondes)
-    //                auburn, copper, rust, ginger, flame, fiery (reds/coppers)
-    //                silver, platinum, ash, salt-and-pepper, snow-white (silvers/whites)
-    //                lavender, violet, indigo, teal, turquoise, blue, green, pink (fantasy)
-    //
-    // Eye colour adjective vocabulary (prefix group before "eyes"):
-    //   Basic:       brown, blue, green, grey/gray, black, hazel, amber, violet, teal
-    //   Modifiers:   dark, light, deep, bright, pale, warm, cool, rich
-    //   Shades:      chocolate, espresso, coffee, honey (browns)
-    //                steel, slate, silver, ash, stormy (greys)
-    //                ice, sky, ocean, sapphire, cobalt, navy, cornflower (blues)
-    //                emerald, jade, forest, olive, sage, moss (greens)
-    //                golden, topaz, whiskey, cognac (ambers)
-    //                compound: blue-grey, grey-green, grey-blue, green-hazel, etc.
-
-    // Shared prefix group used in both hair and eye patterns
     const COLOUR_PREFIX =
       // Modifiers
       "(?:(?:dark|light|medium|deep|pale|warm|cool|rich|bright|vivid|soft|muted|natural|neutral|" +
-      // Compound modifiers
+
       "salt-and-pepper|salt and pepper|dirty|strawberry|platinum|ash|jet|snow|" +
-      // Food/nature descriptors (common in LLM output)
+
       "espresso|coffee|chocolate|mocha|mahogany|walnut|chestnut|toffee|caramel|cinnamon|" +
       "honey|amber|tawny|sandy|wheat|flaxen|golden|auburn|copper|rust|ginger|flame|fiery|" +
       "raven|ebony|charcoal|sable|silver|lavender|ocean|sapphire|cobalt|emerald|jade|" +
       "olive|steel|slate|stormy|ice|sky|topaz|whiskey|cognac|hazel|" +
-      // Basic colours
+
       "black|brown|blonde|blond|brunette|red|orange|yellow|white|grey|gray|blue|green|" +
       "purple|pink|teal|violet|indigo|turquoise|coral|rose|burgundy|maroon|crimson|" +
       "scarlet|magenta|cyan|lime|navy|beige|ivory|cream|tan|nude|nude|" +
-      // Compound colour-colour (e.g. "blue-grey", "grey-green")
+
       "blue-grey|grey-blue|grey-green|green-hazel|warm-brown|ash-brown|reddish-brown|" +
       "dark-brown|light-brown" +
       ")[\\s-]+)?";
@@ -682,11 +587,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     const colourKeywords = characterCards.map(c => {
       const app = c.appearance;
 
-      // ââ Hair colour ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Pattern: <optional multi-word colour prefix> + <core colour word> + optional
-      // filler words + "hair" + optional trailing descriptor (e.g. "hair styled in waves")
-      // We allow up to ~40 chars of filler between the colour word and "hair" to catch
-      // constructions like "dark espresso-brown, slightly wavy hair".
+
       const HAIR_CORE =
         "(?:black|brown|blonde|blond|brunette|red|orange|yellow|white|grey|gray|" +
         "espresso|coffee|chocolate|mocha|mahogany|walnut|chestnut|toffee|caramel|" +
@@ -699,13 +600,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       );
       const hairMatch = app.match(hairRe);
 
-      // ââ Eye colour âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Pattern: <optional multi-word colour prefix> + <core colour word> +
-      //          optional single bridging colour word + "eyes"
-      // The bridging word handles compound descriptors like "forest green eyes"
-      // where "forest" is the evocative modifier and "green" is the base colour.
-      // We allow one optional [\w-]+ word between the core colour and "eyes" so
-      // both "emerald eyes" and "forest green eyes" are captured in full.
       const EYE_CORE =
         "(?:brown|blue|green|grey|gray|hazel|amber|black|violet|teal|" +
         "chocolate|espresso|coffee|honey|steel|slate|silver|ash|stormy|" +
@@ -718,9 +612,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       );
       const eyeMatch = app.match(eyeRe);
 
-      // ââ 3. SKIN TONE âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "warm olive skin", "fair porcelain complexion", "deep ebony skin",
-      // "medium tan skin with warm undertone", "rich brown skin", etc.
       const SKIN_TONE_WORDS =
         "(?:fair|pale|light|medium|tan|warm|cool|neutral|olive|golden|honey|caramel|" +
         "tawny|bronze|copper|brown|dark|deep|rich|ebony|mahogany|chocolate|mocha|" +
@@ -734,9 +625,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+(?:skin|complexion))/i)
         : null;
 
-      // ââ 4. FACE SHAPE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "oval face", "square jaw", "heart-shaped face", "strong angular jaw",
-      // "round face with full cheeks", "diamond-shaped face", etc.
       const FACE_SHAPE_WORDS =
         "(?:oval|round|square|rectangular|heart|heart-shaped|diamond|oblong|long|" +
         "triangular|inverted-triangle|angular|soft|strong|defined|wide|narrow|" +
@@ -750,10 +638,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:face|jaw|chin|cheekbones?))/i)
         : null;
 
-      // ââ 5. HAIR STYLE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures the cut/length/texture AFTER the colour word.
-      // e.g. "short side-parted undercut", "long wavy hair", "shoulder-length bob",
-      // "tight coily afro", "straight blunt fringe", "messy textured crop".
       const HAIR_STYLE_WORDS =
         "(?:short|medium|long|shoulder-length|chin-length|ear-length|cropped|buzzed|shaved|" +
         "straight|wavy|curly|coily|kinky|frizzy|sleek|smooth|textured|layered|voluminous|" +
@@ -768,9 +652,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,5}\s+hair(?:[\w\s,'-]{0,30})?)/i)
         : null;
 
-      // ââ 6. EYE SHAPE âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "almond-shaped eyes", "round wide-set eyes", "hooded deep-set eyes",
-      // "monolid eyes", "upturned eyes", "heavy-lidded eyes", "large expressive eyes".
       const EYE_SHAPE_WORDS =
         "(?:almond|almond-shaped|round|wide|wide-set|close-set|deep-set|hooded|monolid|" +
         "upturned|downturned|heavy-lidded|heavy|large|small|narrow|slanted|angular|" +
@@ -784,9 +665,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+eyes)/i)
         : null;
 
-      // ââ 7. NOSE SHAPE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "straight nose", "button nose", "aquiline nose", "broad flat nose",
-      // "narrow pointed nose", "upturned snub nose", "prominent Roman nose".
       const NOSE_SHAPE_WORDS =
         "(?:straight|button|snub|upturned|aquiline|roman|hawk|hooked|broad|flat|wide|" +
         "narrow|pointed|rounded|bulbous|prominent|small|large|petite|refined|defined|" +
@@ -800,9 +678,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+nose)/i)
         : null;
 
-      // ââ 8. EYEBROWS ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "thick straight dark-brown brows", "thin arched brows",
-      // "bushy natural eyebrows", "sparse light brows", "bold defined brows".
       const EYEBROW_WORDS =
         "(?:thick|thin|bushy|sparse|full|arched|straight|curved|flat|angular|tapered|" +
         "bold|defined|groomed|natural|unruly|feathered|pencil-thin|heavy|light|" +
@@ -816,9 +691,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:eyebrows?|brows?))/i)
         : null;
 
-      // ââ 9. BODY SHAPE ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "tall athletic build", "petite slim frame", "stocky muscular build",
-      // "medium height heavyset frame", "lean wiry physique", "broad-shouldered build".
       const BODY_SHAPE_WORDS =
         "(?:tall|short|medium|average|petite|towering|statuesque|" +
         "slim|slender|lean|wiry|lithe|athletic|fit|toned|muscular|stocky|" +
@@ -833,15 +705,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,5}\s+(?:build|frame|figure|physique|stature))/i)
         : null;
 
-      // ââ 10. FACIAL HAIR ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-      // Captures: "clean-shaven", "short dark stubble", "full neatly-trimmed brown beard",
-      // "thin moustache", "goatee", "mutton chops", "five o'clock shadow".
-      //
-      // DESIGN: The pattern MUST be anchored to a facial-hair NOUN so that colour/modifier
-      // words like "dark", "light", "brown" (which also appear in hair/eye descriptions)
-      // do not produce false positives. Two sub-patterns are used:
-      //   1. Noun-first: bare nouns that are unambiguously facial hair (stubble, goatee, etc.)
-      //   2. Adjective + noun: optional colour/style modifiers followed by a facial-hair noun
       const FACIAL_HAIR_NOUNS =
         "(?:stubble|five-o'clock-shadow|five o'clock shadow|" +
         "beard|bearded|goatee|moustache|mustache|sideburns|mutton-chops|mutton chops)";
@@ -854,8 +717,8 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         `(clean-shaven|clean shaven|${FACIAL_HAIR_MODIFIERS}(?:[\\s-]+[\\w-]+){0,3}[\\s-]+${FACIAL_HAIR_NOUNS}|${FACIAL_HAIR_NOUNS}(?:[\\s-]+[\\w-]+){0,3})`,
         "i",
       );
-      const facialHairMatch = app.match(facialHairRe);      // ââ Fallback: capture any "<colour> hair" or "<colour> eyes" not caught above ââ
-      // This handles unusual descriptors the primary patterns might miss.
+      const facialHairMatch = app.match(facialHairRe); 
+
       const fallbackHair = !hairMatch
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+hair)/i)
         : null;
@@ -863,7 +726,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         ? app.match(/([\w-]+(?:[\s-][\w-]+){0,2}\s+eyes)/i)
         : null;
 
-      // Assemble all matched axes into an ordered array
       const parts = [
         (hairMatch?.[1]           ?? fallbackHair?.[1])?.trim(),
         (eyeMatch?.[1]            ?? fallbackEye?.[1])?.trim(),
@@ -879,23 +741,12 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       return parts.length > 0 ? `${c.name}: ${parts.join(", ")}` : null;
     }).filter(Boolean).join(" | ");
 
-    // PHYSICAL_IDENTITY_LOCK: combines all 10 visual axes extracted above.
-    // This replaces the old CHARACTER_COLOUR_LOCK (which only covered hair/eye colour)
-    // and is injected into STYLE_LOCK and every per-page/panel prompt.
-    // Keeping the old constant name for backward compat with STYLE_LOCK assembly below.
     const CHARACTER_COLOUR_LOCK = colourKeywords
       ? `PHYSICAL IDENTITY LOCK â do NOT change ANY of these physical traits in any illustration: ${colourKeywords}`
       : "";
 
-    // âââ Guardrail 2B: Centralised no-text constraint ââââââââââââââââââââââââââ
-    // This constant is injected into EVERY image prompt to prevent the model from
-    // rendering any text, typography, or title/author text inside the image.
-    // Title and author name are added ONLY via the addCoverOverlay() UI layer.
     const NO_TEXT_CONSTRAINT =
-      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no title, no author name, no captions, no labels anywhere in the image"    // âââ Guardrail 2C: Comic panel character hard-lock instruction ââââââââââââââââââââ
-    // Appended to every comic panel prompt after the per-panel speaker focus note.
-    // Prevents per-panel character drift by explicitly repeating the full physical identity lock.
-    // ENHANCED: Added explicit character count enforcement, negative prompts, and visual distinctness rules.
+      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no title, no author name, no captions, no labels anywhere in the image"
     const CHARACTER_LOCK_INSTRUCTION =
       "CRITICAL CHARACTER CONSISTENCY & UNIQUENESS RULES:\n" +
       "1. IDENTITY LOCK: Render each character with the EXACT same face shape, skin tone, hair colour, hair style, eye colour, eye shape, nose shape, eyebrows, body build, and facial hair as described in the PHYSICAL IDENTITY LOCK. Never deviate.\n" +
@@ -911,11 +762,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       "   - Clothing: Each character wears distinctly different clothing colors and styles.\n" +
       "8. PHOTO REFERENCE PRIORITY: If character photos are provided, render faces EXACTLY as photographed. Do not alter facial structure, features, or appearance.\n" +
       "9. QUALITY ASSURANCE: Before finalizing, verify that every character is visually distinct and cannot be confused with any other character in the image.";
-    // âââ Assemble the global STYLE_LOCK string âââââââââââââââââââââââââââââââââ
-    // This string is prepended to EVERY generateImage prompt in this book so that
-    // all illustrations share the same art style, lighting, palette, and framing.
-    // It is also stored in books.illustrationStyleLock for admin/debug inspection.
-    // Global identity lock — prepended to every generateImage call.
     const IDENTITY_LOCK =
       "CRITICAL IDENTITY PRESERVATION: Every character in this image MUST be the EXACT SAME PERSON as the uploaded reference photo. " +
       "Do NOT redesign, beautify, genericise, or replace any face. " +
@@ -923,7 +769,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       "The same character MUST look visually identical across every page and panel of this book. " +
       "If the requested art style conflicts with identity fidelity, IDENTITY WINS. Override style for face accuracy.";
 
-    // Style-bridge rule — added to portrait prompt only (style conversion, not new character).
     const STYLE_BRIDGE_RULE =
       "STYLE CONVERSION ONLY: This is NOT a new or redesigned character. " +
       "Convert the rendering style only. The person MUST look like the EXACT SAME real individual from the reference photo. " +
@@ -934,32 +779,11 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       NO_TEXT_CONSTRAINT,
       charAnchorBlock,
       CHARACTER_COLOUR_LOCK,
-      // Inject the full structured photo-analysis block so the image model has
-      // axis-by-axis facial/body descriptors for every character with a reference photo.
+
       STRUCTURED_IDENTITY_BLOCK || undefined,
       "STYLE CONSISTENCY: This illustration must match the exact same art style, lighting, colour palette, and character appearance as all other illustrations in this book.",
     ].filter(Boolean).join(" | ");
 
-    // âââ Step 1b: Style-bridge portrait generation âââââââââââââââââââââââââââ
-    // For every character with an uploaded photo, generate ONE illustrated portrait
-    // in the book's art style by passing the raw photo as originalImages.
-    //
-    // WHY THIS WORKS:
-    //   - Passing a raw photo as originalImages causes a photo-collage effect
-    //     (the person is composited directly onto the illustrated background).
-    //   - But passing an ALREADY-ILLUSTRATED portrait as originalImages gives the
-    //     image model a proper style reference without the collage artifact.
-    //
-    // APPROACH:
-    //   1. Generate portrait: raw photo â illustrated portrait (style conversion)
-    //      The prompt explicitly asks to convert the photo to the book's art style
-    //      while preserving exact facial features, hair, and build.
-    //   2. Store the illustrated portrait in S3.
-    //   3. Use the illustrated portrait (not the raw photo) as originalImages for
-    //      all subsequent page/panel generation calls.
-    //
-    // This is a non-fatal step â if portrait generation fails for any character,
-    // we fall back to text-only anchoring (the existing PHYSICAL_IDENTITY_LOCK).
     const illustratedPortraitsMap = new Map<string, { url: string; mimeType: string }>();
 
     await db.update(books).set({ generationStep: "Creating character illustrations…" }).where(eq(books.id, bookId));
@@ -980,7 +804,7 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
           continue;
         }
         const a = photoAnalyses[char.name];
-        // Build a precise style-conversion prompt using the extracted appearance axes
+
         const appearanceHint = a
           ? [
               `${a.hair_colour} ${a.hair_style}`,
@@ -1025,12 +849,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       }
     }
 
-    // âââ Image generation wrapper âââââââââââââââââââââââââââââââââââââââ
-    // Uses illustrated portraits (Step 1b) as originalImages when available.
-    // Illustrated portraits are already in the book's art style so they serve
-    // as a proper style/identity reference without causing the photo-collage effect
-    // (which only occurs when a raw photograph is passed as originalImages).
-    // Falls back to text-only anchoring if no portraits were generated.
     const generateImageWithRefCheck = async (
       stage: string,
       prompt: string,
@@ -1075,9 +893,6 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       throw new Error(`Image generation failed for ${stage} after ${maxImageAttempts} attempts: ${lastErr ?? "unknown error"}`);
     };
 
-    // âââ Step 2: Generate story structure (outline pass) âââââââââââââââââââââ
-    // This pass generates the full branching skeleton. Content is short (1-2
-    // sentences per page) â the per-page expansion pass will enrich it.
     await db.update(books).set({ generationStep: "Crafting story structure…" }).where(eq(books.id, bookId));
     const structureSystemPrompt = `You are a creative gamebook author. Always respond with valid JSON only.${characterCardBlock}
 
@@ -1178,8 +993,6 @@ Rules:
           console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`);
           console.warn(`[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`);
 
-          // Last-chance normalization pass: ask the LLM to convert malformed output
-          // into strict JSON with the expected schema.
           try {
             const fixerResp = await invokeLLM({
               messages: [
@@ -1235,17 +1048,12 @@ Rules:
       throw new Error(`Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`);
     }
 
-    // âââ Step 3: Post-structure validation âââââââââââââââââââââââââââââââââââ
-    // Verify all branch references resolve, all paths reach an ending, and
-    // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
     const criticalValidationErrors: string[] = [];
     const repairActions: string[] = [];
 
-    // Build a map of pageId â list of source pages that reference it as a target.
-    // Any pageId referenced by more than one source = a merge violation.
-    const targetRefCount = new Map<number, number[]>(); // targetPageId â [sourcePageIds]
+    const targetRefCount = new Map<number, number[]>(); 
     for (const page of storyData.pages) {
       if (page.isBranchPage) {
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
@@ -1260,7 +1068,7 @@ Rules:
           const msg = `Page ${page.pageNumber}: branch page missing choiceA or choiceB text`;
           validationErrors.push(msg);
         }
-        // Track target references for merge detection
+
         if (page.nextPageA) {
           const refs = targetRefCount.get(page.nextPageA) ?? [];
           refs.push(page.pageNumber);
@@ -1274,7 +1082,6 @@ Rules:
       }
     }
 
-    // GUARDRAIL 1: Detect any page node referenced by more than one branch source (merge violation)
     const mergeViolations: string[] = [];
     for (const [targetId, sourceIds] of Array.from(targetRefCount.entries())) {
       if (sourceIds.length > 1) {
@@ -1284,7 +1091,7 @@ Rules:
         criticalValidationErrors.push(violation);
       }
     }
-    // Check at least one ending exists
+
     const endingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1));
     if (endingPages.length === 0) {
       const msg = "No ending pages found â story has no conclusion";
@@ -1296,7 +1103,7 @@ Rules:
         bookId,
         violations: validationErrors,
       });
-      // Non-fatal violations are logged and can still be auto-repaired below.
+
     }
 
     if (criticalValidationErrors.length > 0) {
@@ -1318,8 +1125,6 @@ Rules:
       );
     }
 
-    // Auto-repair common non-critical structure issues instead of hard-failing generation.
-    // This keeps generation resilient to imperfect but recoverable LLM JSON.
     const usedTargets = new Set<number>();
     for (const page of storyData.pages) {
       // Drop dangling references
@@ -1332,7 +1137,6 @@ Rules:
         page.nextPageB = null;
       }
 
-      // Enforce no-merge by keeping the first reference to each target
       if (page.nextPageA) {
         if (usedTargets.has(page.nextPageA)) {
           repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageA target=${page.nextPageA}`);
@@ -1360,8 +1164,6 @@ Rules:
         }
       }
 
-      // If no valid targets remain, downgrade to non-branch ending page
-      // only when this actually mutates the page.
       if (!hasBranchTargets) {
         const needsDowngradeMutation =
           page.isBranchPage ||
@@ -1405,12 +1207,6 @@ Rules:
       status: repairActions.length > 0 || validationErrors.length > 0 ? "repaired" : "clean",
     });
 
-     // âââ Step 4: Per-page expansion pass âââââââââââââââââââââââââââââââââââ
-    // For non-comic categories, enrich each page's content with a dedicated
-    // LLM call that injects: character cards + the last 3 pages of context.
-    // GUARDRAIL 2: Rolling context is branch-safe â only pages from the same
-    // branchPath lineage are used. Pages from other branches are never injected.
-    // Feature A: Fairy tale expansion pass (lightweight, child-appropriate language)
     if (category === "fairy_tale") {
       const fairyExpandedByPageNum = new Map<number, string>();
       const fairyParentMap = new Map<number, number>();
@@ -1488,18 +1284,16 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
     }
 
     if (!isComic && category !== "fairy_tale") {
-      // Map: pageNumber â expanded content (for branch-safe context lookup)
+
       const expandedByPageNum = new Map<number, string>();
 
-      // Build a parent map: pageNumber â parentPageNumber (via nextPageA/nextPageB)
-      // This lets us walk up the lineage to find ancestors on the same branch path.
+
       const parentMap = new Map<number, number>();
       for (const p of storyData.pages) {
         if (p.nextPageA) parentMap.set(p.nextPageA, p.pageNumber);
         if (p.nextPageB) parentMap.set(p.nextPageB, p.pageNumber);
       }
 
-      // Walk up the parent chain to get the last N ancestors of a given page.
       const getBranchAncestors = (pageNum: number, limit: number): number[] => {
         const ancestors: number[] = [];
         let current = parentMap.get(pageNum);
@@ -1507,15 +1301,13 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
           ancestors.unshift(current);
           current = parentMap.get(current);
         }
-        return ancestors.slice(-limit); // keep only the last `limit` ancestors
+        return ancestors.slice(-limit); 
       };
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
         await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
 
-        // GUARDRAIL 2: Build rolling context from the last 3 pages on THIS branch path only.
-        // We walk up the parent chain to find ancestors, then look up their expanded content.
         const ancestorNums = getBranchAncestors(page.pageNumber, 3);
         const branchSafeContext = ancestorNums
           .map(num => expandedByPageNum.get(num))
@@ -1531,7 +1323,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
           ? `\n\nSTORY SO FAR (last ${ancestorNums.length} pages on this branch path):\n${branchSafeContext}`
           : "";
 
-        // Build branch context if this page follows a choice
         const branchContext = page.branchPath && page.branchPath !== "root"
           ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here â the narrative must directly reflect that choice.`
           : "";;
@@ -1578,7 +1369,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       }
     }
 
-    // Final prose cleanup: strip duplicated in-text choice labels and UI-like markers.
     storyData.pages = storyData.pages.map((page) => ({
       ...page,
       content: stripInlineChoiceLabels(page.content ?? ""),
@@ -1586,9 +1376,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 
     await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
 
-    // Generate cover image â uses STYLE_LOCK + full charAnchorBlock for maximum consistency
-    // The cover sets the visual "contract" for the whole book; all page illustrations
-    // must match the style established here.
     let coverImageUrl: string | null | undefined = null;
     const descSnippet = description ? description.substring(0, 120) : "an epic adventure";
     // Cover-specific framing note added on top of the global style lock
@@ -1601,9 +1388,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       horror_thriller: "ominous establishing shot, dark environment, sense of dread",
     }[category] || "dramatic establishing shot, professional book cover composition";
     try {
-      // Guardrail 2A: use wrapper â logs warning if charPhotos is empty
-      // Guardrail 2B: STYLE_LOCK already contains NO_TEXT_CONSTRAINT; no title/author in prompt
-      //               title + author are applied ONLY via addCoverOverlay() below
       const coverResult = await generateImageWithRefCheck(
         "cover",
         [
@@ -1615,7 +1399,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
         ].filter(Boolean).join(" | "),
         charPhotos.length > 0 ? charPhotos : undefined,
       );
-      // Guardrail 2B: title + author name added ONLY as a UI overlay â never inside the image prompt
       if (coverResult.url) {
         try {
           const coverResp = await fetch(coverResult.url);
@@ -1647,9 +1430,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       console.error("[Books] Cover image generation failed:", e);
     }
 
-    // âââ Pre-assign which pages get branch images ââââââââââââââââââââââââââââââââ
-    // For other genres, only the first branchImageCount branch pages get illustrations.
-    // We pre-assign here so parallel generation respects the exact count.
     const branchPageNumbers = new Set<number>(
       storyData.pages
         .filter(p => p.isBranchPage)
@@ -1657,9 +1437,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
         .map(p => p.pageNumber)
     );
 
-    // âââ Parallel image generation with concurrency limit ââââââââââââââââââââââââ
-    // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
-    // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
     const CONCURRENCY_LIMIT = isOtherGenre ? 1 : 2;
     const totalPages = storyData.pages.length;
     const imageFailures: Array<{ pageNumber: number; error: string }> = [];
@@ -1685,24 +1462,15 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 
     await db.update(books).set({ generationStep: `Generating ${totalPages} illustrations in parallel…` }).where(eq(books.id, bookId));
 
-    // Type for per-page image results
     type PageImageResult = { pageNumber: number; imageUrl: string | null; panels: string[] | null };
 
-    // Launch all image generation tasks concurrently (bounded by semaphore)
     const imageGenTasks = storyData.pages.map(page => async (): Promise<PageImageResult> => {
       await acquireSemaphore();
       let imageUrl: string | null = null;
       let panels: string[] | null = null;
       try {
         if (isComic) {
-          // âââ COMIC: generate ONE composite page image, then crop into 3 panels âââââ
-          // Spec: comic thin = 10 pages Ã 1 composite image = 10 image calls + 1 cover = 11 total
-          //       comic normal = 18 pages Ã 1 composite image = 18 image calls + 1 cover = 19 total
-          // Layout: large top panel (60% height) + two equal bottom panels (40% height each)
-          // After generation, sharp crops the composite into panel_top, panel_bottom_left, panel_bottom_right
-          // and stores the 3 cropped URLs in panels[] JSON array.
 
-          // Step 1: Extract 3 panel descriptions using LLM for narration + dialogue metadata
           type PanelDialogue = { narration: string; dialogue: string | null; speaker: string | null };
           let panelDialogue: PanelDialogue[] = [];
           try {
@@ -1723,19 +1491,13 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             console.error("[Books] Panel dialogue extraction failed:", dlgErr);
           }
 
-          // Build narration summaries for the composite prompt
-          // IMPORTANT: speech bubble text is stored in panelDialogue[] and rendered as React overlay
-          // by ComicPageLayout. It must NOT be embedded in the image prompt (NO_TEXT_CONSTRAINT).
           const p1 = panelDialogue[0];
           const p2 = panelDialogue[1];
           const p3 = panelDialogue[2];
           const p1Narr = p1?.narration ?? page.content.substring(0, 80);
           const p2Narr = p2?.narration ?? page.content.substring(80, 160);
           const p3Narr = p3?.narration ?? page.content.substring(160, 240);
-          // NOTE: dialogue is intentionally NOT included in the image prompt.
-          // Speech bubbles are rendered as React overlays by ComicPageLayout.
 
-          // Extract which characters are mentioned in each panel's narration
           const extractMentionedCharacters = (text: string): string[] => {
             const mentioned: string[] = [];
             for (const char of characterCards) {
@@ -1751,8 +1513,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
           const p2Chars = extractMentionedCharacters(p2Narr);
           const p3Chars = extractMentionedCharacters(p3Narr);
 
-          // Build filtered character anchor blocks for each panel
-          // ENHANCED: Explicit character count enforcement, negative prompts, visual distinctness
           const buildFilteredCharAnchor = (charNames: string[]): string => {
             const relevantChars = characterCards.filter(c => charNames.includes(c.name));
             if (relevantChars.length === 0) return charAnchorBlock;
@@ -1785,8 +1545,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             .map((name) => illustratedPortraitsMap.get(name) || photoRefByName.get(name))
             .filter((img): img is { url: string; mimeType: string } => !!img?.url);
 
-          // Step 2: Generate ONE composite comic page image
-          // NO text in the image â speech bubbles are React overlays, not baked into the image.
           const compositePrompt = [
             STYLE_LOCK,
             NO_TEXT_CONSTRAINT,
@@ -1795,7 +1553,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             `BOTTOM-LEFT PANEL: ${p2Narr}`,
             `BOTTOM-RIGHT PANEL: ${p3Narr}`,
             "Bold black panel borders, halftone dot shading, vivid colours, professional comic art, white gutters between panels, NO text, NO letters, NO speech bubbles baked into the image",
-            // Filtered character anchors per panel (prevents character blending)
             p1CharAnchor,
             p2CharAnchor,
             p3CharAnchor,
@@ -1806,11 +1563,10 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
                         "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image â every interior page must look like it belongs to the same book as the cover.",
           ].filter(Boolean).join(" | ");
 
-          // ComicPanel metadata objects â speech bubbles rendered as React overlays by ComicPageLayout
           type ComicPanelData = { imageUrl: string; narration: string; dialogue: string | null; speaker: string | null; bubbleType: string | null; position: string | null };
           const panelData: ComicPanelData[] = [];
-          const MIN_PANEL_SIZE_BYTES = 1024; // post-crop validation: panel must be > 1KB
-          const BLEED_PX = 2; // safety bleed: shrink each crop region by 2px on each side to avoid border artifacts
+          const MIN_PANEL_SIZE_BYTES = 1024;
+          const BLEED_PX = 2; 
 
           try {
             const compositeResult = await generateImageWithRefCheck(
@@ -1820,16 +1576,14 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             );
 
             if (compositeResult.url) {
-              // Step 3: Download composite image and crop into 3 panels using sharp
-              // Crop regions use RATIO-BASED dimensions (not fixed pixels) for reliability
+
               const compositeResp = await fetch(compositeResult.url);
               const compositeBuf = Buffer.from(await compositeResp.arrayBuffer());
               const meta = await sharp(compositeBuf).metadata();
               const W = meta.width ?? 1024;
               const H = meta.height ?? 1024;
 
-              // Ratio-based crop regions (with BLEED_PX safety margin on each side)
-              // Layout: top panel = 60% height, bottom panels = 40% height each 50% width
+
               const topH = Math.round(H * 0.60);
               const botH = H - topH;
               const halfW = Math.round(W / 2);
@@ -1842,14 +1596,13 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 
               for (const crop of crops) {
                 const pd = panelDialogue[crop.panelIndex];
-                let cropUrl = compositeResult.url!; // fallback = full composite
+                let cropUrl = compositeResult.url!; 
                 try {
                   const croppedBuf = await sharp(compositeBuf)
                     .extract({ left: crop.left, top: crop.top, width: crop.width, height: crop.height })
                     .png()
                     .toBuffer();
 
-                  // Post-crop validation: reject crops that are too small (corrupted or blank)
                   if (croppedBuf.length < MIN_PANEL_SIZE_BYTES) {
                     console.warn(`[Books] Panel crop "${crop.label}" too small (${croppedBuf.length}B) for page ${page.pageNumber}, using composite fallback`);
                   } else {
@@ -1860,7 +1613,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
                   }
                 } catch (cropErr) {
                   console.error(`[Books] Panel crop "${crop.label}" failed for page ${page.pageNumber}:`, cropErr);
-                  // cropUrl already set to composite fallback above
+  
                 }
                 panelData.push({
                   imageUrl: cropUrl,
@@ -1888,12 +1641,12 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
               console.warn(`[Books] Page ${page.pageNumber}: used fallback panel placeholders after composite generation failure`);
             }
           }
-          // Store full ComicPanel objects (not plain string URLs) so React overlay can render speech bubbles
+
           panels = panelData.length > 0 ? (panelData as unknown as string[]) : null;
           imageUrl = null; // panels stored separately
 
         } else if (category === "fairy_tale") {
-          // âââ FAIRY TALE: one illustration per page (10 pages = 10 illustrations) ââââââ
+
           const sceneNote = page.isBranchPage
             ? `dramatic decision moment, ${page.content.substring(0, 200)}`
             : page.isEnding
@@ -1916,9 +1669,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
           imageUrl = imgResult.url ?? null;
 
         } else if (isOtherGenre) {
-          // âââ OTHER GENRES: images only at branch pages, up to branchImageCount âââââââ
-          // Spec: normal = 8 branch images, thick = 12 branch images
-          // Only isBranchPage pages get illustrations; all other pages are text-only.
+
           if (branchPageNumbers.has(page.pageNumber)) {
             const sceneNote = `dramatic decision moment â the protagonist stands at a crossroads, ${page.content.substring(0, 200)}`;
             const imgResult = await generateImageWithRefCheck(
@@ -1938,7 +1689,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
             imageUrl = imgResult.url ?? null;
             console.log(`[Books] Branch image generated for page ${page.pageNumber}`);
           }
-          // Non-branch pages: imageUrl stays null (text-only)
         }
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e);
@@ -1950,16 +1700,13 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       return { pageNumber: page.pageNumber, imageUrl, panels };
     });
 
-    // Run all image generation tasks concurrently (bounded by semaphore)
     const pageImageResults: PageImageResult[] = await Promise.all(imageGenTasks.map(task => task()));
 
-    // Build a lookup from pageNumber â image result
     const imageResultByPage = new Map<number, PageImageResult>();
     for (const r of pageImageResults) {
       imageResultByPage.set(r.pageNumber, r);
     }
 
-    // Enforce required illustration counts to avoid shipping "ready" books without images.
     if (category === "fairy_tale") {
       const generatedFairy = storyData.pages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
       if (generatedFairy < pageCount) {
@@ -1987,7 +1734,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       }
     }
 
-    // âââ Sequential DB insertion (preserves order, gets correct IDs) âââââââââââââââ
     const insertedPageIds: Record<number, number> = {};
     await db.update(books).set({ generationStep: "Saving pages to library…" }).where(eq(books.id, bookId));
     for (const page of storyData.pages) {
@@ -2036,8 +1782,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       }
     }
 
-    // Update book status to ready â persist character cards + illustration style lock + portrait URLs
-    // Build portraitUrls mapping from illustratedPortraits array
+
     const portraitUrlsMap = characterCards.map((char, idx) => ({
       characterName: char.name,
       url: illustratedPortraitsMap.get(char.name)?.url || null,
@@ -2047,7 +1792,7 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       .update(books)
       .set({
         status: "ready",
-        generationStep: null, // clear step when done
+        generationStep: null,
         coverImageUrl,
         totalPages: storyData.pages.length,
         totalBranches: storyData.pages.filter(p => p.isBranchPage).length,
@@ -2065,7 +1810,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       .update(books)
       .set({ status: "failed", generationStep: error instanceof Error ? error.message.slice(0, 240) : "Generation failed" })
       .where(eq(books.id, bookId));
-    // Clean up any uploaded character photos on failure
     if (bookData.uploadedKeys?.length) {
       for (const key of bookData.uploadedKeys) {
         await storageDelete(key);
@@ -2075,7 +1819,6 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
 }
 
 export const booksRouter = router({
-  // Get credit cost for a book configuration
   getCreditCost: protectedProcedure
     .input(
       z.object({
@@ -2094,7 +1837,6 @@ export const booksRouter = router({
       return computeTotalCost(input.category, input.length, input.characterPhotoCount);
     }),
 
-  // Create and generate a book
   create: protectedProcedure
     .input(
       z.object({
@@ -2115,7 +1857,6 @@ export const booksRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Check user status before any DB call
       if (ctx.user.status === "suspended" || ctx.user.accountLocked) {
         throw new TRPCError({ code: "FORBIDDEN", message: ctx.user.accountLocked ? "Account locked due to payment issue. Please contact support." : "Account suspended" });
       }
@@ -2125,7 +1866,6 @@ export const booksRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       }
 
-      // Content moderation check
       const blockedTerms = ["hate speech", "explicit sexual", "extreme violence", "self-harm", "propaganda", "racism"];
       const descLower = input.description.toLowerCase();
       if (blockedTerms.some(term => descLower.includes(term))) {
@@ -2139,7 +1879,6 @@ export const booksRouter = router({
         });
       }
 
-      // Calculate cost â always read from shared/pricing.ts (source of truth: shared/pricing.csv)
       const charPhotos = input.characters.filter(c => c.photoBase64 || c.photoUrl).length;
       const { total } = computeTotalCost(input.category, input.length, charPhotos);
 
@@ -2158,8 +1897,6 @@ export const booksRouter = router({
         `Generated book: ${input.title}`,
       );
 
-      // Upload character photos
-      // Validate all character photo uploads before touching S3
       for (const char of input.characters) {
         if (char.photoBase64 && char.photoMimeType) {
           const err = validateUpload(char.photoBase64, char.photoMimeType, "characterPhoto");
@@ -2167,12 +1904,10 @@ export const booksRouter = router({
             throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
           }
         } else if (char.photoUrl) {
-          // Validate URL shape early and fail-fast for malformed Google Drive links.
           normaliseCharacterPhotoUrl(char.photoUrl);
         }
       }
 
-      // Upload character photos, tracking keys for cleanup on failure
       const uploadedKeys: string[] = [];
       const characterData: Array<{ name: string; photoUrl?: string }> = [];
       for (const char of input.characters) {
@@ -2197,11 +1932,9 @@ export const booksRouter = router({
         characterData.push({ name: sanitizeText(char.name), photoUrl });
       }
 
-      // Sanitize user-generated text at write-time
       const cleanTitle = sanitizeText(input.title);
       const cleanDescription = sanitizeRichText(input.description);
 
-      // Create book record
       const [bookInsertResult] = await db.insert(books).values({
         authorId: ctx.user.id,
         title: cleanTitle,
@@ -2212,7 +1945,6 @@ export const booksRouter = router({
         status: "generating",
       });
 
-      // Get the book id from MySQL insertId
       const bookId = (bookInsertResult as any).insertId as number;
       if (!bookId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create book record" });
 
@@ -2226,7 +1958,6 @@ export const booksRouter = router({
         });
       }
 
-      // Add to user's library
       await db.insert(userBooks).values({
         userId: ctx.user.id,
         bookId,
@@ -2234,18 +1965,15 @@ export const booksRouter = router({
         pricePaid: 0,
       });
 
-      // Create a generation job record for tracking / retry UI
       const [jobInsertResult] = await db.insert(generationJobs).values({ bookId });
       const jobId = (jobInsertResult as any)?.insertId as number | undefined;
 
-      // Mark job as generating and start background work
       if (jobId) {
         await db.update(generationJobs)
           .set({ status: "generating", startedAt: new Date() })
           .where(eq(generationJobs.id, jobId));
       }
 
-      // Start generation via lease-based worker (fire-and-forget, double-processing safe)
       if (jobId) {
         const userId = ctx.user.id;
         const bookTitle = input.title;
@@ -2282,7 +2010,6 @@ export const booksRouter = router({
       return { bookId, status: "generating", jobId: jobId ?? null };
     }),
 
-  // Get user's library
   myLibrary: protectedProcedure
     .input(z.object({
       search: z.string().max(120).optional(),
@@ -2328,9 +2055,6 @@ export const booksRouter = router({
         .where(
           and(
             inArray(books.id, bookIds),
-            // Deleted books are hidden from the author's own Library.
-            // Purchasers who already own the book still see it (userBooks row intact).
-            // We exclude books where status=deleted AND the viewer is the author.
             sql`NOT (${books.status} = 'deleted' AND ${books.authorId} = ${ctx.user.id})`,
             input.category ? eq(books.category, input.category as any) : undefined,
             input.search ? like(books.title, `%${input.search}%`) : undefined,
@@ -2338,7 +2062,6 @@ export const booksRouter = router({
         )
         .orderBy(desc(books.createdAt));
 
-      // For failed books, fetch the latest job's errorMessage and attempts
       const failedBookIds = query
         .filter(r => r.book.status === "failed")
         .map(r => r.book.id);
@@ -2354,7 +2077,6 @@ export const booksRouter = router({
           .from(generationJobs)
           .where(inArray(generationJobs.bookId, failedBookIds))
           .orderBy(desc(generationJobs.createdAt));
-        // Keep only the latest job per book
         for (const j of jobs) {
           if (!jobErrors[j.bookId]) jobErrors[j.bookId] = { errorMessage: j.errorMessage, attempts: j.attempts };
         }
@@ -2368,7 +2090,6 @@ export const booksRouter = router({
       }));
     }),
 
-  // Get book details
   get: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
@@ -2398,14 +2119,12 @@ export const booksRouter = router({
       return { ...result[0], characters: chars };
     }),
 
-  // Get book pages for reader
   getPages: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Check ownership
       const owned = await db
         .select()
         .from(userBooks)
@@ -2422,7 +2141,6 @@ export const booksRouter = router({
         .where(eq(bookPages.bookId, input.bookId))
         .orderBy(bookPages.pageNumber);
 
-            // Fetch character cards and portrait URLs for the Characters panel in Reader
       const bookRow = await db
         .select({ characterCards: books.characterCards, portraitUrls: books.portraitUrls })
         .from(books)
@@ -2434,10 +2152,8 @@ export const booksRouter = router({
       const characterCards = (bookRow[0]?.characterCards as CharacterCard[] | null) ?? [];
       const portraitUrls = (bookRow[0]?.portraitUrls as PortraitUrl[] | null) ?? [];
 
-      // Build a map of character name -> portrait URL for easy lookup
       const portraitMap = new Map(portraitUrls.map(p => [p.characterName, p.url]));
 
-      // Inject portrait URLs into character cards
       const enrichedCards = characterCards.map(card => ({
         ...card,
         portraitUrl: portraitMap.get(card.name) || undefined,
@@ -2446,7 +2162,6 @@ export const booksRouter = router({
       return { pages, characterCards: enrichedCards };
     }),
 
-  // Check generation status
   getStatus: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
@@ -2460,14 +2175,12 @@ export const booksRouter = router({
         .limit(1);
 
       if (!book[0]) {
-        // Avoid noisy NOT_FOUND polling errors on stale cards; treat as pending/unknown.
         return { status: "pending" as const, totalPages: 0, generationStep: null };
       }
 
       return { status: book[0].status, totalPages: book[0].totalPages, generationStep: book[0].generationStep ?? null };
     }),
 
-  // Store listing
   storeListing: publicProcedure
     .input(z.object({
       search: z.string().max(120).optional(),
@@ -2497,7 +2210,6 @@ export const booksRouter = router({
         if (searchCondition) conditions.push(searchCondition);
       }
 
-      // Get active campaigns
       const activeCampaigns = await db
         .select()
         .from(campaigns)
@@ -2518,7 +2230,6 @@ export const booksRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
-      // Apply campaign discounts
       return result.map(row => {
         const campaign = activeCampaigns.find(c => {
           const cats = c.targetCategories as string[];
@@ -2543,7 +2254,6 @@ export const booksRouter = router({
       });
     }),
 
-  // Publish book to store
   publish: protectedProcedure
     .input(z.object({
       bookId: z.number().int().positive(),
@@ -2573,13 +2283,11 @@ export const booksRouter = router({
         .set({ isPublished: true, storePrice: input.price })
         .where(eq(books.id, input.bookId));
 
-      // Refresh author stats cache (fire-and-forget)
       refreshAuthorStats(ctx.user.id, db).catch(console.error);
 
       return { success: true };
     }),
-
-  // Buy a book
+  
   buy: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
@@ -2590,7 +2298,6 @@ export const booksRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Validate book ownership
       const existing = await db
         .select()
         .from(userBooks)
@@ -2612,7 +2319,6 @@ export const booksRouter = router({
 
       const listPrice = bookData[0].storePrice;
 
-      // Get campaign discount
       const activeCampaigns = await db.select().from(campaigns).where(eq(campaigns.isActive, true));
       const campaign = activeCampaigns.find(c => {
         const cats = c.targetCategories as string[];
@@ -2628,22 +2334,17 @@ export const booksRouter = router({
         }
       }
 
-      // Author always gets 30% of LIST price
       const authorEarning = Math.floor(listPrice * 0.3);
 
-      // Check buyer balance
       const buyerWallet = await db.select().from(wallets).where(eq(wallets.userId, ctx.user.id)).limit(1);
       if ((buyerWallet[0]?.balance ?? 0) < buyerPrice) {
         throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Insufficient credits" });
       }
 
-      // Deduct from buyer
       await adjustCredits(ctx.user.id, -buyerPrice, "spend_buy", `Purchased: ${bookData[0].title}`, String(input.bookId));
-
-      // Credit author
+      
       await adjustCredits(bookData[0].authorId, authorEarning, "earn_sale", `Sale of: ${bookData[0].title}`, String(input.bookId));
 
-      // Add to buyer's library
       await db.insert(userBooks).values({
         userId: ctx.user.id,
         bookId: input.bookId,
@@ -2651,13 +2352,11 @@ export const booksRouter = router({
         pricePaid: buyerPrice,
       });
 
-      // Update purchase count
       await db
         .update(books)
         .set({ purchaseCount: (bookData[0].purchaseCount || 0) + 1 })
         .where(eq(books.id, input.bookId));
 
-      // Notify author
       const authorProfile = await db.select().from(profiles).where(eq(profiles.userId, bookData[0].authorId)).limit(1);
       await createNotification(
         bookData[0].authorId,
@@ -2667,7 +2366,6 @@ export const booksRouter = router({
         `/library`
       );
 
-      // Notify buyer
       await createNotification(
         ctx.user.id,
         "book_purchased",
@@ -2676,10 +2374,8 @@ export const booksRouter = router({
         `/reader/${input.bookId}`
       );
 
-      // Refresh author stats cache (fire-and-forget)
       refreshAuthorStats(bookData[0].authorId, db).catch(console.error);
 
-      // Check sales milestones (fire-and-forget)
       const newPurchaseCount = (bookData[0].purchaseCount || 0) + 1;
       notifySalesMilestone({
         authorId: bookData[0].authorId,
@@ -2691,7 +2387,6 @@ export const booksRouter = router({
       return { success: true };
     }),
 
-  // Save reading progress
   saveProgress: protectedProcedure
     .input(z.object({
       bookId: z.number(),
@@ -2711,7 +2406,6 @@ export const booksRouter = router({
         .where(and(eq(readingProgress.userId, ctx.user.id), eq(readingProgress.bookId, input.bookId)))
         .limit(1);
 
-      // Only stamp completedAt once (idempotent)
       const shouldComplete = input.isEndingNode && !existing[0]?.completedAt;
       const completedAt = shouldComplete ? new Date() : (existing[0]?.completedAt ?? undefined);
 
@@ -2734,7 +2428,6 @@ export const booksRouter = router({
         });
       }
 
-      // If this is a new completion, refresh author stats cache (fire-and-forget)
       if (shouldComplete) {
         const [bookRow] = await db.select({ authorId: books.authorId }).from(books).where(eq(books.id, input.bookId)).limit(1);
         if (bookRow) refreshAuthorStats(bookRow.authorId, db).catch(console.error);
@@ -2743,7 +2436,6 @@ export const booksRouter = router({
       return { success: true, completed: !!shouldComplete };
     }),
 
-  // Get reading progress
   getProgress: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
@@ -2761,7 +2453,6 @@ export const booksRouter = router({
       return result[0] ?? null;
     }),
 
-  // Leaderboard data
   leaderboard: publicProcedure
     .input(z.object({
       search: z.string().max(120).optional(),
@@ -2815,7 +2506,6 @@ export const booksRouter = router({
           .where(and(...conditions)).orderBy(desc(books.reviewCount)).limit(20),
       ]);
 
-      // Compute rank deltas and annotate results
       const annotate = (rows: typeof bestSellers, rankField: "lastBestSellerRank" | "lastNewArrivalRank" | "lastMostPopularRank") =>
         rows.map((row, idx) => {
           const currentRank = idx + 1;
@@ -2828,7 +2518,6 @@ export const booksRouter = router({
       const annotatedNewArrivals = annotate(newArrivals, "lastNewArrivalRank");
       const annotatedMostPopular = annotate(mostPopular, "lastMostPopularRank");
 
-      // Write-through rank snapshots (fire-and-forget)
       const updateRanks = async () => {
         const now = new Date();
         const updates: Promise<any>[] = [];
@@ -2843,9 +2532,8 @@ export const booksRouter = router({
         });
         await Promise.allSettled(updates);
       };
-      updateRanks().catch(() => {}); // fire-and-forget
+      updateRanks().catch(() => {}); 
 
-      // Dispatch leaderboard notifications (fire-and-forget)
       const dispatchNotifs = async () => {
         const toItems = (rows: typeof annotatedBestSellers) =>
           rows.map(r => ({
@@ -2885,7 +2573,6 @@ export const booksRouter = router({
 
       if (!result[0]) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Aggregate stats from published books
       const statsResult = await db
         .select({
           totalBooks: count(books.id),
@@ -2902,7 +2589,6 @@ export const booksRouter = router({
           )
         );
 
-      // Total completions across all author's books
       const { readingProgress } = await import("../../drizzle/schema");
       const completionsResult = await db
         .select({ total: count(readingProgress.id) })
@@ -2933,7 +2619,6 @@ export const booksRouter = router({
       };
     }),
 
-  // Get author's books
   authorBooks: publicProcedure
     .input(z.object({ userId: z.number() }))
     .query(async ({ input }) => {
@@ -2942,7 +2627,6 @@ export const booksRouter = router({
 
       const { readingProgress } = await import("../../drizzle/schema");
 
-      // Get books with per-book completion count
       const bookRows = await db
         .select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl })
         .from(books)
@@ -2954,7 +2638,6 @@ export const booksRouter = router({
 
       const bookIds = bookRows.map(r => r.book.id);
 
-      // Count completions per book
       const completionCounts = await db
         .select({
           bookId: readingProgress.bookId,
@@ -2977,7 +2660,6 @@ export const booksRouter = router({
       }));
     }),
 
-  // Get full book detail for the store detail page
   getDetail: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
@@ -2999,7 +2681,6 @@ export const booksRouter = router({
 
       if (!result[0]) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Get active campaigns and check if this book's category is targeted
       const activeCampaigns = await db
         .select()
         .from(campaigns)
@@ -3031,7 +2712,6 @@ export const booksRouter = router({
       };
     }),
 
-  // Retry a failed book generation
   retryGeneration: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
@@ -3050,7 +2730,6 @@ export const booksRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Book is not in failed state." });
       }
 
-      // Reset book status and create a new job
       await db.update(books).set({ status: "generating" }).where(eq(books.id, input.bookId));
       const [jobInsertResult] = await db.insert(generationJobs).values({ bookId: input.bookId });
       const jobId = (jobInsertResult as any)?.insertId as number | undefined;
@@ -3060,10 +2739,8 @@ export const booksRouter = router({
           .where(eq(generationJobs.id, jobId));
       }
 
-      // Fetch characters for regeneration
       const chars = await db.select().from(bookCharacters).where(eq(bookCharacters.bookId, input.bookId));
 
-      // Start regeneration via lease-based worker (double-processing safe)
       if (jobId) {
         const userId = ctx.user.id;
         const bookTitle = book.title;
@@ -3097,13 +2774,11 @@ export const booksRouter = router({
       return { bookId: input.bookId, jobId: jobId ?? null, status: "generating" };
     }),
 
-  /** Public: get admin-curated featured gamebooks; falls back to top 8 by purchaseCount */
   getFeatured: publicProcedure
     .query(async () => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Try admin-curated featured books first
       const featured = await db
         .select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl })
         .from(books)
@@ -3121,7 +2796,6 @@ export const booksRouter = router({
 
       if (featured.length > 0) return featured;
 
-      // Fallback: top 8 by purchaseCount
       return db
         .select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl })
         .from(books)
@@ -3137,20 +2811,12 @@ export const booksRouter = router({
         .limit(8);
     }),
 
-  /**
-   * deleteBook â author-only soft-delete.
-   * Sets status="deleted" and isDelisted=true so the book:
-   *   - disappears from the Store (isDelisted=true / status=deleted)
-   *   - disappears from the author's own Library view
-   *   - remains accessible to any user who already purchased it (userBooks rows untouched)
-   */
   deleteBook: protectedProcedure
     .input(z.object({ bookId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Verify the caller is the author
       const [book] = await db
         .select({ authorId: books.authorId, status: books.status })
         .from(books)
