@@ -145,7 +145,7 @@ function CharactersPanel({ cards, onClose }: { cards: CharacterCard[]; onClose: 
                   <img src={card.photoUrl} alt={card.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40" />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-purple-900/40 flex items-center justify-center flex-shrink-0 border-2 border-purple-600/40">
-                    <span className="text-2xl">{card.role === "protagonist" ? "ÃÂ°ÃÂÃÂ¦ÃÂ¸" : card.role === "antagonist" ? "ÃÂ°ÃÂÃÂ¦ÃÂ¹" : "ÃÂ°ÃÂÃÂÃÂ¤"}</span>
+                    <span className="text-2xl">{card.role === "protagonist" ? "★" : card.role === "antagonist" ? "✖" : "◆"}</span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -304,7 +304,7 @@ function AudioToolbar({
         {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
       </Button>
 
-      {/* Volume slider ÃÂ¢ÃÂÃÂ always visible */}
+      {/* Volume slider -- always visible */}
       <div className="flex items-center gap-1.5 w-24">
         <Slider
           value={[Math.round(volume * 100)]}
@@ -508,8 +508,7 @@ export default function Reader() {
     hasChoices,
   });
 
-  // Keyboard shortcut: F key toggles fullscreen  // NOTE: This useEffect MUST stay above all early returns ÃÂ¢ÃÂÃÂ React error #310
-  // is caused by hooks being called after a conditional return.
+  // Keyboard shortcut: F key toggles fullscreen -- keep this useEffect above early returns (React error #310)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -572,8 +571,7 @@ export default function Reader() {
     .replace(/_/g, " ")
     .replace(/\b\w/g, c => c.toUpperCase());
 
-  // Animation class for the spread container
-  // Fairy Tale uses 360ÃÂÃÂ° rotation, others use realistic page flip
+  // Animation class for the spread container -- fairy tale rotateX, others rotateY
   const flipAnimClass = !prefersReducedMotion && flipDirection
     ? isFairyTale
       ? flipDirection === "forward"
@@ -589,7 +587,7 @@ export default function Reader() {
       {/* Inject CSS keyframes */}
       <style>{FLIP_STYLES}</style>
 
-      {/* Reader Header ÃÂ¢ÃÂÃÂ hidden in fullscreen */}
+      {/* Reader Header -- hidden in fullscreen */}
       <div className={cn(
         "bg-[#1A1033] border-b border-purple-900/30 px-4 py-3 flex items-center justify-between transition-all duration-300 pointer-events-auto",
         isFullscreen && "opacity-0 hover:opacity-100 absolute top-0 left-0 right-0 z-50"
@@ -649,7 +647,7 @@ export default function Reader() {
         />
       )}
 
-      {/* Two-page spread ÃÂ¢ÃÂÃÂ drag/swipe container */}
+      {/* Two-page spread -- drag/swipe container */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative">
         {/* Left edge zone (click to go back) */}
         {!showCover && !showBackCover && !cameFromBranch && (
@@ -679,7 +677,7 @@ export default function Reader() {
           </button>
         )}
 
-        {/* Main spread container ÃÂ¢ÃÂÃÂ receives swipe/drag events */}
+        {/* Main spread container -- receives swipe/drag events */}
         {/* Comics: portrait (max-w-xl), Fairy Tale: wide landscape (max-w-5xl), Others: two-page spread (max-w-5xl) */}
         <div
           {...containerProps}
@@ -741,7 +739,7 @@ export default function Reader() {
               </div>
             </div>
           ) : showCover ? (
-            /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Cover Spread ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+            /* -- Cover Spread -- */
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
                 {/* Left: Cover image */}
@@ -790,10 +788,10 @@ export default function Reader() {
               </div>
             </>
           ) : (
-            /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Story Pages Spread ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+            /* -- Story Pages Spread -- */
             <>
               {isComic && effectiveSpreadMode ? (
-                /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Comic Spread: Two pages side-by-side ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+                /* -- Comic Spread: Two pages side-by-side -- */
                 <ComicSpreadLayout
                   leftPanels={(() => {
                     const raw = Array.isArray(currentPage?.panels) ? currentPage.panels as unknown[] : [];
@@ -870,7 +868,7 @@ export default function Reader() {
                   }
                 />
               ) : isComic ? (
-                /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Comic: ComicPageLayout with top panel + two bottom panels from panels[] ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+                /* -- Comic: ComicPageLayout with top panel + two bottom panels from panels[] -- */
                 <ComicPageLayout
                   panels={(() => {
                     // Runtime panels shape validation:
@@ -934,7 +932,7 @@ export default function Reader() {
                           <p className="text-base font-bold text-yellow-400 uppercase tracking-wide" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>Adventure Complete!</p>
                           {justCompleted && <span className="text-green-400 font-bold text-sm">Completed</span>}
                         </div>
-                        <p className="text-lg font-bold text-white" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>ÃÂ¢ÃÂÃÂ {t("reader.theEnd")} ÃÂ¢ÃÂÃÂ</p>
+                        <p className="text-lg font-bold text-white" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>~ {t("reader.theEnd")} ~</p>
                         <div className="space-y-3">
                           <p className="text-xs font-semibold text-gray-300">Close this book and return to your library</p>
                           <div className="flex gap-3 justify-center">
@@ -954,7 +952,7 @@ export default function Reader() {
                   className="w-full"
                 />
               ) : isFairyTale ? (
-                /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Fairy Tale: full-viewport landscape ÃÂ¢ÃÂÃÂ matches reference screenshot ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ */
+                /* -- Fairy Tale: full-viewport landscape -- matches reference screenshot -- */
                 <div className="shadow-2xl rounded-xl overflow-hidden w-full" style={{ background: "#0D0B1A" }}>
                   {/* Full-width illustration with overlays */}
                   <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
@@ -969,11 +967,11 @@ export default function Reader() {
                         <BookOpen className="w-16 h-16 text-purple-300 opacity-40" />
                       </div>
                     )}
-                    {/* Page number ÃÂ¢ÃÂÃÂ top left overlay */}
+                    {/* Page number -- top left overlay */}
                     <div className="absolute top-3 left-4 text-white text-sm font-semibold drop-shadow-lg" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
                       {currentPageIndex + 1}
                     </div>
-                    {/* Book title ÃÂ¢ÃÂÃÂ top right overlay */}
+                    {/* Book title -- top right overlay */}
                     <div className="absolute top-3 right-4 text-white text-sm font-semibold drop-shadow-lg max-w-[50%] text-right line-clamp-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
                       {bookTitle}
                     </div>
@@ -1018,7 +1016,7 @@ export default function Reader() {
                           <p className="text-base font-bold text-white">Adventure Complete!</p>
                           {justCompleted && <span className="text-green-400 font-semibold text-sm">Completed</span>}
                         </div>
-                        <p className="text-lg font-bold text-[#2D1B69]">ÃÂ¢ÃÂÃÂ {t("reader.theEnd")} ÃÂ¢ÃÂÃÂ</p>
+                        <p className="text-lg font-bold text-[#2D1B69]">~ {t("reader.theEnd")} ~</p>
                         <div className="space-y-3">
                           <p className="text-xs font-semibold text-[#2D1B69]">Close this book and return to your library</p>
                           <div className="flex gap-3 justify-center">
@@ -1037,7 +1035,7 @@ export default function Reader() {
                   </div>
                 </div>
               ) : (
-                /* ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ Non-comic, non-fairy-tale: two-page portrait book spread ÃÂ¢ÃÂÃÂ */
+                /* -- Non-comic, non-fairy-tale: two-page portrait book spread -- */
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
                   {/* Left page */}
                   <div className="bg-[#F5F0E8] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative border-r border-[#D4C9A8]">
@@ -1128,7 +1126,7 @@ export default function Reader() {
                             {justCompleted && <span className="text-green-400 font-semibold">Completed</span>}
                           </p>
                         </div>
-                        <p className="text-lg font-bold text-[#2D1B69]">ÃÂ¢ÃÂÃÂ {t("reader.theEnd")} ÃÂ¢ÃÂÃÂ</p>
+                        <p className="text-lg font-bold text-[#2D1B69]">~ {t("reader.theEnd")} ~</p>
                         <div className="space-y-3">
                           <p className="text-xs font-semibold text-[#2D1B69]">Close this book and return to your library</p>
                           <div className="flex gap-3 justify-center">
@@ -1154,7 +1152,7 @@ export default function Reader() {
                 </div>
               )}
 
-              {/* Bottom nav: Prev / dots / Next ÃÂ¢ÃÂÃÂ matches reference screenshot */}
+              {/* Bottom nav: Prev / dots / Next -- matches reference screenshot */}
               <div className="flex items-center justify-between mt-4 px-2">
                 {/* Prev button */}
                 <button

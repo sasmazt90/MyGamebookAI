@@ -257,8 +257,8 @@ export async function generateBookContent(bookId: number, bookData: {
 
     // âââ Spec-compliant page and image counts ââââââââââââââââââââââââââââââââ
     // fairy_tale:        10 pages, 10 page illustrations + 1 cover = 11 total images
-    // comic thin:        10 pages Ã 3 panels = 30 panel images + 1 cover = 31 total
-    // comic normal:      18 pages Ã 3 panels = 54 panel images + 1 cover = 55 total
+    // comic thin:        10 pages x 3 panels = 30 panel images + 1 cover = 31 total
+    // comic normal:      18 pages x 3 panels = 54 panel images + 1 cover = 55 total
     // other normal:      80 pages, 8 branch images + 1 cover = 9 total
     // other thick:       120 pages, 12 branch images + 1 cover = 13 total
     let pageCount = 10;   // fairy_tale default
@@ -1694,8 +1694,8 @@ Write ONLY the narrative prose â no JSON, no page numbers, no labels.`,
       try {
         if (isComic) {
           // âââ COMIC: generate ONE composite page image, then crop into 3 panels âââââ
-          // Spec: comic thin = 10 pages Ã 1 composite image = 10 image calls + 1 cover = 11 total
-          //       comic normal = 18 pages Ã 1 composite image = 18 image calls + 1 cover = 19 total
+          // Spec: comic thin = 10 pages x 1 composite image = 10 image calls + 1 cover = 11 total
+          //       comic normal = 18 pages x 1 composite image = 18 image calls + 1 cover = 19 total
           // Layout: large top panel (60% height) + two equal bottom panels (40% height each)
           // After generation, sharp crops the composite into panel_top, panel_bottom_left, panel_bottom_right
           // and stores the 3 cropped URLs in panels[] JSON array.
