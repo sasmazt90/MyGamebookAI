@@ -46,40 +46,110 @@ import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/
  */
 function repairJSON(raw: string): string {
   let s = raw.trim();
+
   // Remove markdown code fences if present
-  if (s.startsWith('```')) {
-    s = s.replace(/^\`\`\`(?:json)?\n?/, '').replace(/\n?\`\`\`$/, '').trim();
+  if (s.startsWith("```")) {
+    s = s.replace(/^\`\`\`(?:json)?\n?/, "").replace(/\n?\`\`\`$/, "").trim();
   }
-  // Remove trailing commas before } or ]
-  s = s.replace(/,\s*([}\]])/g, '$1');
-  // Try parsing as-is first
-  try { JSON.parse(s); return s; } catch (_) {}
-  // Fix unterminated strings: close any open string at the end
+
+  // Try parsing as-is first before mutating valid JSON
+  try {
+    JSON.parse(s);
+    return s;
+  } catch (_) {}
+
+  // Remove trailing commas before } or ] ONLY when outside strings
+  const stripTrailingCommasOutsideStrings = (input: string): string => {
+    let result = "";
+    let inStr = false;
+    let escape = false;
+
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+
+      if (escape) {
+        result += ch;
+        escape = false;
+        continue;
+      }
+
+      if (ch === "\\") {
+        result += ch;
+        escape = true;
+        continue;
+      }
+
+      if (ch === '"') {
+        result += ch;
+        inStr = !inStr;
+        continue;
+      }
+
+      if (!inStr && ch === ",") {
+        let j = i + 1;
+        while (j < input.length && /\s/.test(input[j])) j++;
+
+        if (j < input.length && (input[j] === "}" || input[j] === "]")) {
+          continue;
+        }
+      }
+
+      result += ch;
+    }
+
+    return result;
+  };
+
+  s = stripTrailingCommasOutsideStrings(s);
+
+  // Try parsing again after safe trailing-comma cleanup
+  try {
+    JSON.parse(s);
+    return s;
+  } catch (_) {}
+
+  // Fix unterminated strings
   let inStr = false;
   for (let i = 0; i < s.length; i++) {
-    if (s[i] === '\\' && inStr) { i++; continue; }
-    if (s[i] === '"') { inStr = !inStr; }
+    if (s[i] === "\\" && inStr) {
+      i++;
+      continue;
+    }
+    if (s[i] === '"') {
+      inStr = !inStr;
+    }
   }
   if (inStr) {
     s = s + '"';
   }
+
   // Close any unclosed brackets/braces
   const stack: string[] = [];
   inStr = false;
   for (let i = 0; i < s.length; i++) {
-    if (s[i] === '\\' && inStr) { i++; continue; }
-    if (s[i] === '"') { inStr = !inStr; continue; }
+    if (s[i] === "\\" && inStr) {
+      i++;
+      continue;
+    }
+    if (s[i] === '"') {
+      inStr = !inStr;
+      continue;
+    }
     if (inStr) continue;
-    if (s[i] === '{') stack.push('}');
-    else if (s[i] === '[') stack.push(']');
-    else if (s[i] === '}' || s[i] === ']') stack.pop();
+    if (s[i] === "{") stack.push("}");
+    else if (s[i] === "[") stack.push("]");
+    else if (s[i] === "}" || s[i] === "]") stack.pop();
   }
-  // Remove trailing commas after fixes
-  s = s.replace(/,\s*$/m, '');
-  // Close unclosed structures
+
+  // Remove trailing commas at end
+  s = s.replace(/,\s*$/m, "");
+
+  // Close structures
   while (stack.length > 0) s += stack.pop();
-  // Final cleanup: remove trailing commas before closing brackets
-  s = s.replace(/,\s*([}\]])/g, '$1');
+
+  // Final safe cleanup (again outside strings)
+  s = stripTrailingCommasOutsideStrings(s);
+
   return s;
 }
 const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
