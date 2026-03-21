@@ -20,9 +20,10 @@ export interface FlipbookPage {
   id: number;
   imageUrl?: string | null;
   panels?: Array<{ imageUrl: string }> | null;
+  branchPath?: string | null;
+  nextPageIdA?: number | null;
   choiceA?: string | null;
   choiceB?: string | null;
-  nextPageIdA?: number | null;
   nextPageIdB?: number | null;
   sfxTags?: string[] | null;
   content?: string | null;
@@ -100,9 +101,13 @@ export function useFlipbook({
 
   // Preload adjacent pages whenever currentPageIndex changes
   useEffect(() => {
+    const currentPage = pages[currentPageIndex];
+    const nextGraphIndex = currentPage?.nextPageIdA != null
+      ? pages.findIndex(page => page.id === currentPage.nextPageIdA)
+      : currentPageIndex + step;
     const prevPage = pages[currentPageIndex - step];
-    const nextPage = pages[currentPageIndex + step];
-    const nextNextPage = pages[currentPageIndex + step + 1];
+    const nextPage = nextGraphIndex >= 0 ? pages[nextGraphIndex] : pages[currentPageIndex + step];
+    const nextNextPage = nextGraphIndex >= 0 ? pages[nextGraphIndex + 1] : pages[currentPageIndex + step + 1];
 
     preloadImage(prevPage?.imageUrl);
     preloadImage(nextPage?.imageUrl);
