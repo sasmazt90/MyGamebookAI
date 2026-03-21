@@ -2267,64 +2267,6 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       };
     };
 
-    const sceneSpecs = new Map<number, SceneSpec>();
-    for (let i = 0; i < illustratedStoryPages.length; i++) {
-      const page = illustratedStoryPages[i];
-      const previousIllustratedPage = i > 0 ? illustratedStoryPages[i - 1] : undefined;
-      try {
-        const sceneResp = await invokeLLM({
-          messages: [
-            {
-              role: "system" as const,
-              content: "You create scene specifications for illustrators. Return valid JSON only. Be concrete and page-specific.",
-            },
-            {
-              role: "user" as const,
-              content: `Create a precise illustration scene specification for this page.
-
-Return JSON:
-{"pageNumber":${page.pageNumber},"location":"","mainAction":"","emotionalTone":"","requiredObjects":[""],"forbiddenObjects":[""],"cameraFraming":"","continuityRequirementsFromPreviousPage":[""],"featuredCharacters":[""],"actionMoments":[""]}
-
-Rules:
-- mainAction must describe what is visibly happening on this page, not generic atmosphere.
-- requiredObjects must include recurring props that must appear.
-- forbiddenObjects must exclude objects that would contradict the page text.
-- continuityRequirementsFromPreviousPage must mention carry-over outfit, prop, pose-direction, or scene-state constraints when relevant.
-- featuredCharacters must use only these names: ${canonicalCharacterProfiles.map(profile => profile.name).join(", ") || "none"}.
-
-PREVIOUS ILLUSTRATED PAGE:
-${previousIllustratedPage ? `Page ${previousIllustratedPage.pageNumber}: ${(previousIllustratedPage.outlineContent ?? previousIllustratedPage.content).slice(0, 220)}` : "none"}
-
-RECURRING OBJECT MEMORY:
-${recurringObjectMemory.length > 0 ? recurringObjectMemory.map(objectProfile => `${objectProfile.name}: ${objectProfile.canonicalAppearance}; required pages=${objectProfile.requiredPageNumbers.join(", ")}`).join("\n") : "none"}
-
-CURRENT PAGE:
-Page ${page.pageNumber}
-Outline: ${page.outlineContent ?? page.content}
-Expanded text: ${page.content.slice(0, 700)}`,
-            },
-          ],
-          response_format: { type: "json_object" },
-          max_tokens: 4000,
-        });
-        const sceneRaw = sceneResp.choices[0]?.message?.content || "{}";
-        const sceneParsed = JSON.parse(repairJSON(typeof sceneRaw === "string" ? sceneRaw : JSON.stringify(sceneRaw)));
-        const fallbackSpec = fallbackSceneSpec(page, previousIllustratedPage);
-        sceneSpecs.set(page.pageNumber, {
-          ...fallbackSpec,
-          ...sceneParsed,
-          requiredObjects: compactList(sceneParsed.requiredObjects ?? fallbackSpec.requiredObjects),
-          forbiddenObjects: compactList(sceneParsed.forbiddenObjects ?? fallbackSpec.forbiddenObjects),
-          continuityRequirementsFromPreviousPage: compactList(sceneParsed.continuityRequirementsFromPreviousPage ?? fallbackSpec.continuityRequirementsFromPreviousPage),
-          featuredCharacters: compactList(sceneParsed.featuredCharacters ?? fallbackSpec.featuredCharacters),
-          actionMoments: compactList(sceneParsed.actionMoments ?? fallbackSpec.actionMoments),
-        });
-      } catch (sceneErr) {
-        console.warn(`[Books] Scene specification generation failed for page ${page.pageNumber}, using fallback scene spec:`, sceneErr);
-        sceneSpecs.set(page.pageNumber, fallbackSceneSpec(page, previousIllustratedPage));
-      }
-    }
-
     const NEGATIVE_PROMPT_GUARDRAILS = [
       "NEGATIVE GUARDRAILS: no hairstyle changes on later pages",
       "no age drift, no younger or older redesign",
@@ -2533,7 +2475,6 @@ Expanded text: ${page.content.slice(0, 700)}`,
       await acquireSemaphore();
       let imageUrl: string | null = null;
       let panels: string[] | null = null;
-      const pageSceneSpec = sceneSpecs.get(page.pageNumber);
       try {
         const pageSceneSpec =
           sceneSpecsByPageNumber.get(page.pageNumber) ||
@@ -2837,22 +2778,24 @@ Expanded text: ${page.content.slice(0, 700)}`,
 
     // Enforce required illustration counts to avoid shipping "ready" books without images.
     if (category === "fairy_tale") {
-      const generatedFairy = storyData.pages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
-      const minRequired = Math.floor(pageCount * 0.75); // allow up to 25% image failures
+      const generatedFairy = illustratedStoryPages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
+      const expectedIllustratedPages = illustratedStoryPages.length;
+      const minRequired = Math.floor(expectedIllustratedPages * 0.75); // allow up to 25% image failures
       if (generatedFairy < minRequired) {
         const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Fairy tale illustration shortfall: expected ${pageCount}, got ${generatedFairy} (min ${minRequired})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        throw new Error(`Fairy tale illustration shortfall: expected ${expectedIllustratedPages}, got ${generatedFairy} (min ${minRequired})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 
     if (category === "comic") {
-      const generatedComic = storyData.pages.filter((p) => {
+      const generatedComic = illustratedStoryPages.filter((p) => {
         const panels = imageResultByPage.get(p.pageNumber)?.panels;
         return Array.isArray(panels) && panels.length >= 3;
       }).length;
-      if (generatedComic < pageCount) {
+      const expectedIllustratedPages = illustratedStoryPages.length;
+      if (generatedComic < expectedIllustratedPages) {
         const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Comic panel shortfall: expected ${pageCount} pages with panels, got ${generatedComic}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        throw new Error(`Comic panel shortfall: expected ${expectedIllustratedPages} pages with panels, got ${generatedComic}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
       }
     }
 

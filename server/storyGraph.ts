@@ -76,33 +76,85 @@ export function enumerateReadablePathLengths(pages: StoryPage[]): number[] {
     .map((page) => page.pageNumber);
 
   const lengths: number[] = [];
-  const visit = (pageNumber: number, depth: number) => {
+  const visit = (pageNumber: number, depth: number, activePath: Set<number>) => {
+    if (activePath.has(pageNumber)) return;
     const page = byPage.get(pageNumber);
     if (!page) return;
 
+    activePath.add(pageNumber);
     const nextA = page.nextPageA;
     const nextB = page.isBranchPage ? page.nextPageB : null;
     const hasChildren = !!nextA || !!nextB;
     if (!hasChildren) {
       lengths.push(depth);
+      activePath.delete(pageNumber);
       return;
     }
 
-    if (nextA) visit(nextA, depth + 1);
-    if (nextB) visit(nextB, depth + 1);
+    if (nextA) visit(nextA, depth + 1, activePath);
+    if (nextB) visit(nextB, depth + 1, activePath);
+    activePath.delete(pageNumber);
   };
 
   for (const root of roots) {
-    visit(root, 1);
+    visit(root, 1, new Set<number>());
   }
 
   return lengths;
+}
+
+function detectCyclePages(pages: StoryPage[]): number[] {
+  const byPage = new Map<number, StoryPage>(pages.map((page) => [page.pageNumber, page]));
+  const state = new Map<number, "visiting" | "visited">();
+  const stack: number[] = [];
+  const cycleNodes = new Set<number>();
+
+  const visit = (pageNumber: number) => {
+    const currentState = state.get(pageNumber);
+    if (currentState === "visiting") {
+      const cycleStart = stack.indexOf(pageNumber);
+      for (const node of stack.slice(cycleStart >= 0 ? cycleStart : 0)) {
+        cycleNodes.add(node);
+      }
+      cycleNodes.add(pageNumber);
+      return;
+    }
+    if (currentState === "visited") return;
+
+    state.set(pageNumber, "visiting");
+    stack.push(pageNumber);
+
+    const page = byPage.get(pageNumber);
+    const nextPages = page
+      ? [page.nextPageA, page.isBranchPage ? page.nextPageB : null].filter(
+          (value): value is number => value !== null
+        )
+      : [];
+
+    for (const nextPageNumber of nextPages) {
+      visit(nextPageNumber);
+    }
+
+    stack.pop();
+    state.set(pageNumber, "visited");
+  };
+
+  for (const page of pages) {
+    visit(page.pageNumber);
+  }
+
+  return Array.from(cycleNodes).sort((left, right) => left - right);
 }
 
 export function validateStoryShape(pages: StoryPage[], readablePathLength: number): string[] {
   const errors: string[] = [];
   if (pages.length <= readablePathLength) {
     errors.push("Graph must contain more pages than a single readable path.");
+  }
+
+  const cyclePages = detectCyclePages(pages);
+  if (cyclePages.length > 0) {
+    errors.push(`Story graph contains a cycle involving pages: ${cyclePages.join(", ")}.`);
   }
 
   const pathLengths = enumerateReadablePathLengths(pages);

@@ -27,4 +27,38 @@ describe("story graph planning", () => {
     expect(pathLengths.every((value) => value === 10)).toBe(true);
     expect(validateStoryShape(graph, 10)).toEqual([]);
   });
+
+  it("detects cycles instead of recursing indefinitely", () => {
+    const cyclicGraph = [
+      {
+        pageNumber: 1,
+        branchPath: "root",
+        isBranchPage: false,
+        isEnding: false,
+        content: "Loop start",
+        sfxTags: ["wind"],
+        choiceA: null,
+        choiceB: null,
+        nextPageA: 2,
+        nextPageB: null,
+      },
+      {
+        pageNumber: 2,
+        branchPath: "root",
+        isBranchPage: false,
+        isEnding: false,
+        content: "Loop middle",
+        sfxTags: ["wind"],
+        choiceA: null,
+        choiceB: null,
+        nextPageA: 1,
+        nextPageB: null,
+      },
+    ];
+
+    expect(enumerateReadablePathLengths(cyclicGraph)).toEqual([]);
+    expect(validateStoryShape(cyclicGraph, 2)).toContain(
+      "Story graph contains a cycle involving pages: 1, 2."
+    );
+  });
 });
