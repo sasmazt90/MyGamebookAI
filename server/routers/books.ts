@@ -26,6 +26,7 @@ import { sanitizeText, sanitizeRichText } from "../sanitize";
 import {
   branchSimilarityScore,
   buildScenePrompt,
+  type CanonicalCharacterProfile as VisualCanonicalCharacterProfile,
   createBookVisualBlueprint,
   createCanonicalCharacterProfiles,
   getNoTextRule,
@@ -509,22 +510,6 @@ export async function generateBookContent(bookId: number, bookData: {
       age_detail?: string;
       prose_summary: string;  // 2-3 sentence flowing description for the card
     };
-    type CanonicalCharacterProfile = {
-      name: string;
-      role: string;
-      faceShape: string;
-      skinTone: string;
-      hairColor: string;
-      hairStyle: string;
-      eyeColor: string;
-      bodyBuild: string;
-      signatureClothing: string;
-      signatureAccessories: string;
-      personalityLinkedVisualCues: string;
-      referencePhotoDerivedTraits: string[];
-      traitsToAvoidChanging: string[];
-      exactIdentityStatement: string;
-    };
     const photoAnalyses: Record<string, PhotoAnalysis> = {};
     const photoDescriptions: Record<string, string> = {}; // kept for backward compat
     for (const char of characters) {
@@ -756,25 +741,30 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     const photoAnchorInstruction = STRUCTURED_IDENTITY_BLOCK
       ? `PHOTO-BASED CHARACTER REFERENCE:\n${STRUCTURED_IDENTITY_BLOCK}`
       : "";
+    const formatCanonicalProfile = (profile: VisualCanonicalCharacterProfile): string =>
+      [
+        `${profile.name} (${profile.role})`,
+        `Appearance: ${profile.appearance}`,
+        `Age lock: ${profile.ageLock}`,
+        `Clothing lock: ${profile.clothingLock}`,
+        profile.identityLock,
+      ].join(" | ");
+    const formatCompactCanonicalProfile = (
+      profile: VisualCanonicalCharacterProfile,
+      distinctMarker = ""
+    ): string =>
+      [
+        `${profile.name} (${profile.role})`,
+        `appearance ${profile.appearance}`,
+        `age ${profile.ageLock}`,
+        `clothing ${profile.clothingLock}`,
+        profile.identityLock,
+      ].join(", ") + distinctMarker;
 
     const canonicalCharacterLayer = canonicalCharacterProfiles.length > 0
       ? [
           "CANONICAL CHARACTER PROFILES (reuse these unchanged on every illustrated page):",
-          ...canonicalCharacterProfiles.map(profile => [
-            `${profile.name} (${profile.role})`,
-            `face shape: ${profile.faceShape}`,
-            `skin tone: ${profile.skinTone}`,
-            `hair color: ${profile.hairColor}`,
-            `hair style: ${profile.hairStyle}`,
-            `eye color: ${profile.eyeColor}`,
-            `body build: ${profile.bodyBuild}`,
-            `signature clothing: ${profile.signatureClothing}`,
-            `signature accessories: ${profile.signatureAccessories}`,
-            `personality-linked visual cues: ${profile.personalityLinkedVisualCues}`,
-            `reference-photo-derived traits: ${profile.referencePhotoDerivedTraits.join(", ") || "none"}`,
-            `traits to avoid changing: ${profile.traitsToAvoidChanging.join(", ") || "none"}`,
-            `identity lock: ${profile.exactIdentityStatement}`,
-          ].join(" | ")),
+          ...canonicalCharacterProfiles.map(formatCanonicalProfile),
           photoAnchorInstruction,
         ].filter(Boolean).join("\n")
       : (characters.length > 0
@@ -787,7 +777,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     // via .split(".")[0]  silently dropping hair colour, eye colour, and clothing from
     // comic panel prompts. Now uses the FULL appearance string, same as charAnchorBlock.
     const charVisualAnchor = canonicalCharacterProfiles.length > 0
-      ? `CHARACTERS (exact appearance, every panel): ${canonicalCharacterProfiles.map(c => `${c.name} (${c.role}): face ${c.faceShape}, skin ${c.skinTone}, hair ${c.hairColor} / ${c.hairStyle}, eyes ${c.eyeColor}, build ${c.bodyBuild}, clothing ${c.signatureClothing}, accessories ${c.signatureAccessories}`).join(" | ")}. Maintain exact character appearance in every panel.`
+      ? `CHARACTERS (exact appearance, every panel): ${canonicalCharacterProfiles.map(c => formatCompactCanonicalProfile(c)).join(" | ")}. Maintain exact character appearance in every panel.`
       : (characters.length > 0 ? `Characters: ${charNames}. Maintain exact character appearance.` : "");
 
     // Fix 3 + Regex Expansion: Build a CHARACTER_COLOUR_LOCK by extracting explicit hair
@@ -841,14 +831,10 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
 
     const colourKeywords = canonicalCharacterProfiles.map(c => {
       const app = [
-        `${c.faceShape} face`,
-        `${c.skinTone} skin`,
-        `${c.hairColor} hair`,
-        `${c.hairStyle} hair`,
-        `${c.eyeColor} eyes`,
-        c.bodyBuild,
-        c.signatureClothing,
-        c.signatureAccessories,
+        c.appearance,
+        c.ageLock,
+        c.clothingLock,
+        c.identityLock,
       ].join(". ");
 
       //  Hair colour 
@@ -1572,10 +1558,7 @@ Rules:
 
     // Auto-repair common non-critical structure issues instead of hard-failing generation.
     // Branch pages must always end with both A and B choices.
-    const usedTargets = {
-      has: (_value: number) => false,
-      add: (_value: number) => undefined,
-    };
+    const usedTargets = new Set<number>();
     for (const page of storyData.pages) {
       // Drop dangling references
       if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
@@ -2371,19 +2354,7 @@ Expanded text: ${page.content.slice(0, 700)}`,
       return relevantProfiles.length > 0
         ? [
             "CANONICAL CHARACTER LAYER",
-            ...relevantProfiles.map(profile => [
-              `${profile.name}`,
-              `face=${profile.faceShape}`,
-              `skin=${profile.skinTone}`,
-              `hair=${profile.hairColor}; style=${profile.hairStyle}`,
-              `eyes=${profile.eyeColor}`,
-              `build=${profile.bodyBuild}`,
-              `clothing=${profile.signatureClothing}`,
-              `accessories=${profile.signatureAccessories}`,
-              `visual cues=${profile.personalityLinkedVisualCues}`,
-              `avoid changing=${profile.traitsToAvoidChanging.join(", ") || "none"}`,
-              `identity=${profile.exactIdentityStatement}`,
-            ].join(" | ")),
+            ...relevantProfiles.map(formatCanonicalProfile),
             STRUCTURED_IDENTITY_BLOCK || undefined,
           ].filter(Boolean).join(" | ")
         : "";
@@ -2526,8 +2497,6 @@ Expanded text: ${page.content.slice(0, 700)}`,
       console.error("[Books] Cover image generation failed:", e);
     }
 
-    const branchPageNumbers = plannedIllustratedPageNumbers;
-
     // Parallel image generation with concurrency limit
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
     // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
@@ -2642,7 +2611,7 @@ Expanded text: ${page.content.slice(0, 700)}`,
               const distinctMarker = relevantChars.length > 1
                 ? ` [CHARACTER ${idx + 1}/${relevantChars.length} - MUST BE VISUALLY COMPLETELY DIFFERENT]`
                 : "";
-              return `${c.name} (${c.role}): face ${c.faceShape}, skin ${c.skinTone}, hair ${c.hairColor} / ${c.hairStyle}, eyes ${c.eyeColor}, build ${c.bodyBuild}, clothing ${c.signatureClothing}, accessories ${c.signatureAccessories}${distinctMarker}`;
+              return formatCompactCanonicalProfile(c, distinctMarker);
             }).join(" || ");
             const charList = relevantChars.map(c => c.name).join(", ");
             return [
