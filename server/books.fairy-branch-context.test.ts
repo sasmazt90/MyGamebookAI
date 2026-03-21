@@ -50,16 +50,19 @@ import { generateBookContent } from "./routers/books";
 describe("generateBookContent fairy_tale branch parent mapping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: vi.fn(() => "image/png") },
-      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: vi.fn(() => "image/png") },
+        arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
+      })
+    );
 
     mockStoragePut.mockResolvedValue({ url: "https://cdn.example.com/file.png", key: "file.png" });
     mockGenerateImage.mockResolvedValue({ url: "https://cdn.example.com/generated.png" });
 
-    mockInvokeLLM.mockImplementation(async (_args: unknown) => {
+    mockInvokeLLM.mockImplementation(async () => {
       const callIndex = mockInvokeLLM.mock.calls.length;
 
       if (callIndex === 1) {
@@ -69,42 +72,24 @@ describe("generateBookContent fairy_tale branch parent mapping", () => {
               message: {
                 content: JSON.stringify({
                   pages: [
-                    {
-                      pageNumber: 1,
-                      branchPath: "root",
-                      isBranchPage: true,
-                      isEnding: false,
-                      content: "Küçük kahraman bir patikaya geldi.",
-                      sfxTags: ["forest"],
-                      choiceA: "Parlayan patikayı seç",
-                      choiceB: "Sisli patikayı seç",
-                      nextPageA: 2,
-                      nextPageB: 3,
-                    },
-                    {
-                      pageNumber: 2,
-                      branchPath: "A",
-                      isBranchPage: false,
-                      isEnding: true,
-                      content: "Parlayan patikada peri ışıkları dans etti.",
-                      sfxTags: ["chimes"],
-                      choiceA: null,
-                      choiceB: null,
-                      nextPageA: null,
-                      nextPageB: null,
-                    },
-                    {
-                      pageNumber: 3,
-                      branchPath: "B",
-                      isBranchPage: false,
-                      isEnding: true,
-                      content: "Sisli patikada rüzgâr usulca esti.",
-                      sfxTags: ["wind"],
-                      choiceA: null,
-                      choiceB: null,
-                      nextPageA: null,
-                      nextPageB: null,
-                    },
+                    { pageNumber: 1, branchPath: "root", isBranchPage: false, isEnding: false, content: "Acilis.", sfxTags: ["forest"], choiceA: null, choiceB: null, nextPageA: 2, nextPageB: null },
+                    { pageNumber: 2, branchPath: "root", isBranchPage: true, isEnding: false, content: "Kucuk kahraman bir patikaya geldi.", sfxTags: ["forest"], choiceA: "Parlayan patikayi sec", choiceB: "Sisli patikayi sec", nextPageA: 3, nextPageB: 11 },
+                    { pageNumber: 3, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 1.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 4, nextPageB: null },
+                    { pageNumber: 4, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 2.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 5, nextPageB: null },
+                    { pageNumber: 5, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 3.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 6, nextPageB: null },
+                    { pageNumber: 6, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 4.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 7, nextPageB: null },
+                    { pageNumber: 7, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 5.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 8, nextPageB: null },
+                    { pageNumber: 8, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 6.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 9, nextPageB: null },
+                    { pageNumber: 9, branchPath: "A", isBranchPage: false, isEnding: false, content: "A yolu 7.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: 10, nextPageB: null },
+                    { pageNumber: 10, branchPath: "A", isBranchPage: false, isEnding: true, content: "Parlayan patikada peri isiklari dans etti.", sfxTags: ["chimes"], choiceA: null, choiceB: null, nextPageA: null, nextPageB: null },
+                    { pageNumber: 11, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 1.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 12, nextPageB: null },
+                    { pageNumber: 12, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 2.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 13, nextPageB: null },
+                    { pageNumber: 13, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 3.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 14, nextPageB: null },
+                    { pageNumber: 14, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 4.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 15, nextPageB: null },
+                    { pageNumber: 15, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 5.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 16, nextPageB: null },
+                    { pageNumber: 16, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 6.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 17, nextPageB: null },
+                    { pageNumber: 17, branchPath: "B", isBranchPage: false, isEnding: false, content: "B yolu 7.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: 18, nextPageB: null },
+                    { pageNumber: 18, branchPath: "B", isBranchPage: false, isEnding: true, content: "Sisli patikada ruzgar usulca esti.", sfxTags: ["wind"], choiceA: null, choiceB: null, nextPageA: null, nextPageB: null },
                   ],
                 }),
               },
@@ -117,7 +102,7 @@ describe("generateBookContent fairy_tale branch parent mapping", () => {
         choices: [
           {
             message: {
-              content: "Genişletilmiş içerik",
+              content: "Genisletilmis icerik",
             },
           },
         ],
@@ -131,14 +116,12 @@ describe("generateBookContent fairy_tale branch parent mapping", () => {
         title: "Test Fairy",
         category: "fairy_tale",
         length: "thin",
-        description: "Dallanan bir peri masalı",
+        description: "Dallanan bir peri masali",
         language: "tr",
         characters: [],
       })
     ).resolves.toBeUndefined();
 
-    // First call is structure generation; at least one additional call means per-page
-    // fairy expansion loop executed (where the regression occurred).
     expect(mockInvokeLLM.mock.calls.length).toBeGreaterThan(1);
 
     const expansionSystemPrompts = mockInvokeLLM.mock.calls
@@ -148,7 +131,7 @@ describe("generateBookContent fairy_tale branch parent mapping", () => {
 
     expect(
       expansionSystemPrompts.some((content) =>
-        content.includes('The reader chose: "Parlayan patikayı seç"')
+        content.includes('The reader chose: "Parlayan patikayi sec"')
       )
     ).toBe(true);
   });

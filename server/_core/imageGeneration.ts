@@ -15,6 +15,8 @@ export type GenerateImageOptions = {
     b64Json?: string;
     mimeType?: string;
   }>;
+  hardIdentity?: boolean;
+  noText?: boolean;
 };
 
 export type GenerateImageResponse = {
@@ -89,12 +91,25 @@ async function generateWithGoogle(options: GenerateImageOptions): Promise<Genera
   const isNewerModel = /gemini-(2\.5|3[\.\d]*)-.*image/i.test(model) ||
                        /nano-banana/i.test(model);
 
+  const promptPrefix = [
+    options.hardIdentity && (options.originalImages?.length ?? 0) > 0
+      ? "HARD IDENTITY MODE: treat every provided reference image as a strict identity anchor. Preserve the exact same person and facial structure. Identity overrides style."
+      : "",
+    options.noText !== false
+      ? "NO TEXT MODE: do not generate letters, words, numbers, symbols, captions, labels, logos, watermarks, user-interface elements, or overlays."
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const effectivePrompt = promptPrefix ? `${promptPrefix}\n\n${options.prompt}` : options.prompt;
+
   const payload: Record<string, unknown> = {
     contents: [
       {
         role: "user",
         parts: [
-          { text: options.prompt },
+          { text: effectivePrompt },
           ...originalParts.filter(Boolean),
         ],
       },
@@ -104,7 +119,7 @@ async function generateWithGoogle(options: GenerateImageOptions): Promise<Genera
     },
   };
 
-  console.log(`[ImageGen] Calling model=${model}, isNewerModel=${isNewerModel}, prompt=${options.prompt.substring(0, 100)}...`);
+  console.log(`[ImageGen] Calling model=${model}, isNewerModel=${isNewerModel}, prompt=${effectivePrompt.substring(0, 100)}...`);
 
   const response = await withTimeout(endpoint, {
     method: "POST",
@@ -180,6 +195,18 @@ async function generateWithForge(options: GenerateImageOptions): Promise<Generat
     : `${ENV.forgeApiUrl}/`;
   const fullUrl = new URL("images.v1.ImageService/GenerateImage", baseUrl).toString();
 
+  const promptPrefix = [
+    options.hardIdentity && (options.originalImages?.length ?? 0) > 0
+      ? "HARD IDENTITY MODE: preserve the exact same person and facial structure from the reference images."
+      : "",
+    options.noText !== false
+      ? "NO TEXT MODE: generate no letters, words, numbers, symbols, captions, or overlays."
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const effectivePrompt = promptPrefix ? `${promptPrefix}\n\n${options.prompt}` : options.prompt;
+
   const response = await withTimeout(fullUrl, {
     method: "POST",
     headers: {
@@ -189,7 +216,7 @@ async function generateWithForge(options: GenerateImageOptions): Promise<Generat
       authorization: `Bearer ${ENV.forgeApiKey}`,
     },
     body: JSON.stringify({
-      prompt: options.prompt,
+      prompt: effectivePrompt,
       original_images: options.originalImages || [],
     }),
   });

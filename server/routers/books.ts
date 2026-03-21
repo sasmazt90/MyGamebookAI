@@ -23,6 +23,23 @@ import { storageDelete, storagePut } from "../storage";
 import { refreshAuthorStats } from "../authorStatsCache";
 import { nanoid } from "nanoid";
 import { sanitizeText, sanitizeRichText } from "../sanitize";
+import {
+  branchSimilarityScore,
+  buildScenePrompt,
+  createBookVisualBlueprint,
+  createCanonicalCharacterProfiles,
+  getNoTextRule,
+  parseSceneSpecResponse,
+  sceneSpecFallback,
+  selectReferenceImages,
+  type RecurringObjectProfile,
+  type SceneSpec,
+} from "../bookContinuity";
+import {
+  buildFallbackStoryGraph,
+  computeStoryGenerationTargets,
+  validateStoryShape,
+} from "../storyGraph";
 
 async function imageUrlToBase64DataUrl(url: string): Promise<string> {
   const res = await fetch(url);
@@ -34,7 +51,6 @@ async function imageUrlToBase64DataUrl(url: string): Promise<string> {
 
 import { validateUpload } from "../uploadValidation";
 import { claimAndRunJob } from "../generationWorker";
-import { addCoverOverlay } from "../coverOverlay";
 import sharp from "sharp";
 import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
 
@@ -261,18 +277,11 @@ export async function generateBookContent(bookId: number, bookData: {
     // comic normal:      18 pages x 3 panels = 54 panel images + 1 cover = 55 total
     // other normal:      80 pages, 8 branch images + 1 cover = 9 total
     // other thick:       120 pages, 12 branch images + 1 cover = 13 total
-    let pageCount = 10;   // fairy_tale default
-    let branchCount = 3;  // number of A/B branch points
-    // Number of branch images to generate for non-comic, non-fairy-tale genres
-    let branchImageCount = 0;
-    if (category === "comic") {
-      pageCount = length === "thin" ? 10 : 18;
-      branchCount = length === "thin" ? 3 : 5;
-    } else if (isOtherGenre) {
-      pageCount = length === "normal" ? 80 : 120;
-      branchCount = length === "normal" ? 8 : 12;
-      branchImageCount = length === "normal" ? 8 : 12;
-    }
+    const generationTargets = computeStoryGenerationTargets(category, length);
+    const pageCount = generationTargets.readablePathLength;
+    const branchCount = generationTargets.branchCount;
+    const branchImageCount = generationTargets.branchImageCount;
+    const graphPageCount = generationTargets.graphPageCount;
 
     const charNames = characters.map(c => c.name).join(", ");
 
@@ -386,6 +395,8 @@ export async function generateBookContent(bookId: number, bookData: {
       body_shape: string;
       facial_hair: string;
       distinctive: string;
+      age_band?: string;
+      age_detail?: string;
       prose_summary: string;  // 2-3 sentence flowing description for the card
     };
     const photoAnalyses: Record<string, PhotoAnalysis> = {};
@@ -429,6 +440,8 @@ export async function generateBookContent(bookId: number, bookData: {
   "body_shape": "<height estimate + build, e.g. tall athletic build with broad shoulders, medium height stocky muscular frame, petite slim build>",
   "facial_hair": "<e.g. clean-shaven, short dark stubble, full neatly-trimmed brown beard, thin moustache  or 'none' if absent>",
   "distinctive": "<any notable features: freckles, moles, scars, dimples, glasses, tattoos  or 'none'>",
+  "age_band": "<child, teen, young adult, adult, middle-aged adult, older adult>",
+  "age_detail": "<short age/maturity note, e.g. around seven years old, visibly teenage, early thirties adult>",
   "prose_summary": "<2-3 flowing sentences combining all the above into a natural character description suitable for an illustrated book>"
 }
 
@@ -508,6 +521,7 @@ Characters: ${characters.map(c => c.name).join(", ")}${photoHintBlock}
 For each character provide:
 - name: exact name as given
 - appearance: A STRUCTURED description that MUST include one explicit sentence for EACH of the following axes. If a reference photo analysis is provided above, you MUST use those exact values:
+    0. AGE: explicit age band and physical maturity, and this age MUST stay identical across all pages
     1. SKIN: skin tone and undertone (e.g. "warm olive skin with neutral undertone")
     2. FACE: face shape, jaw, and chin (e.g. "oval face with soft jaw and rounded chin")
     3. HAIR COLOUR: primary hair colour with any highlights (e.g. "dark espresso-brown hair with subtle warm highlights")
@@ -525,7 +539,7 @@ For each character provide:
 
 Respond with JSON: {"characters": [{"name": "", "appearance": "", "voice": "", "role": ""}]}
 
-IMPORTANT: The appearance field must be a single string containing all 12 axes above, each on its own sentence. This will be used verbatim in image generation prompts.` },
+IMPORTANT: The appearance field must be a single string containing all 13 axes above, each on its own sentence. This will be used verbatim in image generation prompts.` },
           ],
           response_format: { type: "json_object" },
           max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
@@ -561,6 +575,11 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         }));
       }
     }
+
+    const canonicalCharacterProfiles = createCanonicalCharacterProfiles(
+      characterCards,
+      photoAnalyses
+    );
 
     // Build character card block for injection into every LLM call
     const characterCardBlock = characterCards.length > 0
@@ -890,9 +909,10 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
     //  Guardrail 2B: Centralised no-text constraint 
     // This constant is injected into EVERY image prompt to prevent the model from
     // rendering any text, typography, or title/author text inside the image.
-    // Title and author name are added ONLY via the addCoverOverlay() UI layer.
-    const NO_TEXT_CONSTRAINT =
-      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no title, no author name, no captions, no labels anywhere in the image"    //  Guardrail 2C: Comic panel character hard-lock instruction 
+    // Title and author metadata are rendered by the product UI, not baked into the generated cover image.
+    const NO_TEXT_CONSTRAINT = getNoTextRule();
+
+    // Guardrail 2C: Comic panel character hard-lock instruction
     // Appended to every comic panel prompt after the per-panel speaker focus note.
     // Prevents per-panel character drift by explicitly repeating the full physical identity lock.
     // ENHANCED: Added explicit character count enforcement, negative prompts, and visual distinctness rules.
@@ -1014,6 +1034,8 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
         const portraitResult = await generateImage({
           prompt: portraitPrompt,
           originalImages: [{ b64Json: portraitPhotoB64, mimeType: portraitPhotoMime }],
+          hardIdentity: true,
+          noText: true,
         });
 
         if (portraitResult.url) {
@@ -1036,18 +1058,30 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
       prompt: string,
       refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
     ) => {
-      const explicitRefs = (refImages ?? []).filter((img): img is { url?: string; mimeType?: string } => !!img?.url);
-      const rawPhotoRefs = charPhotos.filter((img): img is { url: string; mimeType: string } => !!img?.url);
-      const fallbackPortraitRefs = Array.from(illustratedPortraitsMap.values())
-        .filter((img): img is { url: string; mimeType: string } => !!img?.url);
+      type ReferenceCandidate = { url?: string; b64Json?: string; mimeType?: string };
+
+      const fallbackPortraitRefs: ReferenceCandidate[] = Array.from(illustratedPortraitsMap.values())
+        .filter((img) => !!img?.url)
+        .map((img) => ({ url: img.url, mimeType: img.mimeType }));
+      const explicitRefs: ReferenceCandidate[] = (refImages ?? []).filter(
+        (img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json
+      );
+      const rawPhotoRefs: ReferenceCandidate[] = charPhotos
+        .filter((img) => !!img?.url)
+        .map((img) => ({ url: img.url, mimeType: img.mimeType }));
       const candidateRefs =
         explicitRefs.length > 0
           ? explicitRefs
-          : rawPhotoRefs.length > 0
-          ? rawPhotoRefs
-          : fallbackPortraitRefs;
+          : fallbackPortraitRefs.length > 0
+          ? fallbackPortraitRefs
+          : rawPhotoRefs;
       const mergedRefs = candidateRefs
-        .filter((img, idx, arr) => arr.findIndex(x => x.url === img.url) === idx);
+        .filter((img, idx, arr) =>
+          arr.findIndex((candidate) =>
+            (candidate.url ?? "") === (img.url ?? "") &&
+            (candidate.b64Json ?? "") === (img.b64Json ?? "")
+          ) === idx
+        );
 
       const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
 
@@ -1059,14 +1093,23 @@ IMPORTANT: The appearance field must be a single string containing all 12 axes a
             console.log(
               `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode  ${mergedRefs.length} image reference(s), attempt ${attempt}/${maxImageAttempts})`
             );
-            const result = await generateImage({ prompt: effectivePrompt, originalImages: mergedRefs });
+            const result = await generateImage({
+              prompt: effectivePrompt,
+              originalImages: mergedRefs,
+              hardIdentity: true,
+              noText: true,
+            });
             if (result?.url) return result;
             lastErr = `Image API returned no URL (attempt ${attempt})`;
           } else {
             console.log(
               `[Books] Generating image for bookId=${bookId} stage=${stage} (text-anchor mode  no usable references, attempt ${attempt}/${maxImageAttempts})`
             );
-            const result = await generateImage({ prompt: effectivePrompt });
+            const result = await generateImage({
+              prompt: effectivePrompt,
+              hardIdentity: true,
+              noText: true,
+            });
             if (result?.url) return result;
             lastErr = `Image API returned no URL (attempt ${attempt})`;
           }
@@ -1106,6 +1149,7 @@ BRANCHING RULES (MANDATORY  violations will cause story rejection):
 - branchPath values must reflect the lineage: "root", "A", "B", "A-A", "A-B", "B-A", "B-B", etc.
 - ILLEGAL merge example (FORBIDDEN): page 3 has nextPageA=7 AND page 5 also has nextPageA=7. Page 7 appears as a target twice — this is a merge violation. NEVER let any pageNumber appear as the value of nextPageA or nextPageB on more than one page across the ENTIRE story.
 - The page immediately reached after a branch choice (nextPageA target and nextPageB target) MUST be a narrative page with isBranchPage=false. Do NOT chain branch pages — no branch target may itself be a branch page.
+- For non-branch, non-ending pages, nextPageA is the single linear continuation edge on that branch path and nextPageB must be null.
 - TWO CHOICES MANDATORY: Every branch page (isBranchPage=true) MUST have non-null choiceA AND non-null choiceB. NEVER generate a branch page with only one choice. Both choices must lead to different next pages and must represent meaningfully different narrative directions.
 - The LAST page on EVERY branch path MUST have isEnding=true and null nextPageA/nextPageB.`;
 
@@ -1125,7 +1169,8 @@ BRANCHING RULES (MANDATORY  violations will cause story rejection):
     const structurePrompt = `Generate a ${category.replace(/_/g, " ")} interactive gamebook titled "${title}" in ${language} language.
 Description: ${description}
 
-Generate exactly ${pageCount} pages with ${branchCount} branch points (A/B choices only).
+Generate a branching graph with exactly ${graphPageCount} total pages and exactly ${branchCount} branch points (A/B choices only).
+Every complete readable path from the opening page to an ending MUST contain exactly ${pageCount} pages.
 Format as JSON:
 {
   "pages": [
@@ -1146,8 +1191,10 @@ Format as JSON:
 
 Rules:
 - Branch pages: isBranchPage=true. MANDATORY: BOTH choiceA AND choiceB MUST be non-null text strings. BOTH nextPageA AND nextPageB MUST point to different valid page numbers. A branch page with only one choice is STRICTLY INVALID - always provide exactly two distinct choices with distinct targets.
-- Ending pages: isEnding=true, no choices, no nextPage references
+- Linear narrative pages: if isBranchPage=false and isEnding=false, nextPageA MUST point to the next page on that same readable path, and nextPageB MUST be null.
+- Ending pages: isEnding=true, no choices, no nextPage references.
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
+- Total graph size must be larger than the readable path length. Never confuse the two numbers.
 - ALL paths must reach an isEnding=true page  no dead ends
 - STORY BEGINNING: Page 1 MUST be a proper story opening  introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
 - MANDATORY BRANCH POSITIONS (CRITICAL): Place your ${branchCount} A/B branch point(s) on EXACTLY these page numbers: [${precomputedBranchPages.join(", ")}]. Do NOT place branch points on any other pages. Do NOT cluster branch points on consecutive pages. Each branch point must be separated by at least ${Math.max(2, branchSpacing - 1)} pages of narrative.
@@ -1248,6 +1295,22 @@ Rules:
 
     if (!storyData?.pages?.length) {
       throw new Error(`Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`);
+    }
+
+    const structuralShapeErrors = validateStoryShape(storyData.pages, pageCount);
+    if (structuralShapeErrors.length > 0) {
+      console.warn("[Books] Structure shape validation failed; using deterministic fallback graph.", {
+        bookId,
+        structuralShapeErrors,
+      });
+      storyData = {
+        pages: buildFallbackStoryGraph({
+          title,
+          description,
+          readablePathLength: pageCount,
+          branchCount,
+        }),
+      };
     }
 
     // Step 3: Post-structure validation 
@@ -1591,9 +1654,14 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           : "";
 
         // Build branch context if this page follows a choice
+        const parentPageNum = parentMap.get(page.pageNumber);
+        const parentPage = parentPageNum ? storyData.pages.find((candidate) => candidate.pageNumber === parentPageNum) : null;
+        const chosenBranchLabel = parentPage
+          ? (parentPage.nextPageA === page.pageNumber ? parentPage.choiceA : parentPage.choiceB)
+          : null;
         const branchContext = page.branchPath && page.branchPath !== "root"
-          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader made a specific choice to reach here  the narrative must directly reflect that choice.`
-          : "";;
+          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader chose "${chosenBranchLabel || page.branchPath}" to arrive here. The prose must show a materially different consequence from the unchosen branch.`
+          : "";
 
         try {
           const expandResp = await invokeLLM({
@@ -1643,6 +1711,249 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
       content: stripInlineChoiceLabels(page.content ?? ""),
     }));
 
+    const plannedIllustratedPageNumbers = new Set<number>(
+      isOtherGenre
+        ? storyData.pages
+            .filter((page) => page.isBranchPage)
+            .slice(0, branchImageCount)
+            .map((page) => page.pageNumber)
+        : storyData.pages.map((page) => page.pageNumber)
+    );
+
+    let recurringObjects: RecurringObjectProfile[] = [];
+    try {
+      const objectRegistryResponse = await invokeLLM({
+        messages: [
+          {
+            role: "system" as const,
+            content:
+              "You are a visual continuity supervisor. Return valid JSON only. Identify only recurring non-character objects that need a locked visual identity across scenes.",
+          },
+          {
+            role: "user" as const,
+            content: `Analyse this gamebook and extract recurring visual objects that must keep the same design across pages.
+
+Characters:
+${canonicalCharacterProfiles.map((profile) => `- ${profile.name}: ${profile.appearance}`).join("\n")}
+
+Story pages:
+${storyData.pages
+  .map((page) => `Page ${page.pageNumber} (${page.branchPath}): ${page.content.slice(0, 220)}`)
+  .join("\n")}
+
+Return JSON:
+{"objects":[{"name":"","canonicalAppearance":"","invariants":[""],"continuityRole":"","firstSeenPage":1}]}
+
+Rules:
+- Include only objects or vehicles that recur or obviously must stay consistent.
+- Never include people.
+- Be concrete about shape, colours, materials, and proportions.
+- If nothing qualifies, return {"objects":[]}.`,
+          },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 4000,
+      });
+
+      const rawObjects = objectRegistryResponse.choices[0]?.message?.content || "{\"objects\":[]}";
+      const objectPayload = typeof rawObjects === "string" ? rawObjects.trim() : JSON.stringify(rawObjects);
+      if (objectPayload.startsWith("{")) {
+        const parsedObjects = JSON.parse(repairJSON(objectPayload));
+        if (Array.isArray(parsedObjects.objects)) {
+          recurringObjects = parsedObjects.objects
+            .map((item: any) => ({
+              name: String(item?.name ?? "").trim(),
+              canonicalAppearance: String(item?.canonicalAppearance ?? "").trim(),
+              invariants: Array.isArray(item?.invariants)
+                ? item.invariants.map((value: unknown) => String(value).trim()).filter(Boolean)
+                : [],
+              continuityRole: item?.continuityRole ? String(item.continuityRole).trim() : undefined,
+              firstSeenPage: item?.firstSeenPage ? Number(item.firstSeenPage) : undefined,
+            }))
+            .filter((item: RecurringObjectProfile) => item.name && item.canonicalAppearance);
+        }
+      }
+    } catch (objectErr) {
+      console.warn("[Books] Recurring object registry generation failed; continuing without locked object registry.", objectErr);
+    }
+
+    const visualBlueprint = createBookVisualBlueprint({
+      readablePathLength: pageCount,
+      graphPageCount,
+      styleLock: STYLE_LOCK,
+      characterProfiles: canonicalCharacterProfiles,
+      recurringObjects,
+    });
+    const portraitReferenceMap = new Map(
+      Array.from(illustratedPortraitsMap.entries()).map(([name, ref]) => [name, { url: ref.url, mimeType: ref.mimeType }])
+    );
+
+    const findMentionedCharacters = (content: string) =>
+      canonicalCharacterProfiles
+        .filter((profile) => new RegExp(`\\b${profile.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(content))
+        .map((profile) => profile.name);
+
+    const findMentionedObjects = (content: string) =>
+      recurringObjects
+        .filter((object) => new RegExp(`\\b${object.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(content))
+        .map((object) => object.name);
+
+    const parentPageMap = new Map<number, number>();
+    for (const page of storyData.pages) {
+      if (page.nextPageA) parentPageMap.set(page.nextPageA, page.pageNumber);
+      if (page.nextPageB) parentPageMap.set(page.nextPageB, page.pageNumber);
+    }
+
+    const sceneSpecsByPageNumber = new Map<number, SceneSpec>();
+    for (const page of storyData.pages) {
+      if (!plannedIllustratedPageNumbers.has(page.pageNumber)) continue;
+
+      const parentPageNumber = parentPageMap.get(page.pageNumber);
+      const previousScene = parentPageNumber ? sceneSpecsByPageNumber.get(parentPageNumber) : undefined;
+      const fallbackScene = sceneSpecFallback({
+        pageNumber: page.pageNumber,
+        narrative: page.content,
+        previousScene,
+        blueprint: visualBlueprint,
+      });
+
+      const mentionedCharacters = findMentionedCharacters(page.content);
+      const mentionedObjects = findMentionedObjects(page.content);
+
+      try {
+        const parentPage = parentPageNumber
+          ? storyData.pages.find((candidate) => candidate.pageNumber === parentPageNumber)
+          : undefined;
+        const branchChoice =
+          parentPage && parentPage.isBranchPage
+            ? parentPage.nextPageA === page.pageNumber
+              ? parentPage.choiceA
+              : parentPage.choiceB
+            : null;
+
+        const sceneSpecResponse = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content:
+                "You are a storyboard continuity director. Return valid JSON only. Produce a scene specification that can be rendered directly without reinterpreting characters, objects, or continuity.",
+            },
+            {
+              role: "user" as const,
+              content: `Create a structured scene specification for page ${page.pageNumber}.
+
+Page narrative:
+${page.content}
+
+Canonical characters:
+${canonicalCharacterProfiles.map((profile) => `- ${profile.promptBlock}`).join("\n")}
+
+Recurring objects:
+${recurringObjects.map((object) => `- ${object.name}: ${object.canonicalAppearance}. Invariants: ${object.invariants.join(", ")}`).join("\n") || "- none"}
+
+Previous illustrated scene:
+${previousScene ? JSON.stringify(previousScene) : "none"}
+
+Branch consequence:
+${branchChoice || "continue the currently active branch faithfully"}
+
+Mentioned characters: ${mentionedCharacters.join(", ") || "none explicitly named"}
+Mentioned objects: ${mentionedObjects.join(", ") || "none explicitly named"}
+
+Return JSON:
+{
+  "pageNumber": ${page.pageNumber},
+  "sceneSummary": "",
+  "narrativeBeat": "",
+  "location": "",
+  "environment": "",
+  "timeOfDay": "",
+  "lighting": "",
+  "physics": "",
+  "camera": "",
+  "composition": "",
+  "continuityFromPrevious": "",
+  "branchDelta": "",
+  "mustShow": ["", ""],
+  "explicitExclusions": ["text", "captions"],
+  "characters": [{"name":"","action":"","pose":"","framing":"","visibility":""}],
+  "recurringObjects": [{"name":"","state":"","visibility":""}]
+}
+
+Rules:
+- Keep character identity, age, outfit, and facial structure invariant.
+- If a recurring object appears, keep its canonical design invariant.
+- Make branch consequences visually explicit.
+- Enforce physically consistent lighting and environment continuity unless the story clearly changes them.
+- Guarantee stable framing with fully visible primary subjects.
+- Never include text in the image.`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 4000,
+        });
+
+        const rawScene = sceneSpecResponse.choices[0]?.message?.content || "{}";
+        const parsedScene = parseSceneSpecResponse(
+          typeof rawScene === "string" ? rawScene : JSON.stringify(rawScene),
+          {
+            ...fallbackScene,
+            characters: mentionedCharacters.map((name) => ({
+              name,
+              action: "present in the scene",
+              pose: "natural story pose",
+              framing: "fully visible",
+              visibility: "fully visible",
+            })),
+            recurringObjects: mentionedObjects.map((name) => ({
+              name,
+              state: "present and unchanged",
+              visibility: "visible",
+            })),
+          }
+        );
+        sceneSpecsByPageNumber.set(page.pageNumber, parsedScene);
+      } catch (sceneErr) {
+        sceneSpecsByPageNumber.set(
+          page.pageNumber,
+          {
+            ...fallbackScene,
+            characters: mentionedCharacters.map((name) => ({
+              name,
+              action: "present in the scene",
+              pose: "natural story pose",
+              framing: "fully visible",
+              visibility: "fully visible",
+            })),
+            recurringObjects: mentionedObjects.map((name) => ({
+              name,
+              state: "present and unchanged",
+              visibility: "visible",
+            })),
+          }
+        );
+        console.warn(`[Books] Scene spec generation failed for page ${page.pageNumber}; using fallback continuity spec.`, sceneErr);
+      }
+    }
+
+    for (const page of storyData.pages) {
+      if (!page.isBranchPage || !page.nextPageA || !page.nextPageB) continue;
+      const nextA = storyData.pages.find((candidate) => candidate.pageNumber === page.nextPageA);
+      const nextB = storyData.pages.find((candidate) => candidate.pageNumber === page.nextPageB);
+      if (!nextA || !nextB) continue;
+
+      const similarity = branchSimilarityScore(nextA.content, nextB.content);
+      if (similarity > 0.6) {
+        page.choiceA = page.choiceA || "Take the first distinct route";
+        page.choiceB = page.choiceB || "Take the second distinct route";
+        const spec = sceneSpecsByPageNumber.get(page.pageNumber);
+        if (spec) {
+          spec.branchDelta = `Show a visibly different outcome for "${page.choiceA}" versus "${page.choiceB}". The two branches currently risk looking too similar and must diverge in action, environment, and mood.`;
+          sceneSpecsByPageNumber.set(page.pageNumber, spec);
+        }
+      }
+    }
+
     await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
 
     // Generate cover image  uses STYLE_LOCK + full charAnchorBlock for maximum consistency
@@ -1659,65 +1970,61 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
       romance: "intimate two-shot or single-character portrait, emotional expression",
       horror_thriller: "ominous establishing shot, dark environment, sense of dread",
     }[category] || "dramatic establishing shot, professional book cover composition";
+    const coverScenePrompt = buildScenePrompt({
+      blueprint: visualBlueprint,
+      sceneSpec: {
+        pageNumber: 0,
+        sceneSummary: `Cover scene for "${title}". ${descSnippet}`,
+        narrativeBeat: "Establish the central premise and lead character with a coherent environment.",
+        location: "cover illustration scene",
+        environment: coverFramingNote,
+        timeOfDay: "match the story premise",
+        lighting: "match the locked global style and remain physically coherent",
+        physics: "credible scale, shadows, and environment logic",
+        camera: coverFramingNote,
+        composition: "cover composition with fully visible hero subject and readable silhouette",
+        continuityFromPrevious: "Set the canonical visual contract for the rest of the book.",
+        branchDelta: "Do not show text; emphasize the core story hook visually.",
+        mustShow: [descSnippet],
+        explicitExclusions: ["text", "letters", "captions", "logos", "author names"],
+        characters: canonicalCharacterProfiles.slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length))).map((profile) => ({
+          name: profile.name,
+          action: "hero cover pose",
+          pose: "confident, readable pose",
+          framing: "fully visible",
+          visibility: "fully visible",
+        })),
+        recurringObjects: recurringObjects.slice(0, 2).map((object) => ({
+          name: object.name,
+          state: "canonical cover appearance",
+          visibility: "visible if relevant",
+        })),
+      },
+      pageKind: "cover",
+    });
     try {
-      // Guardrail 2A: use wrapper  logs warning if charPhotos is empty
-      // Guardrail 2B: STYLE_LOCK already contains NO_TEXT_CONSTRAINT; no title/author in prompt
-      //               title + author are applied ONLY via addCoverOverlay() below
       const coverResult = await generateImageWithRefCheck(
         "cover",
         [
-          STYLE_LOCK,
+          coverScenePrompt,
           `book cover illustration for a gamebook`,
-          coverFramingNote,
-          descSnippet,
           "professional publishing quality, full-bleed composition",
           charPhotos.length > 0
             ? `CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the EXACT SAME individuals from their reference photos. Preserve without any modification: exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness. Do NOT genericise, idealise, or redesign any facial feature.`
             : null,
         ].filter(Boolean).join(" | "),
-        charPhotos.length > 0 ? charPhotos : undefined,
+        Array.from(illustratedPortraitsMap.values()).length > 0
+          ? Array.from(illustratedPortraitsMap.values())
+          : (charPhotos.length > 0 ? charPhotos : undefined),
       );
-      // Guardrail 2B: title + author name added ONLY as a UI overlay  never inside the image prompt
       if (coverResult.url) {
-        try {
-          const coverResp = await fetch(coverResult.url);
-          const coverBuf = Buffer.from(await coverResp.arrayBuffer());
-          // Resolve author name from profiles table
-          const bookRow = await db.select({ authorId: books.authorId }).from(books).where(eq(books.id, bookId)).limit(1);
-          const authorId = bookRow[0]?.authorId ?? 0;
-          const authorProfile = await db
-            .select({ authorName: profiles.authorName })
-            .from(profiles)
-            .where(eq(profiles.userId, authorId))
-            .limit(1)
-            .catch(() => []);
-          const overlayAuthorName = authorProfile[0]?.authorName || charNames || "Unknown Author";
-          const overlaidBuf = await addCoverOverlay({
-            imageBuffer: coverBuf,
-            title,
-            authorName: overlayAuthorName,
-          });
-          const overlaidKey = `covers/${bookId}-cover-${Date.now()}.png`;
-          const { url: overlaidUrl } = await storagePut(overlaidKey, overlaidBuf, "image/png");
-          coverImageUrl = overlaidUrl;
-        } catch (overlayErr) {
-          console.error("[Books] Cover overlay failed, using raw image:", overlayErr);
-          coverImageUrl = coverResult.url;
-        }
+        coverImageUrl = coverResult.url;
       }
     } catch (e) {
       console.error("[Books] Cover image generation failed:", e);
     }
 
-    // Pre-assign which pages get branch images
-    // For other genres, only the first branchImageCount branch pages get illustrations.
-    // We pre-assign here so parallel generation respects the exact count.
-    const branchPageNumbers = new Set<number>(
-      storyData.pages
-        .filter(p => p.isBranchPage)
-        .slice(0, branchImageCount)
-        .map(p => p.pageNumber)
-    );
+    const branchPageNumbers = plannedIllustratedPageNumbers;
 
     // Parallel image generation with concurrency limit
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
@@ -1756,6 +2063,15 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
       let imageUrl: string | null = null;
       let panels: string[] | null = null;
       try {
+        const pageSceneSpec =
+          sceneSpecsByPageNumber.get(page.pageNumber) ||
+          sceneSpecFallback({
+            pageNumber: page.pageNumber,
+            narrative: page.content,
+            previousScene: undefined,
+            blueprint: visualBlueprint,
+          });
+
         if (isComic) {
           // COMIC: generate ONE composite page image, then crop into 3 panels
           // Spec: comic thin = 10 pages x 1 composite image = 10 image calls + 1 cover = 11 total
@@ -1843,15 +2159,31 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           const p2CharAnchor = buildFilteredCharAnchor(p2Chars);
           const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
           const panelCharacterNames = Array.from(new Set([...p1Chars, ...p2Chars, ...p3Chars]));
-          const comicRelevantRefs = panelCharacterNames
-            .map((name) => illustratedPortraitsMap.get(name) || photoRefByName.get(name))
-            .filter((img): img is { url: string; mimeType: string } => !!img?.url);
+          const comicSceneSpec: SceneSpec = {
+            ...pageSceneSpec,
+            characters: panelCharacterNames.map((name) => ({
+              name,
+              action: "active in the comic page",
+              pose: "panel-specific action pose",
+              framing: "fully visible within panel bounds",
+              visibility: "fully visible",
+            })),
+          };
+          const comicRelevantRefs = selectReferenceImages({
+            sceneSpec: comicSceneSpec,
+            blueprint: visualBlueprint,
+            portraitRefs: portraitReferenceMap,
+            photoRefs: photoRefByName,
+          }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
 
           // Step 2: Generate ONE composite comic page image
           // NO text in the image speech bubbles are React overlays, not baked into the image.
           const compositePrompt = [
-            STYLE_LOCK,
-            NO_TEXT_CONSTRAINT,
+            buildScenePrompt({
+              blueprint: visualBlueprint,
+              sceneSpec: comicSceneSpec,
+              pageKind: "comic",
+            }),
             "Single comic book PAGE with EXACTLY 3 panels arranged as follows: ONE large panel on TOP (spanning full width, 60% of page height), then TWO equal panels side by side on the BOTTOM (each 50% width, 40% of page height). Thick black borders between all panels.",
             `TOP PANEL (large): ${p1Narr}`,
             `BOTTOM-LEFT PANEL: ${p2Narr}`,
@@ -1956,24 +2288,27 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
 
         } else if (category === "fairy_tale") {
           // FAIRY TALE: one illustration per page (10 pages = 10 illustrations) 
-          const sceneNote = page.isBranchPage
-            ? `dramatic decision moment, ${page.content.substring(0, 200)}`
-            : page.isEnding
-            ? `final scene, emotional resolution, ${page.content.substring(0, 200)}`
-            : `scene: ${page.content.substring(0, 220)}`;
+          const fairyRefs = selectReferenceImages({
+            sceneSpec: pageSceneSpec,
+            blueprint: visualBlueprint,
+            portraitRefs: portraitReferenceMap,
+            photoRefs: photoRefByName,
+          }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
           const imgResult = await generateImageWithRefCheck(
             `page-${page.pageNumber}`,
             [
-              STYLE_LOCK,
-              sceneNote,
-              charAnchorBlock,
+              buildScenePrompt({
+                blueprint: visualBlueprint,
+                sceneSpec: pageSceneSpec,
+                pageKind: "page",
+              }),
               CHARACTER_COLOUR_LOCK,
               STRUCTURED_IDENTITY_BLOCK || undefined,
               CHARACTER_LOCK_INSTRUCTION,
                           "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover",
               "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
             ].filter(Boolean).join(" | "),
-            charPhotos.length > 0 ? charPhotos : (illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : undefined),
+            fairyRefs.length > 0 ? fairyRefs : undefined,
           );
           imageUrl = imgResult.url ?? null;
 
@@ -1982,20 +2317,27 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
           // Spec: normal = 8 branch images, thick = 12 branch images
           // Only isBranchPage pages get illustrations; all other pages are text-only.
           if (branchPageNumbers.has(page.pageNumber)) {
-            const sceneNote = `dramatic decision moment  the protagonist stands at a crossroads, ${page.content.substring(0, 200)}`;
+            const branchRefs = selectReferenceImages({
+              sceneSpec: pageSceneSpec,
+              blueprint: visualBlueprint,
+              portraitRefs: portraitReferenceMap,
+              photoRefs: photoRefByName,
+            }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
             const imgResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-branch`,
               [
-                STYLE_LOCK,
-                sceneNote,
-                charAnchorBlock,
+                buildScenePrompt({
+                  blueprint: visualBlueprint,
+                  sceneSpec: pageSceneSpec,
+                  pageKind: "page",
+                }),
                 CHARACTER_COLOUR_LOCK,
                 STRUCTURED_IDENTITY_BLOCK || undefined,
                 CHARACTER_LOCK_INSTRUCTION,
                               "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
                 "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
               ].filter(Boolean).join(" | "),
-              charPhotos.length > 0 ? charPhotos : (illustratedPortraitsMap.size > 0 ? Array.from(illustratedPortraitsMap.values()) : undefined),
+              branchRefs.length > 0 ? branchRefs : undefined,
             );
             imageUrl = imgResult.url ?? null;
             console.log(`[Books] Branch image generated for page ${page.pageNumber}`);
@@ -2070,6 +2412,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
         choiceA: page.choiceA,
         choiceB: page.choiceB,
         sfxTags: page.sfxTags || [],
+        sceneSpec: sceneSpecsByPageNumber.get(page.pageNumber) ?? null,
         format: isLandscape ? "landscape" : "portrait",
       });
 
@@ -2113,15 +2456,18 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
         status: "ready",
         generationStep: null, // clear step when done
         coverImageUrl,
-        totalPages: storyData.pages.length,
+        totalPages: pageCount,
         totalBranches: storyData.pages.filter(p => p.isBranchPage).length,
         characterCards: characterCards.length > 0 ? characterCards : null,
         portraitUrls: portraitUrlsMap.length > 0 ? portraitUrlsMap : null,
         illustrationStyleLock: STYLE_LOCK, // stored for admin/debug inspection
+        visualBlueprint,
       })
       .where(eq(books.id, bookId));
 
-    console.log(`[Books] Book ${bookId} generation complete. Character cards saved: ${characterCards.length}. Portraits generated: ${portraitUrlsMap.length}. Style lock length: ${STYLE_LOCK.length} chars.`);
+    console.log(
+      `[Books] Book ${bookId} generation complete. Character cards saved: ${characterCards.length}. Portraits generated: ${portraitUrlsMap.length}. Readable path length: ${pageCount}. Graph pages: ${storyData.pages.length}.`
+    );
 
   } catch (error) {
     console.error("[Books] Generation failed:", error);

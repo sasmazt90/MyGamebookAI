@@ -1,0 +1,2 @@
+ALTER TABLE `books` ADD `visualBlueprint` json;
+ALTER TABLE `bookPages` ADD `sceneSpec` json;

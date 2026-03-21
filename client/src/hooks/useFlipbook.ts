@@ -136,6 +136,26 @@ export function useFlipbook({
     if (showCover || animatingRef.current) return;
     if (hasChoices) return; // branch-gate: must choose A or B first
 
+    const currentPage = pages[currentPageIndex];
+    const isTerminalPage =
+      !!currentPage &&
+      !currentPage.choiceA &&
+      !currentPage.choiceB &&
+      !currentPage.nextPageIdA &&
+      !currentPage.nextPageIdB;
+    if (isTerminalPage) {
+      onEnd?.();
+      return;
+    }
+
+    if (currentPage?.nextPageIdA) {
+      const explicitIndex = pages.findIndex((page) => page.id === currentPage.nextPageIdA);
+      if (explicitIndex >= 0) {
+        animate("forward", () => onGoTo(explicitIndex, "forward"));
+        return;
+      }
+    }
+
     const nextIndex = currentPageIndex + step;
     if (nextIndex >= pages.length) {
       onEnd?.();

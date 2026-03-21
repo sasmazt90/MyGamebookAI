@@ -122,6 +122,7 @@ export const books = mysqlTable("books", {
   portraitUrls: json("portraitUrls"), // Array of { characterName: string; url: string } for generated style-bridge illustrations
   generationStep: varchar("generationStep", { length: 255 }), // e.g. "Expanding page 12 of 30…"
   illustrationStyleLock: text("illustrationStyleLock"), // Assembled style lock string used for all image prompts
+  visualBlueprint: json("visualBlueprint"), // Canonical continuity state: characters, objects, style, readable-path metadata
   storePrice: int("storePrice"),
   purchaseCount: int("purchaseCount").default(0).notNull(),
   reviewCount: int("reviewCount").default(0).notNull(),
@@ -157,6 +158,7 @@ export const bookPages = mysqlTable("bookPages", {
   nextPageIdA: int("nextPageIdA"),
   nextPageIdB: int("nextPageIdB"),
   sfxTags: json("sfxTags"),
+  sceneSpec: json("sceneSpec"), // Structured scene plan used to keep illustrations aligned with narrative continuity
   format: mysqlEnum("format", ["landscape", "portrait"]).default("portrait").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
