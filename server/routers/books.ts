@@ -2497,6 +2497,8 @@ Expanded text: ${page.content.slice(0, 700)}`,
       console.error("[Books] Cover image generation failed:", e);
     }
 
+    const branchPageNumbers = plannedIllustratedPageNumbers;
+
     // Parallel image generation with concurrency limit
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
     // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
