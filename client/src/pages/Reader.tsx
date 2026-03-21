@@ -366,8 +366,20 @@ export default function Reader() {
   // Spread mode is ALWAYS enabled for all non-fairy-tale books (comics and others)
   // Fairy tales show one wide landscape page at a time
   const forceSpreadMode = !isFairyTale;
-  const effectiveSpreadMode = forceSpreadMode ? true : useSpreadMode;
-  const step = isComic ? (effectiveSpreadMode ? 2 : 1) : isFairyTale ? 1 : 2;
+  const hasNonLinearGraph = pages.some((page, index) => {
+    if (!page?.nextPageIdA) return false;
+    const flatNextId = pages[index + 1]?.id;
+    return flatNextId != null && page.nextPageIdA !== flatNextId;
+  });
+  const effectiveSpreadMode = hasNonLinearGraph ? false : forceSpreadMode ? true : useSpreadMode;
+  const step = hasNonLinearGraph ? 1 : isComic ? (effectiveSpreadMode ? 2 : 1) : isFairyTale ? 1 : 2;
+  const parseRoutePageNumber = useCallback((page?: FlipbookPage | null, fallback = 1) => {
+    const match = page?.branchPath?.match(/\|r(\d+)/);
+    return match ? parseInt(match[1], 10) : fallback;
+  }, []);
+  const targetReadablePageCount = pages.reduce((max, page, index) => Math.max(max, parseRoutePageNumber(page, index + 1)), 0);
+  const currentRoutePageNumber = parseRoutePageNumber(currentPage, Math.max(1, currentPageIndex + 1));
+  const nextRoutePageNumber = parseRoutePageNumber(nextPage, currentRoutePageNumber + 1);
 
   // ---------------------------------------------------------------------------
   // Audio
@@ -438,10 +450,11 @@ export default function Reader() {
     setCameFromBranch(true);
     const isEnding = isEndingPage(targetIndex);
     if (isEnding) setJustCompleted(true);
+    const targetPageId = targetPage?.id ?? nextPageDbId ?? 0;
     saveProgress.mutate({
       bookId,
-      currentPageId: targetIndex,
-      branchPath: "root",
+      currentPageId: targetPageId,
+      branchPath: targetPage?.branchPath ?? "root",
       isEndingNode: isEnding,
     });
   }, [currentPageIndex, bookId, playPageTurn, saveProgress, isEndingPage, findPageIndexById, pages, step]);
@@ -461,8 +474,8 @@ export default function Reader() {
     setCameFromBranch(false);
     stopAmbience();
     stopPageSfx();
-    saveProgress.mutate({ bookId, currentPageId: 0, branchPath: "root" });
-  }, [bookId, saveProgress, stopAmbience, stopPageSfx]);
+    saveProgress.mutate({ bookId, currentPageId: pages[0]?.id ?? 0, branchPath: pages[0]?.branchPath ?? "root" });
+  }, [bookId, pages, saveProgress, stopAmbience, stopPageSfx]);
 
   const handleBeginReading = useCallback(() => {
     // Don't play sound on first 2 pages (pages 0-2)
@@ -488,7 +501,7 @@ export default function Reader() {
     setCurrentPageIndex(index);
     const isEnding = isEndingPage(index);
     if (isEnding) setJustCompleted(true);
-    saveProgress.mutate({ bookId, currentPageId: index, branchPath: "root", isEndingNode: isEnding });
+    saveProgress.mutate({ bookId, currentPageId: targetPage?.id ?? 0, branchPath: targetPage?.branchPath ?? "root", isEndingNode: isEnding });
   }, [pages, playPageTurn, isEndingPage, saveProgress, bookId]);
 
   const handleReturnToCover = useCallback(() => {
@@ -618,7 +631,7 @@ export default function Reader() {
         <div className="text-center">
           <h1 className="text-sm font-semibold text-white line-clamp-1">{bookTitle}</h1>
           <p className="text-xs text-gray-400">
-            {showCover ? "Cover" : showBackCover ? "Back Cover" : `Page ${currentPageIndex + 1} of ${pages.length}`}
+            {showCover ? "Cover" : showBackCover ? "Back Cover" : `Page ${currentRoutePageNumber} of ${targetReadablePageCount || pages.length}`}
           </p>
         </div>
 
@@ -861,7 +874,7 @@ export default function Reader() {
                     }
                     return normalised;
                   })()}
-                  leftPageNumber={currentPageIndex + 1}
+                  leftPageNumber={currentRoutePageNumber}
                   rightChoiceSlot={
                     hasChoices ? (
                       <div className="space-y-3">
@@ -919,7 +932,7 @@ export default function Reader() {
                     }
                     return normalised;
                   })()}
-                  pageNumber={currentPageIndex + 1}
+                  pageNumber={currentRoutePageNumber}
                   choiceSlot={
                     hasChoices && !madeChoice ? (
                       <div className="space-y-3">
@@ -987,7 +1000,7 @@ export default function Reader() {
                     )}
                     {/* Page number -- top left overlay */}
                     <div className="absolute top-3 left-4 text-white text-sm font-semibold drop-shadow-lg" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
-                      {currentPageIndex + 1}
+                        {currentRoutePageNumber}
                     </div>
                     {/* Book title -- top right overlay */}
                     <div className="absolute top-3 right-4 text-white text-sm font-semibold drop-shadow-lg max-w-[50%] text-right line-clamp-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
@@ -1058,7 +1071,7 @@ export default function Reader() {
                   {/* Left page */}
                   <div className="bg-[#F5F0E8] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative border-r border-[#D4C9A8]">
                     <div className="absolute bottom-4 left-6 text-xs text-gray-500">
-                      {currentPageIndex + 1}
+                      {currentRoutePageNumber}
                     </div>
                     {currentPage?.imageUrl && (
                       <div className="mb-6 rounded-lg overflow-hidden" style={{ aspectRatio: "4/3" }}>
@@ -1082,7 +1095,7 @@ export default function Reader() {
                     style={flipAnimClass ? { transformOrigin: "left center" } : undefined}
                   >
                     <div className="absolute bottom-4 right-6 text-xs text-gray-500">
-                      {currentPageIndex + 2}
+                        {nextRoutePageNumber}
                     </div>
                     {nextPage ? (
                       <>
@@ -1202,7 +1215,7 @@ export default function Reader() {
                     />
                   ))}
                   {pages.length > 15 && (
-                    <span className="text-xs text-gray-500 ml-1">{currentPageIndex + 1}/{pages.length}</span>
+                    <span className="text-xs text-gray-500 ml-1">{currentRoutePageNumber}/{targetReadablePageCount || pages.length}</span>
                   )}
                 </div>
 

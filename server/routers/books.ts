@@ -261,17 +261,17 @@ export async function generateBookContent(bookId: number, bookData: {
     // comic normal:      18 pages x 3 panels = 54 panel images + 1 cover = 55 total
     // other normal:      80 pages, 8 branch images + 1 cover = 9 total
     // other thick:       120 pages, 12 branch images + 1 cover = 13 total
-    let pageCount = 10;   // fairy_tale default
-    let branchCount = 3;  // number of A/B branch points
+    let pageCount = 10;   // readable route length
+    let branchCount = 2;  // number of A/B branch points / choices on the readable route
     // Number of branch images to generate for non-comic, non-fairy-tale genres
     let branchImageCount = 0;
     if (category === "comic") {
       pageCount = length === "thin" ? 10 : 18;
-      branchCount = length === "thin" ? 3 : 5;
+      branchCount = length === "thin" ? 2 : 3;
     } else if (isOtherGenre) {
       pageCount = length === "normal" ? 80 : 120;
-      branchCount = length === "normal" ? 8 : 12;
-      branchImageCount = length === "normal" ? 8 : 12;
+      branchCount = length === "normal" ? 8 : 10;
+      branchImageCount = length === "normal" ? 8 : 10;
     }
 
     const charNames = characters.map(c => c.name).join(", ");
@@ -1176,7 +1176,8 @@ ${characterCards.map(card => {
     // rendering any text, typography, or title/author text inside the image.
     // Title and author name are added ONLY via the addCoverOverlay() UI layer.
     const NO_TEXT_CONSTRAINT =
-      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no title, no author name, no captions, no labels anywhere in the image"    //  Guardrail 2C: Comic panel character hard-lock instruction 
+      "STRICT: absolutely no text, no letters, no words, no numbers, no readable typography, no decorative typography, no signage-like symbols, no title, no author name, no captions, no labels, no speech text, no watermark-like marks anywhere in the image";
+    //  Guardrail 2C: Comic panel character hard-lock instruction 
     // Appended to every comic panel prompt after the per-panel speaker focus note.
     // Prevents per-panel character drift by explicitly repeating the full physical identity lock.
     // ENHANCED: Added explicit character count enforcement, negative prompts, and visual distinctness rules.
@@ -1200,10 +1201,21 @@ ${characterCards.map(card => {
     // all illustrations share the same art style, lighting, palette, and framing.
     // It is also stored in books.illustrationStyleLock for admin/debug inspection.
     // Global identity lock — prepended to every generateImage call.
+    const CATEGORY_IDENTITY_STYLE_WORDING: Record<string, string> = {
+      fairy_tale: "pixar",
+      comic: "çizgi roman",
+      horror_thriller: "gerçekçi ama sinematif çizim",
+      romance: "gerçekçi ama sinematif çizim",
+      crime_mystery: "gerçekçi ama sinematif çizim",
+      fantasy_scifi: "fantastik sanat stili",
+    };
+    const categoryAwareIdentityInstruction =
+      `Fotoğraftaki kişinin yüz hatlarını ve oranlarını birebir koruyarak, yüz kimliğini bozmadan onun ${CATEGORY_IDENTITY_STYLE_WORDING[category] || "gerçekçi ama sinematif çizim"} karakterini oluştur.`;
     const IDENTITY_LOCK =
       "CRITICAL IDENTITY PRESERVATION: Every character in this image MUST be the EXACT SAME PERSON as the uploaded reference photo. " +
       "Do NOT redesign, beautify, genericise, or replace any face. " +
-      "Preserve WITHOUT EXCEPTION: face shape, skin tone, eye colour, hairline, haircut, and age impression. " +
+      "Preserve WITHOUT EXCEPTION: face shape, skin tone, eye colour, hairline, haircut, facial proportions, and age impression. " +
+      "Preserve the uploaded person's facial proportions and signature look so stylization never turns them into a generic AI character. " +
       "The same character MUST look visually identical across every page and panel of this book. " +
       "If the requested art style conflicts with identity fidelity, IDENTITY WINS. Override style for face accuracy.";
 
@@ -1216,6 +1228,7 @@ ${characterCards.map(card => {
     const STYLE_LOCK = [
       `GLOBAL STYLE PROFILE: medium=${globalStyleProfile.medium}; lighting=${globalStyleProfile.lighting}; palette=${globalStyleProfile.palette}; linework=${globalStyleProfile.linework}; composition=${globalStyleProfile.composition}`,
       stylePreset,
+      categoryAwareIdentityInstruction,
       NO_TEXT_CONSTRAINT,
       charAnchorBlock,
       CHARACTER_COLOUR_LOCK,
@@ -1287,6 +1300,7 @@ ${characterCards.map(card => {
       const portraitPrompt = [
           IDENTITY_LOCK,
           STYLE_BRIDGE_RULE,
+          categoryAwareIdentityInstruction,
           stylePreset,
           `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${genreStyleLabel} style character while keeping face identity 100% recognizable`,
           `Preserve EXACTLY: the person's face shape, facial features, ${appearanceHint}`,
@@ -1428,7 +1442,7 @@ BRANCHING RULES (MANDATORY  violations will cause story rejection):
     const structurePrompt = `Generate a ${category.replace(/_/g, " ")} interactive gamebook titled "${title}" in ${language} language.
 Description: ${description}
 
-Generate exactly ${pageCount} pages with ${branchCount} branch points (A/B choices only).
+Generate exactly ${pageCount} readable-route pages with ${branchCount} branch points (A/B choices only).
 Format as JSON:
 {
   "pages": [
@@ -1448,6 +1462,8 @@ Format as JSON:
 }
 
 Rules:
+- Treat ${pageCount} as the number of pages a reader should experience on one full playthrough, not the total future graph size.
+- This is a readable-route skeleton. The engine will later expand it into a larger branching graph.
 - Branch pages: isBranchPage=true. MANDATORY: BOTH choiceA AND choiceB MUST be non-null text strings. BOTH nextPageA AND nextPageB MUST point to different valid page numbers. A branch page with only one choice is STRICTLY INVALID - always provide exactly two distinct choices with distinct targets.
 - Ending pages: isEnding=true, no choices, no nextPage references
 - CRITICAL: The page reached via nextPageA MUST open with narrative that directly continues from choiceA. The page reached via nextPageB MUST continue from choiceB. The reader must feel their choice mattered.
@@ -1559,16 +1575,251 @@ Rules:
       outlineContent: page.content,
     }));
 
-    // Step 3: Post-structure validation 
-    // Verify all branch references resolve, all paths reach an ending, and
-    // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
+    const routePageLookup = new Map(
+      storyData.pages
+        .slice()
+        .sort((a, b) => a.pageNumber - b.pageNumber)
+        .map(page => [page.pageNumber, page])
+    );
+
+    const branchRoutePages = precomputedBranchPages
+      .filter(pageNumber => pageNumber > 1 && pageNumber < pageCount)
+      .slice(0, branchCount);
+
+    const buildFallbackVariantPages = (
+      templatePages: StoryData["pages"],
+      choiceLabel: "A" | "B",
+      choiceText: string,
+      segmentIndex: number
+    ) => templatePages.map((templatePage, idx) => ({
+      content: idx === 0
+        ? `${choiceLabel === "A" ? "After choosing" : "Instead, after choosing"} "${choiceText}", ${templatePage.outlineContent ?? templatePage.content}`
+        : templatePage.outlineContent ?? templatePage.content,
+      sfxTags: templatePage.sfxTags?.length ? templatePage.sfxTags : ["adventure"],
+    }));
+
+    const generateBranchVariants = async (
+      choicePage: StoryData["pages"][number],
+      templatePages: StoryData["pages"],
+      segmentIndex: number,
+      isFinalSegment: boolean
+    ): Promise<{
+      choiceAPath: Array<{ content: string; sfxTags: string[] }>;
+      choiceBPath: Array<{ content: string; sfxTags: string[] }>;
+    }> => {
+      if (templatePages.length === 0) {
+        return { choiceAPath: [], choiceBPath: [] };
+      }
+
+      const fallback = {
+        choiceAPath: buildFallbackVariantPages(templatePages, "A", choicePage.choiceA || "Choice A", segmentIndex),
+        choiceBPath: buildFallbackVariantPages(templatePages, "B", choicePage.choiceB || "Choice B", segmentIndex),
+      };
+
+      try {
+        const variantResp = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content: "You create paired branch segments for a gamebook. Return valid JSON only. Keep both paths equally long and genuinely different, but let them reconverge later if requested.",
+            },
+            {
+              role: "user" as const,
+              content: `Write two alternative branch segments for this choice checkpoint.
+
+Return JSON:
+{"choiceAPath":[{"content":"","sfxTags":[""]}],"choiceBPath":[{"content":"","sfxTags":[""]}]}
+
+Rules:
+- Each path must contain exactly ${templatePages.length} page entries.
+- choiceAPath must clearly continue from choice A: "${choicePage.choiceA}".
+- choiceBPath must clearly continue from choice B: "${choicePage.choiceB}".
+- The two paths must be meaningfully different in action, visuals, and emotional beats.
+- Do not introduce fake endings unless this is the final segment: ${isFinalSegment ? "yes" : "no"}.
+- Keep recurring characters, props, and world continuity consistent.
+- Keep path lengths equal so every completed playthrough still reads exactly ${pageCount} pages.
+
+CHOICE PAGE:
+${choicePage.outlineContent ?? choicePage.content}
+
+SEGMENT TEMPLATE PAGES:
+${templatePages.map(page => `Route page ${page.pageNumber}: ${page.outlineContent ?? page.content}`).join("\n")}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: pageCount >= 80 ? 24000 : 8000,
+        });
+        const variantRaw = variantResp.choices[0]?.message?.content || "{}";
+        const variantParsed = JSON.parse(repairJSON(typeof variantRaw === "string" ? variantRaw : JSON.stringify(variantRaw)));
+        if (
+          Array.isArray(variantParsed.choiceAPath) &&
+          Array.isArray(variantParsed.choiceBPath) &&
+          variantParsed.choiceAPath.length === templatePages.length &&
+          variantParsed.choiceBPath.length === templatePages.length
+        ) {
+          return {
+            choiceAPath: variantParsed.choiceAPath.map((page: { content: string; sfxTags?: string[] }, idx: number) => ({
+              content: page.content?.trim() || fallback.choiceAPath[idx].content,
+              sfxTags: Array.isArray(page.sfxTags) && page.sfxTags.length > 0 ? page.sfxTags : fallback.choiceAPath[idx].sfxTags,
+            })),
+            choiceBPath: variantParsed.choiceBPath.map((page: { content: string; sfxTags?: string[] }, idx: number) => ({
+              content: page.content?.trim() || fallback.choiceBPath[idx].content,
+              sfxTags: Array.isArray(page.sfxTags) && page.sfxTags.length > 0 ? page.sfxTags : fallback.choiceBPath[idx].sfxTags,
+            })),
+          };
+        }
+      } catch (variantErr) {
+        console.warn(`[Books] Branch variant generation failed for checkpoint page ${choicePage.pageNumber}, using fallback mirrored segments:`, variantErr);
+      }
+
+      return fallback;
+    };
+
+    const buildControlledBranchGraph = async (): Promise<StoryData["pages"]> => {
+      const graphPages: StoryData["pages"] = [];
+      let uniqueGraphPageNumber = 1;
+
+      const clonePage = (
+        templatePage: StoryData["pages"][number],
+        overrides: Partial<StoryData["pages"][number]> = {}
+      ): StoryData["pages"][number] => ({
+        ...templatePage,
+        pageNumber: uniqueGraphPageNumber++,
+        branchPath: overrides.branchPath ?? templatePage.branchPath,
+        isBranchPage: overrides.isBranchPage ?? templatePage.isBranchPage ?? false,
+        isEnding: overrides.isEnding ?? templatePage.isEnding ?? false,
+        content: overrides.content ?? templatePage.content,
+        outlineContent: overrides.outlineContent ?? templatePage.outlineContent,
+        sfxTags: overrides.sfxTags ?? templatePage.sfxTags ?? [],
+        choiceA: overrides.choiceA ?? templatePage.choiceA ?? null,
+        choiceB: overrides.choiceB ?? templatePage.choiceB ?? null,
+        nextPageA: overrides.nextPageA ?? null,
+        nextPageB: overrides.nextPageB ?? null,
+      });
+
+      const routeMarker = (segmentKey: string, routePageNumber: number) => `${segmentKey}|r${routePageNumber}`;
+
+      const sharedPrefixEnd = branchRoutePages[0] ?? pageCount;
+      const sharedRouteNodes = new Map<number, StoryData["pages"][number]>();
+      let previousSharedNode: StoryData["pages"][number] | null = null;
+      for (let routePageNumber = 1; routePageNumber <= sharedPrefixEnd; routePageNumber++) {
+        const sourcePage = routePageLookup.get(routePageNumber);
+        if (!sourcePage) continue;
+        const sharedNode = clonePage(sourcePage, {
+          branchPath: routeMarker("shared", routePageNumber),
+          isBranchPage: branchRoutePages.includes(routePageNumber),
+          isEnding: false,
+          choiceA: branchRoutePages.includes(routePageNumber) ? (sourcePage.choiceA || "Choice A") : null,
+          choiceB: branchRoutePages.includes(routePageNumber) ? (sourcePage.choiceB || "Choice B") : null,
+        });
+        if (previousSharedNode) {
+          previousSharedNode.nextPageA = sharedNode.pageNumber;
+        }
+        graphPages.push(sharedNode);
+        sharedRouteNodes.set(routePageNumber, sharedNode);
+        previousSharedNode = sharedNode;
+      }
+
+      for (let segmentIndex = 0; segmentIndex < branchRoutePages.length; segmentIndex++) {
+        const choiceRoutePage = branchRoutePages[segmentIndex];
+        const nextChoiceRoutePage = branchRoutePages[segmentIndex + 1] ?? null;
+        const segmentStartRoutePage = choiceRoutePage + 1;
+        const segmentEndRoutePage = nextChoiceRoutePage ? nextChoiceRoutePage - 1 : pageCount;
+        const segmentTemplatePages = Array.from({ length: Math.max(0, segmentEndRoutePage - segmentStartRoutePage + 1) }, (_, idx) =>
+          routePageLookup.get(segmentStartRoutePage + idx)
+        ).filter((page): page is StoryData["pages"][number] => !!page);
+
+        const choiceNode = sharedRouteNodes.get(choiceRoutePage);
+        if (!choiceNode) continue;
+
+        const variants = await generateBranchVariants(
+          routePageLookup.get(choiceRoutePage) ?? choiceNode,
+          segmentTemplatePages,
+          segmentIndex,
+          !nextChoiceRoutePage
+        );
+
+        const buildVariantNodes = (
+          variantKey: "A" | "B",
+          pagesForVariant: Array<{ content: string; sfxTags: string[] }>
+        ): StoryData["pages"] => segmentTemplatePages.map((templatePage, idx) => clonePage(templatePage, {
+          branchPath: routeMarker(`choice_${segmentIndex + 1}_${variantKey}`, templatePage.pageNumber),
+          isBranchPage: false,
+          isEnding: !nextChoiceRoutePage && idx === segmentTemplatePages.length - 1,
+          content: pagesForVariant[idx]?.content ?? templatePage.content,
+          outlineContent: pagesForVariant[idx]?.content ?? templatePage.outlineContent,
+          sfxTags: pagesForVariant[idx]?.sfxTags ?? templatePage.sfxTags ?? [],
+          choiceA: null,
+          choiceB: null,
+        }));
+
+        const aNodes = buildVariantNodes("A", variants.choiceAPath);
+        const bNodes = buildVariantNodes("B", variants.choiceBPath);
+
+        if (aNodes[0]) choiceNode.nextPageA = aNodes[0].pageNumber;
+        if (bNodes[0]) choiceNode.nextPageB = bNodes[0].pageNumber;
+
+        for (let i = 0; i < aNodes.length - 1; i++) {
+          aNodes[i].nextPageA = aNodes[i + 1].pageNumber;
+        }
+        for (let i = 0; i < bNodes.length - 1; i++) {
+          bNodes[i].nextPageA = bNodes[i + 1].pageNumber;
+        }
+
+        graphPages.push(...aNodes, ...bNodes);
+
+        if (nextChoiceRoutePage) {
+          let nextSharedNode = sharedRouteNodes.get(nextChoiceRoutePage);
+          if (!nextSharedNode) {
+            const nextSourcePage = routePageLookup.get(nextChoiceRoutePage);
+            if (nextSourcePage) {
+              nextSharedNode = clonePage(nextSourcePage, {
+                branchPath: routeMarker("shared", nextChoiceRoutePage),
+                isBranchPage: true,
+                isEnding: false,
+                choiceA: nextSourcePage.choiceA || "Choice A",
+                choiceB: nextSourcePage.choiceB || "Choice B",
+              });
+              sharedRouteNodes.set(nextChoiceRoutePage, nextSharedNode);
+              graphPages.push(nextSharedNode);
+            }
+          }
+          if (nextSharedNode) {
+            if (aNodes[aNodes.length - 1]) aNodes[aNodes.length - 1].nextPageA = nextSharedNode.pageNumber;
+            if (bNodes[bNodes.length - 1]) bNodes[bNodes.length - 1].nextPageA = nextSharedNode.pageNumber;
+          }
+        } else {
+          if (aNodes[aNodes.length - 1]) aNodes[aNodes.length - 1].isEnding = true;
+          if (bNodes[bNodes.length - 1]) bNodes[bNodes.length - 1].isEnding = true;
+        }
+      }
+
+      if (branchRoutePages.length === 0) {
+        const linearPages = storyData.pages
+          .slice()
+          .sort((a, b) => a.pageNumber - b.pageNumber)
+          .map(page => clonePage(page, {
+            branchPath: routeMarker("shared", page.pageNumber),
+            isEnding: page.pageNumber === pageCount,
+          }));
+        for (let i = 0; i < linearPages.length - 1; i++) {
+          linearPages[i].nextPageA = linearPages[i + 1].pageNumber;
+        }
+        return linearPages;
+      }
+
+      return graphPages;
+    };
+
+    storyData.pages = await buildControlledBranchGraph();
+
+    // Step 3: Post-structure validation
+    // Verify all branch references resolve and at least one ending exists.
+    // Reconvergence is now intentional and allowed.
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
     const repairActions: string[] = [];
-
-    // Build a map of pageId  list of source pages that reference it as a target.
-    // Any pageId referenced by more than one source = a merge violation.
-    const targetRefCount = new Map<number, number[]>(); // targetPageId  [sourcePageIds]
+    const targetRefCount = new Map<number, number[]>();
     for (const page of storyData.pages) {
       if (page.isBranchPage) {
         if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
@@ -1633,7 +1884,10 @@ Rules:
 
     // Auto-repair common non-critical structure issues instead of hard-failing generation.
     // Branch pages must always end with both A and B choices.
-    const usedTargets = new Set<number>();
+    const usedTargets = {
+      has: (_value: number) => false,
+      add: (_value: number) => undefined,
+    };
     for (const page of storyData.pages) {
       // Drop dangling references
       if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
@@ -2236,6 +2490,7 @@ Expanded text: ${page.content.slice(0, 700)}`,
     };
 
     const buildContinuityConstraintLayer = (sceneSpec?: SceneSpec) => [
+      categoryAwareIdentityInstruction,
       CHARACTER_COLOUR_LOCK,
       CHARACTER_LOCK_INSTRUCTION,
       sceneSpec?.requiredObjects?.length ? `MANDATORY OBJECT PRESENCE: show these exact recurring objects if story-relevant: ${sceneSpec.requiredObjects.join(", ")}` : "",
