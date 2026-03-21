@@ -593,7 +593,9 @@ export default function Reader() {
     );
   }
 
-  const isLastPage = currentPageIndex >= pages.length - 1;
+  const isLastPage =
+    currentPageIndex >= pages.length - 1 ||
+    (!!currentPage && !currentPage.choiceA && !currentPage.choiceB && !currentPage.nextPageIdA && !currentPage.nextPageIdB);
   const coverUrl = book?.book?.coverImageUrl;
   const bookTitle = book?.book?.title;
   const authorName = book?.authorName;
