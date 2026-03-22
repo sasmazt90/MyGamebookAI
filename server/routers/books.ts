@@ -1256,6 +1256,8 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     // rendering any text, typography, or title/author text inside the image.
     // Title and author metadata are rendered by the product UI, not baked into the generated cover image.
     const NO_TEXT_CONSTRAINT = getNoTextRule();
+    const HUMAN_ANATOMY_LOCK =
+      "HUMAN ANATOMY LOCK: every visible human character must have exactly one head, one torso, two arms, two hands, and two legs with physically plausible joints and placement. No extra limbs, duplicated arms, fused hands, missing hands, cloned body parts, or impossible anatomy.";
 
     // Guardrail 2C: Comic panel character hard-lock instruction
     // Appended to every comic panel prompt after the per-panel speaker focus note.
@@ -1461,22 +1463,28 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
           : canonicalCharacterProfiles.map(profile => profile.name);
       const refs: Array<{ url: string; mimeType: string }> = [];
       for (const name of names) {
-        const raw = photoRefByName.get(name);
-        if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
         const illustrated = illustratedPortraitsMap.get(name);
         if (illustrated?.url)
           refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
+        else {
+          const raw = photoRefByName.get(name);
+          if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
+        }
       }
       if (refs.length === 0) {
-        refs.push(
-          ...charPhotos.map(img => ({
-            url: img.url,
-            mimeType: img.mimeType as string,
-          })),
-          ...Array.from(illustratedPortraitsMap.values()).filter(
-            (img): img is { url: string; mimeType: string } => !!img?.url
-          )
-        );
+        const portraitFallback = Array.from(illustratedPortraitsMap.values())
+          .filter((img): img is { url: string; mimeType: string } => !!img?.url)
+          .map(img => ({ url: img.url, mimeType: img.mimeType }));
+        if (portraitFallback.length > 0) {
+          refs.push(...portraitFallback);
+        } else {
+          refs.push(
+            ...charPhotos.map(img => ({
+              url: img.url,
+              mimeType: img.mimeType as string,
+            }))
+          );
+        }
       }
       return refs.filter(
         (img, idx, arr) =>
@@ -1547,6 +1555,11 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       )
         .filter(img => !!img?.url)
         .map(img => ({ url: img.url, mimeType: img.mimeType }));
+      const portraitRefUrls = new Set(
+        fallbackPortraitRefs
+          .map(img => img.url)
+          .filter((url): url is string => !!url)
+      );
       const explicitRefs: ReferenceCandidate[] = (refImages ?? []).filter(
         (img): img is { url?: string; mimeType?: string; b64Json?: string } =>
           !!img?.url || !!img?.b64Json
@@ -1554,10 +1567,29 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       const rawPhotoRefs: ReferenceCandidate[] = charPhotos
         .filter(img => !!img?.url)
         .map(img => ({ url: img.url, mimeType: img.mimeType }));
+      const rawPhotoUrls = new Set(
+        rawPhotoRefs
+          .map(img => img.url)
+          .filter((url): url is string => !!url)
+      );
+      const explicitPortraitRefs = explicitRefs.filter(
+        img => !!img.url && portraitRefUrls.has(img.url)
+      );
+      const explicitNeutralRefs = explicitRefs.filter(
+        img => !img.url || (!portraitRefUrls.has(img.url) && !rawPhotoUrls.has(img.url))
+      );
+      const explicitRawPhotoRefs = explicitRefs.filter(
+        img => !!img.url && rawPhotoUrls.has(img.url)
+      );
+      const hasPortraitReference =
+        explicitPortraitRefs.length > 0 || fallbackPortraitRefs.length > 0;
       const candidateRefs = [
-        ...explicitRefs,
-        ...rawPhotoRefs,
+        ...explicitPortraitRefs,
+        ...explicitNeutralRefs,
         ...fallbackPortraitRefs,
+        ...(hasPortraitReference
+          ? []
+          : [...explicitRawPhotoRefs, ...rawPhotoRefs]),
       ];
       const mergedRefs = candidateRefs
         .filter(
@@ -1571,11 +1603,12 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         .slice(0, 6);
 
       const identityAuthorityLayer =
-        rawPhotoRefs.length > 0
-          ? "RAW PHOTO AUTHORITY (MANDATORY): when raw photos and illustrated portraits are both provided, the raw photos are the ground-truth for exact facial likeness, age impression, haircut, eyebrow shape, nose, jawline, skin tone, and distinctive features. Use illustrated portraits only to transfer the book's art style. Never beautify, genericise, or replace the photographed identity."
+        charPhotos.length > 0
+          ? "USER PHOTO LIKENESS LOCK (MANDATORY): preserve the exact identity from the uploaded reference photos, but render every person fully as an illustration in the locked book style. Never paste, collage, photobash, trace, or leave visible photographic fragments in the final image. Use the uploaded photos as likeness truth only."
           : "";
       const effectivePrompt = [
         prompt.includes(IDENTITY_LOCK) ? "" : IDENTITY_LOCK,
+        HUMAN_ANATOMY_LOCK,
         identityAuthorityLayer,
         prompt,
       ]
@@ -3355,7 +3388,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       blueprint: visualBlueprint,
       sceneSpec: {
         pageNumber: 0,
-        sceneSummary: `Cover scene for "${title}". ${openingNarrativeSnippet}`,
+        sceneSummary: `Cover scene that faithfully establishes the opening story premise. ${openingNarrativeSnippet}`,
         narrativeBeat:
           "Establish the central premise and primary cast with one coherent, story-accurate environment.",
         location: openingSceneSpec?.location || "cover illustration scene",
@@ -3421,6 +3454,8 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           coverScenePrompt,
           `book cover illustration for a gamebook`,
           "professional publishing quality, full-bleed composition",
+          "ABSOLUTE COVER TEXT BAN: do not render the book title, author name, letters, words, logos, captions, faux typography, or decorative text marks anywhere inside the cover illustration. The UI renders all text separately.",
+          "COVER RENDERING RULE: every depicted person must be fully illustrated in the locked book style. Never paste, overlay, or partially preserve a real photograph on the cover.",
           `COVER CAST LOCK: show exactly these named character(s) on the cover if they are provided in the scene: ${coverCharacters.join(", ")}. Preserve realistic relative ages, body scale, and heights between adults and children.`,
           fairyCoverContinuityNote,
           charPhotos.length > 0
@@ -3916,8 +3951,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                   sceneSpec: pageSceneSpec,
                   pageKind: "page",
                 }),
-                "SCENE PROGRESSION (MANDATORY): depict the specific new story beat from this page, not a generic reprise of earlier moon, window, rocket, or wonder imagery.",
-                "COMPOSITION VARIETY (MANDATORY): avoid repeating the same camera angle, pose, or staging from previous fairy tale pages unless the narrative explicitly demands it.",
+                "PAGE STORY FIDELITY: depict this page's actual story beat while preserving the same character design, environment logic, and emotional continuity used across the rest of the book.",
                 "AGE AND SCALE LOCK: adults and children must keep realistic relative ages, heights, and body proportions across all illustrations. Never render an older child as a toddler or baby-faced infant unless the story explicitly says so.",
                 CHARACTER_COLOUR_LOCK,
                 STRUCTURED_IDENTITY_BLOCK || undefined,
