@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/select";
 import {
   Bell,
-  BarChart2,
   Settings,
   User,
   BookOpen,
@@ -114,13 +113,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       {balance?.balance ?? 0}
                     </span>
                   </div>
-                </Link>
-
-                {/* Stats */}
-                <Link href="/leaderboard">
-                  <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white w-8 h-8">
-                    <BarChart2 className="w-4 h-4" />
-                  </Button>
                 </Link>
 
                 {/* Notifications */}

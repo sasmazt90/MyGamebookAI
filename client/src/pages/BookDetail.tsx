@@ -185,7 +185,7 @@ export default function BookDetail() {
   // Mutations
   const buyBook = trpc.books.buy.useMutation({
     onSuccess: () => {
-      toast.success(`"${book?.book.title}" added to your library!`);
+      toast.success(`"${book?.book.title}" is now in your library. Opening it now...`);
       utils.books.myLibrary.invalidate();
       navigate(`/reader/${bookId}`);
     },

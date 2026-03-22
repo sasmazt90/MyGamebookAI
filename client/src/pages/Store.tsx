@@ -63,7 +63,7 @@ function BookCard({ item, ownedBookIds, onBookClick, onAuthorClick }: {
 
   const buyBook = trpc.books.buy.useMutation({
     onSuccess: () => {
-      toast.success(t("store.addedToLibrary").replace("{title}", item.book.title));
+      toast.success(`"${item.book.title}" is now in your library. Opening it now...`);
       utils.books.myLibrary.invalidate();
       navigate(`/reader/${item.book.id}`);
     },

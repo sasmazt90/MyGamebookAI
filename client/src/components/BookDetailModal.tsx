@@ -86,7 +86,7 @@ function BookView({
 
   const buyBook = trpc.books.buy.useMutation({
     onSuccess: () => {
-      toast.success(`"${book?.book.title}" added to your library!`);
+      toast.success(`"${book?.book.title}" is now in your library. Opening it now...`);
       utils.books.myLibrary.invalidate();
       onClose();
       navigate(`/reader/${bookId}`);
