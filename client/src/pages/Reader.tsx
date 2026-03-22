@@ -20,6 +20,7 @@ import { useFlipbook } from "@/hooks/useFlipbook";
 import type { FlipbookPage } from "@/hooks/useFlipbook";
 import { useFlipbookDragCurl } from "@/hooks/useFlipbookDragCurl";
 import { StoryTreeOverlay } from "@/components/StoryTreeOverlay";
+import { getBookPresentationRule } from "@shared/bookGenerationRules";
 
 // ---------------------------------------------------------------------------
 // CSS keyframes injected once for the 3D page-turn animation
@@ -43,6 +44,14 @@ const FLIP_STYLES = `
 @keyframes flipBackwardRealistic {
   0%   { transform: perspective(1200px) rotateY(0deg);   opacity: 1; transform-origin: left center; }
   100% { transform: perspective(1200px) rotateY(180deg); opacity: 1; transform-origin: left center; }
+}
+@keyframes flipForwardComic {
+  0%   { transform: perspective(1400px) rotateY(0deg) scale(1); opacity: 1; transform-origin: left center; }
+  100% { transform: perspective(1400px) rotateY(-165deg) scale(0.985); opacity: 1; transform-origin: left center; }
+}
+@keyframes flipBackwardComic {
+  0%   { transform: perspective(1400px) rotateY(0deg) scale(1); opacity: 1; transform-origin: left center; }
+  100% { transform: perspective(1400px) rotateY(165deg) scale(0.985); opacity: 1; transform-origin: left center; }
 }
 @keyframes musicBar1 { 0%,100%{height:40%} 50%{height:90%} }
 @keyframes musicBar2 { 0%,100%{height:70%} 50%{height:30%} }
@@ -361,6 +370,7 @@ export default function Reader() {
   const currentPage = pages[currentPageIndex];
   const nextPage = pages[currentPageIndex + 1];
   const bookCategory = (book?.book?.category ?? "fantasy_scifi") as BookCategory;
+  const presentationRule = getBookPresentationRule(bookCategory);
   const isComic = bookCategory === "comic";
   const isFairyTale = bookCategory === "fairy_tale";
   // Spread mode is ALWAYS enabled for all non-fairy-tale books (comics and others)
@@ -374,12 +384,22 @@ export default function Reader() {
   const effectiveSpreadMode = hasNonLinearGraph ? false : forceSpreadMode ? true : useSpreadMode;
   const step = hasNonLinearGraph ? 1 : isComic ? (effectiveSpreadMode ? 2 : 1) : isFairyTale ? 1 : 2;
   const parseRoutePageNumber = useCallback((page?: FlipbookPage | null, fallback = 1) => {
+    if (page?.routePageNumber && Number.isFinite(page.routePageNumber)) {
+      return Math.max(1, Number(page.routePageNumber));
+    }
     const match = page?.branchPath?.match(/\|r(\d+)/);
     return match ? parseInt(match[1], 10) : fallback;
   }, []);
   const targetReadablePageCount = pages.reduce((max, page, index) => Math.max(max, parseRoutePageNumber(page, index + 1)), 0);
   const currentRoutePageNumber = parseRoutePageNumber(currentPage, Math.max(1, currentPageIndex + 1));
   const nextRoutePageNumber = parseRoutePageNumber(nextPage, currentRoutePageNumber + 1);
+  const routeDotCount = Math.min(targetReadablePageCount || pages.length, 15);
+  const activeRouteDotIndex = routeDotCount <= 1
+    ? 0
+    : Math.min(
+        routeDotCount - 1,
+        Math.round(((currentRoutePageNumber - 1) / Math.max(1, (targetReadablePageCount || pages.length) - 1)) * (routeDotCount - 1))
+      );
 
   // ---------------------------------------------------------------------------
   // Audio
@@ -408,11 +428,11 @@ export default function Reader() {
     }
     const sfxTags = (currentPage?.sfxTags as string[] | null) ?? [];
     if (sfxTags.length > 0) {
-      startPageSfx(sfxTags);
+      startPageSfx(sfxTags, currentPage?.content ?? "");
     } else {
       stopPageSfx();
     }
-  }, [currentPageIndex, showCover, showBackCover, startPageSfx, stopPageSfx]);
+  }, [currentPageIndex, currentPage?.content, currentPage?.sfxTags, showCover, showBackCover, startPageSfx, stopPageSfx]);
 
   // ---------------------------------------------------------------------------
   // Navigation helpers
@@ -441,7 +461,7 @@ export default function Reader() {
     // Only play sound from page 3 onwards (skip pages 0, 1, 2)
     if (targetIndex >= 2) {
       const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
-      playPageTurn(sfxTags);
+      playPageTurn(sfxTags, targetPage?.content ?? "");
     }
 
     setChoiceHistory(prev => [...prev, currentPageIndex]);
@@ -495,7 +515,7 @@ export default function Reader() {
     // Only play sound from page 3 onwards (skip pages 0, 1, 2)
     if (index >= 2) {
       const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
-      playPageTurn(sfxTags);
+      playPageTurn(sfxTags, targetPage?.content ?? "");
     }
     setCameFromBranch(false);
     setCurrentPageIndex(index);
@@ -606,13 +626,17 @@ export default function Reader() {
 
   // Animation class for the spread container -- fairy tale rotateX, others rotateY
   const flipAnimClass = !prefersReducedMotion && flipDirection
-    ? isFairyTale
+    ? presentationRule.flipAnimation === "storybook"
       ? flipDirection === "forward"
         ? "animate-[flipForwardFairyTale_0.38s_cubic-bezier(0.4,0,0.2,1)]"
         : "animate-[flipBackwardFairyTale_0.38s_cubic-bezier(0.4,0,0.2,1)]"
-      : flipDirection === "forward"
-        ? "animate-[flipForwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
-        : "animate-[flipBackwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
+      : presentationRule.flipAnimation === "comic"
+        ? flipDirection === "forward"
+          ? "animate-[flipForwardComic_0.3s_cubic-bezier(0.2,0.8,0.2,1)]"
+          : "animate-[flipBackwardComic_0.3s_cubic-bezier(0.2,0.8,0.2,1)]"
+        : flipDirection === "forward"
+          ? "animate-[flipForwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
+          : "animate-[flipBackwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
     : "";
 
   return (
@@ -1204,19 +1228,31 @@ export default function Reader() {
 
                 {/* Dot indicators */}
                 <div className="flex items-center gap-1.5">
-                  {pages.slice(0, Math.min(pages.length, 15)).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleGoTo(i)}
-                      className={cn(
-                        "rounded-full transition-all duration-200",
-                        i === currentPageIndex
-                          ? "w-3 h-3 bg-[#7C3AED]"
-                          : "w-2 h-2 bg-purple-900/40 hover:bg-purple-700/60"
-                      )}
-                    />
-                  ))}
-                  {pages.length > 15 && (
+                  {hasNonLinearGraph
+                    ? Array.from({ length: routeDotCount }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "rounded-full transition-all duration-200",
+                            i === activeRouteDotIndex
+                              ? "w-3 h-3 bg-[#7C3AED]"
+                              : "w-2 h-2 bg-purple-900/40"
+                          )}
+                        />
+                      ))
+                    : pages.slice(0, Math.min(pages.length, 15)).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleGoTo(i)}
+                          className={cn(
+                            "rounded-full transition-all duration-200",
+                            i === currentPageIndex
+                              ? "w-3 h-3 bg-[#7C3AED]"
+                              : "w-2 h-2 bg-purple-900/40 hover:bg-purple-700/60"
+                          )}
+                        />
+                      ))}
+                  {(hasNonLinearGraph || pages.length > 15) && (
                     <span className="text-xs text-gray-500 ml-1">{currentRoutePageNumber}/{targetReadablePageCount || pages.length}</span>
                   )}
                 </div>

@@ -21,6 +21,7 @@ export interface FlipbookPage {
   imageUrl?: string | null;
   panels?: Array<{ imageUrl: string }> | null;
   branchPath?: string | null;
+  routePageNumber?: number | null;
   nextPageIdA?: number | null;
   choiceA?: string | null;
   choiceB?: string | null;

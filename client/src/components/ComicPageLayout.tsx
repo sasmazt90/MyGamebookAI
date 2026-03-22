@@ -46,9 +46,9 @@ export function ComicPageLayout({
   endSlot,
   className,
 }: ComicPageLayoutProps) {
-  const panel1 = panels[0];
-  const panel2 = panels[1];
-  const panel3 = panels[2];
+  const topPanel = panels[0];
+  const bottomLeftPanel = panels[1];
+  const bottomRightPanel = panels[2];
 
   return (
     <div
@@ -59,15 +59,15 @@ export function ComicPageLayout({
       )}
       style={{ fontFamily: "'Bangers', 'Impact', 'Arial Black', sans-serif" }}
     >
-      {/* ââ Top row: two panels side by side âââââââââââââââââââââââââââ */}
-      <div className="grid grid-cols-2 border-b-4 border-black" style={{ minHeight: "42%" }}>
-        <ComicPanelCell panel={panel1} borderClass="border-r-4 border-black" />
-        <ComicPanelCell panel={panel2} />
+      {/* Top hero panel */}
+      <div className="border-b-4 border-black" style={{ minHeight: "42%" }}>
+        <ComicPanelCell panel={topPanel} wide />
       </div>
 
-      {/* ââ Bottom row: one wide panel âââââââââââââââââââââââââââââââââ */}
-      <div style={{ minHeight: "38%" }}>
-        <ComicPanelCell panel={panel3} wide />
+      {/* Bottom row: two supporting panels */}
+      <div className="grid grid-cols-2" style={{ minHeight: "38%" }}>
+        <ComicPanelCell panel={bottomLeftPanel} borderClass="border-r-4 border-black" />
+        <ComicPanelCell panel={bottomRightPanel} />
       </div>
 
       {/* ââ Footer: page number + choices ââââââââââââââââââââââââââââââ */}

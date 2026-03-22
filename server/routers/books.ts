@@ -179,6 +179,103 @@ function extractLikelyJsonObject(raw: string): string {
   }
   return input;
 }
+
+function compactList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(
+    new Set(
+      values
+        .map((value) => String(value ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function normaliseLanguageTag(language?: string): string {
+  return (language ?? "en").trim().toLowerCase().split(/[-_]/)[0] || "en";
+}
+
+function getLocalizedChoiceFallbacks(language?: string) {
+  switch (normaliseLanguageTag(language)) {
+    case "tr":
+      return {
+        optionA: "Secenek A",
+        optionB: "Secenek B",
+        tryDifferent: "Baska bir yol dene",
+        reconsider: "Durup baska bir yol dusun",
+        proceed: "Planla devam et",
+        faceDirectly: "Dogrudan yuzles",
+      };
+    case "de":
+      return {
+        optionA: "Option A",
+        optionB: "Option B",
+        tryDifferent: "Versuche einen anderen Weg",
+        reconsider: "Halte inne und versuche einen anderen Weg",
+        proceed: "Folge dem Plan",
+        faceDirectly: "Stelle dich dem direkt",
+      };
+    case "fr":
+      return {
+        optionA: "Option A",
+        optionB: "Option B",
+        tryDifferent: "Essaie une autre voie",
+        reconsider: "Reflechis puis essaie une autre voie",
+        proceed: "Poursuis le plan",
+        faceDirectly: "Affronte-le directement",
+      };
+    case "es":
+      return {
+        optionA: "Opcion A",
+        optionB: "Opcion B",
+        tryDifferent: "Prueba otro camino",
+        reconsider: "Replantealo e intenta otro camino",
+        proceed: "Sigue el plan",
+        faceDirectly: "Enfrentalo directamente",
+      };
+    default:
+      return {
+        optionA: "Option A",
+        optionB: "Option B",
+        tryDifferent: "Try a different approach",
+        reconsider: "Reconsider and try another way",
+        proceed: "Proceed with the plan",
+        faceDirectly: "Face it directly",
+      };
+  }
+}
+
+function translateGenericChoiceFallback(
+  value: string | null | undefined,
+  language: string | undefined,
+  slot: "A" | "B"
+): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const localized = getLocalizedChoiceFallbacks(language);
+  switch (trimmed.toLowerCase()) {
+    case "option a":
+      return slot === "A" ? localized.optionA : value;
+    case "option b":
+      return slot === "B" ? localized.optionB : value;
+    case "take the bold option":
+    case "take the bold path":
+      return slot === "A" ? localized.proceed : value;
+    case "take the cautious option":
+    case "take the cautious path":
+      return slot === "B" ? localized.tryDifferent : value;
+    case "try a different approach":
+      return localized.tryDifferent;
+    case "reconsider and try another way":
+      return localized.reconsider;
+    case "proceed with the plan":
+      return localized.proceed;
+    case "face it directly":
+      return localized.faceDirectly;
+    default:
+      return value;
+  }
+}
 const CATEGORY_LENGTH_RULES: Record<string, ReadonlyArray<string>> = {
   fairy_tale: ["thin"],
   comic: ["thin", "normal"],
@@ -473,7 +570,7 @@ export async function generateBookContent(bookId: number, bookData: {
       voice: string;       // speech style / personality for narrative
       role: string;        // protagonist / antagonist / supporting
       photoUrl?: string;
-      canonicalProfile?: CanonicalCharacterProfile;
+      canonicalProfile?: VisualCanonicalCharacterProfile;
     };
 
     let characterCards: CharacterCard[] = [];
@@ -1082,6 +1179,15 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     };
     const categoryAwareIdentityInstruction =
       `Fotoğraftaki kişinin yüz hatlarını ve oranlarını birebir koruyarak, yüz kimliğini bozmadan onun ${CATEGORY_IDENTITY_STYLE_WORDING[category] || "gerçekçi ama sinematif çizim"} karakterini oluştur.`;
+    const strictCategoryAwareIdentityInstruction =
+      `Render the referenced person as ${({
+        fairy_tale: "storybook illustration with a gentle painterly finish",
+        comic: "classic comic-book illustration",
+        horror_thriller: "cinematic illustrated realism",
+        romance: "cinematic illustrated realism",
+        crime_mystery: "cinematic illustrated realism",
+        fantasy_scifi: "epic fantasy illustration",
+      } as Record<string, string>)[category] || "cinematic illustrated realism"} while preserving the exact same face identity, age impression, body proportions, hairstyle, signature features, and clothing silhouette.`;
     const IDENTITY_LOCK =
       "CRITICAL IDENTITY PRESERVATION: Every character in this image MUST be the EXACT SAME PERSON as the uploaded reference photo. " +
       "Do NOT redesign, beautify, genericise, or replace any face. " +
@@ -1099,7 +1205,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     const STYLE_LOCK = [
       `GLOBAL STYLE PROFILE: medium=${globalStyleProfile.medium}; lighting=${globalStyleProfile.lighting}; palette=${globalStyleProfile.palette}; linework=${globalStyleProfile.linework}; composition=${globalStyleProfile.composition}`,
       stylePreset,
-      categoryAwareIdentityInstruction,
+      strictCategoryAwareIdentityInstruction,
       NO_TEXT_CONSTRAINT,
       charAnchorBlock,
       CHARACTER_COLOUR_LOCK,
@@ -1171,7 +1277,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       const portraitPrompt = [
           IDENTITY_LOCK,
           STYLE_BRIDGE_RULE,
-          categoryAwareIdentityInstruction,
+          strictCategoryAwareIdentityInstruction,
           stylePreset,
           `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${genreStyleLabel} style character while keeping face identity 100% recognizable`,
           `Preserve EXACTLY: the person's face shape, facial features, ${appearanceHint}`,
@@ -1363,6 +1469,7 @@ Format as JSON:
 Rules:
 - Treat ${pageCount} as the number of pages a reader should experience on one full playthrough, not the total future graph size.
 - This is a readable-route skeleton. The engine will later expand it into a larger branching graph.
+- LANGUAGE LOCK: ALL page content, choiceA, and choiceB text MUST be written entirely in ${language}. Never use English placeholder text unless ${language} is English.
 - Branch pages: isBranchPage=true. MANDATORY: BOTH choiceA AND choiceB MUST be non-null text strings. BOTH nextPageA AND nextPageB MUST point to different valid page numbers. A branch page with only one choice is STRICTLY INVALID - always provide exactly two distinct choices with distinct targets.
 - Linear narrative pages: if isBranchPage=false and isEnding=false, nextPageA MUST point to the next page on that same readable path, and nextPageB MUST be null.
 - Ending pages: isEnding=true, no choices, no nextPage references.
@@ -1483,6 +1590,8 @@ Rules:
           description,
           readablePathLength: pageCount,
           branchCount,
+          category,
+          language,
         }),
       };
     }
@@ -1490,6 +1599,7 @@ Rules:
     // Step 3: Post-structure validation 
     // Verify all branch references resolve, all paths reach an ending, and
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
+    const localizedChoiceFallbacks = getLocalizedChoiceFallbacks(language);
     const pageNumbers = new Set(storyData.pages.map(p => p.pageNumber));
     const validationErrors: string[] = [];
     const repairActions: string[] = [];
@@ -1588,16 +1698,16 @@ Rules:
         else usedTargets.add(page.nextPageB);
       }
 
-      const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
-      if (page.isBranchPage && hasBranchTargets) {
-        if (!page.choiceA && page.nextPageA) {
-          repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceA`);
-          page.choiceA = "Option A";
-        }
-        if (!page.choiceB && page.nextPageB) {
-          repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceB`);
-          page.choiceB = "Option B";
-        }
+        const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
+        if (page.isBranchPage && hasBranchTargets) {
+          if (!page.choiceA && page.nextPageA) {
+            repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceA`);
+            page.choiceA = localizedChoiceFallbacks.optionA;
+          }
+          if (!page.choiceB && page.nextPageB) {
+            repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceB`);
+            page.choiceB = localizedChoiceFallbacks.optionB;
+          }
 
         if (page.choiceA && page.nextPageA && !page.choiceB && !page.nextPageB) {
           const candidate = storyData.pages.find(
@@ -1605,11 +1715,11 @@ Rules:
           );
           if (candidate) {
             page.nextPageB = candidate.pageNumber;
-            page.choiceB = "Try a different approach";
+            page.choiceB = localizedChoiceFallbacks.tryDifferent;
             usedTargets.add(candidate.pageNumber);
             repairActions.push(`Page ${page.pageNumber}: synthesised missing choiceB -> page ${candidate.pageNumber}`);
           } else {
-            page.choiceB = "Reconsider and try another way";
+            page.choiceB = localizedChoiceFallbacks.reconsider;
             page.nextPageB = page.nextPageA;
             repairActions.push(`Page ${page.pageNumber}: synthesised choiceB fallback (mirrors A target)`);
           }
@@ -1621,11 +1731,11 @@ Rules:
           );
           if (candidate) {
             page.nextPageA = candidate.pageNumber;
-            page.choiceA = "Proceed with the plan";
+            page.choiceA = localizedChoiceFallbacks.proceed;
             usedTargets.add(candidate.pageNumber);
             repairActions.push(`Page ${page.pageNumber}: synthesised missing choiceA -> page ${candidate.pageNumber}`);
           } else {
-            page.choiceA = "Face it directly";
+            page.choiceA = localizedChoiceFallbacks.faceDirectly;
             page.nextPageA = page.nextPageB;
             repairActions.push(`Page ${page.pageNumber}: synthesised choiceA fallback (mirrors B target)`);
           }
@@ -1698,6 +1808,12 @@ Rules:
       status: repairActions.length > 0 || validationErrors.length > 0 ? "repaired" : "clean",
     });
 
+    storyData.pages = storyData.pages.map((page) => ({
+      ...page,
+      choiceA: translateGenericChoiceFallback(page.choiceA, language, "A"),
+      choiceB: translateGenericChoiceFallback(page.choiceB, language, "B"),
+    }));
+
      // Step 4: Per-page expansion pass
     // For non-comic categories, enrich each page's content with a dedicated
     // LLM call that injects: character cards + the last 3 pages of context.
@@ -1754,6 +1870,8 @@ CHILDREN'S WRITING RULES:
 - Maintain a warm, hopeful, and whimsical tone throughout
 - Characters must match their descriptions exactly  no aliases
 - If this is page 1 (the very first page of the story), write a proper OPENING that introduces the main characters, sets the scene, and establishes the world. The reader must feel this is the clear beginning of a brand-new adventure.
+- If this is NOT page 1, NEVER restart the story, never reintroduce the cast from scratch, and never repeat the opening premise. Continue the immediate action already in progress.
+- If this page follows a branch choice, make the chosen consequence explicit and materially different from the unchosen route.
 - If this is a branch page, keep the narrative open-ended and let UI buttons show choices (do not print A/B labels inside prose)${contextBlock}${branchContext}`,
               },
               {
@@ -2127,7 +2245,7 @@ Rules:
 
     await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
 
-    type RecurringObjectProfile = {
+    type IllustrationRecurringObjectProfile = {
       id: string;
       name: string;
       canonicalAppearance: string;
@@ -2137,7 +2255,7 @@ Rules:
       requiredPageNumbers: number[];
     };
 
-    type SceneSpec = {
+    type IllustrationSceneSpec = {
       pageNumber: number;
       location: string;
       mainAction: string;
@@ -2171,8 +2289,8 @@ Rules:
     };
 
     const keywordSeeds = ["rocket", "backpack", "map", "helmet", "lantern", "key", "book", "sword", "wand", "ship", "spaceship"];
-    const fallbackRecurringObjects = (): RecurringObjectProfile[] => {
-      const detected: RecurringObjectProfile[] = [];
+    const fallbackRecurringObjects = (): IllustrationRecurringObjectProfile[] => {
+      const detected: IllustrationRecurringObjectProfile[] = [];
       for (const keyword of keywordSeeds) {
         const relatedPages = storyData.pages.filter(page => {
           const sourceText = `${page.outlineContent ?? ""} ${page.content ?? ""}`.toLowerCase();
@@ -2195,7 +2313,7 @@ Rules:
       return detected;
     };
 
-    let recurringObjectMemory: RecurringObjectProfile[] = fallbackRecurringObjects();
+    let recurringObjectMemory: IllustrationRecurringObjectProfile[] = fallbackRecurringObjects();
     if (illustratedStoryPages.length > 0) {
       try {
         const objectResp = await invokeLLM({
@@ -2225,22 +2343,25 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           max_tokens: 8000,
         });
         const objectRaw = objectResp.choices[0]?.message?.content || "{}";
-        const objectParsed = JSON.parse(repairJSON(typeof objectRaw === "string" ? objectRaw : JSON.stringify(objectRaw)));
-        if (Array.isArray(objectParsed.objects) && objectParsed.objects.length > 0) {
-          recurringObjectMemory = objectParsed.objects.map((obj: RecurringObjectProfile) => ({
-            ...obj,
-            continuityRules: compactList(obj.continuityRules),
-            traitsToAvoidChanging: compactList(obj.traitsToAvoidChanging),
-            requiredPageNumbers: Array.from(new Set((obj.requiredPageNumbers ?? []).filter((num: number) => Number.isFinite(num)))),
-            introducedOnPage: Number.isFinite(obj.introducedOnPage) ? obj.introducedOnPage : null,
-          }));
+        const objectPayload = typeof objectRaw === "string" ? objectRaw.trim() : JSON.stringify(objectRaw);
+        if (objectPayload.startsWith("{")) {
+          const objectParsed = JSON.parse(repairJSON(objectPayload));
+          if (Array.isArray(objectParsed.objects) && objectParsed.objects.length > 0) {
+            recurringObjectMemory = objectParsed.objects.map((obj: IllustrationRecurringObjectProfile) => ({
+              ...obj,
+              continuityRules: compactList(obj.continuityRules),
+              traitsToAvoidChanging: compactList(obj.traitsToAvoidChanging),
+              requiredPageNumbers: Array.from(new Set((obj.requiredPageNumbers ?? []).filter((num: number) => Number.isFinite(num)))),
+              introducedOnPage: Number.isFinite(obj.introducedOnPage) ? obj.introducedOnPage : null,
+            }));
+          }
         }
       } catch (objectErr) {
         console.warn("[Books] Recurring object continuity extraction failed, using keyword-based fallback:", objectErr);
       }
     }
 
-    const recurringObjectsByPage = new Map<number, RecurringObjectProfile[]>();
+    const recurringObjectsByPage = new Map<number, IllustrationRecurringObjectProfile[]>();
     for (const objectProfile of recurringObjectMemory) {
       for (const pageNumber of objectProfile.requiredPageNumbers) {
         const existing = recurringObjectsByPage.get(pageNumber) ?? [];
@@ -2248,7 +2369,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       }
     }
 
-    const fallbackSceneSpec = (page: StoryData["pages"][number], previousPage?: StoryData["pages"][number]): SceneSpec => {
+    const fallbackSceneSpec = (page: StoryData["pages"][number], previousPage?: StoryData["pages"][number]): IllustrationSceneSpec => {
       const sourceText = `${page.outlineContent ?? page.content} ${page.content}`.trim();
       const requiredObjects = (recurringObjectsByPage.get(page.pageNumber) ?? []).map(objectProfile => objectProfile.name);
       return {
@@ -2322,7 +2443,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
         : "";
     };
 
-    const buildSceneSpecificLayer = (sceneSpec?: SceneSpec) => {
+    const buildSceneSpecificLayer = (sceneSpec?: IllustrationSceneSpec) => {
       if (!sceneSpec) return "";
       return [
         "SCENE-SPECIFIC PROMPT SPEC",
@@ -2338,8 +2459,8 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       ].join(" | ");
     };
 
-    const buildContinuityConstraintLayer = (sceneSpec?: SceneSpec) => [
-      categoryAwareIdentityInstruction,
+    const buildContinuityConstraintLayer = (sceneSpec?: IllustrationSceneSpec) => [
+      strictCategoryAwareIdentityInstruction,
       CHARACTER_COLOUR_LOCK,
       CHARACTER_LOCK_INSTRUCTION,
       sceneSpec?.requiredObjects?.length ? `MANDATORY OBJECT PRESENCE: show these exact recurring objects if story-relevant: ${sceneSpec.requiredObjects.join(", ")}` : "",
@@ -2351,7 +2472,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
 
     const assembleIllustrationPrompt = (options: {
       purpose: string;
-      sceneSpec?: SceneSpec;
+      sceneSpec?: IllustrationSceneSpec;
       featuredCharacterNames?: string[];
       extraLayers?: Array<string | null | undefined>;
     }): string => {
@@ -3241,7 +3362,35 @@ export const booksRouter = router({
         .where(eq(bookPages.bookId, input.bookId))
         .orderBy(bookPages.pageNumber);
 
-            // Fetch character cards and portrait URLs for the Characters panel in Reader
+      const pageById = new Map(pages.map((page) => [page.id, page]));
+      const incomingPageIds = new Set<number>();
+      for (const page of pages) {
+        if (page.nextPageIdA) incomingPageIds.add(page.nextPageIdA);
+        if (page.nextPageIdB) incomingPageIds.add(page.nextPageIdB);
+      }
+      const routePageNumberById = new Map<number, number>();
+      const visitPage = (pageId: number, depth: number, active: Set<number>) => {
+        if (active.has(pageId)) return;
+        const existingDepth = routePageNumberById.get(pageId);
+        if (existingDepth && existingDepth >= depth) return;
+        const page = pageById.get(pageId);
+        if (!page) return;
+        routePageNumberById.set(pageId, depth);
+        active.add(pageId);
+        if (page.nextPageIdA) visitPage(page.nextPageIdA, depth + 1, active);
+        if (page.nextPageIdB) visitPage(page.nextPageIdB, depth + 1, active);
+        active.delete(pageId);
+      };
+      const rootPages = pages.filter((page) => !incomingPageIds.has(page.id));
+      for (const rootPage of rootPages) {
+        visitPage(rootPage.id, 1, new Set<number>());
+      }
+      const pagesWithRouteNumber = pages.map((page) => ({
+        ...page,
+        routePageNumber: routePageNumberById.get(page.id) ?? page.pageNumber,
+      }));
+
+      // Fetch character cards and portrait URLs for the Characters panel in Reader
       const bookRow = await db
         .select({ characterCards: books.characterCards, portraitUrls: books.portraitUrls })
         .from(books)
@@ -3262,7 +3411,7 @@ export const booksRouter = router({
         portraitUrl: portraitMap.get(card.name) || undefined,
       }));
 
-      return { pages, characterCards: enrichedCards };
+      return { pages: pagesWithRouteNumber, characterCards: enrichedCards };
     }),
 
   // Check generation status

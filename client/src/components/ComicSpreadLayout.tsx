@@ -8,7 +8,7 @@
  *   │  3-panel layout  │  3-panel layout  │
  *   └──────────────────┴──────────────────┘
  *
- * Each page displays the standard 3-panel comic layout (2 top, 1 bottom).
+ * Each page displays the standard 3-panel comic layout (1 wide top, 2 bottom).
  */
 
 import { cn } from "@/lib/utils";

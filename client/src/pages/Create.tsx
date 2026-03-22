@@ -17,6 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  getAllowedLengthsForCategory,
+  getDefaultLengthForCategory,
+  getPageCountLabel,
+} from "@shared/bookGenerationRules";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,24 +44,8 @@ const BOOK_LENGTHS = [
 ] as const;
 
 // Which lengths are valid for each genre
-const GENRE_LENGTHS: Record<string, string[]> = {
-  fairy_tale:      ["thin"],
-  comic:           ["thin", "normal"],
-  horror_thriller: ["normal", "thick"],
-  romance:         ["normal", "thick"],
-  crime_mystery:   ["normal", "thick"],
-  fantasy_scifi:   ["normal", "thick"],
-};
 
 // Exact page counts per category+length — must match the generation spec
-const PAGE_COUNT_LABELS: Record<string, Record<string, string>> = {
-  fairy_tale:      { thin: "10 pages" },
-  comic:           { thin: "10 pages", normal: "18 pages" },
-  horror_thriller: { normal: "~80 pages", thick: "~120 pages" },
-  romance:         { normal: "~80 pages", thick: "~120 pages" },
-  crime_mystery:   { normal: "~80 pages", thick: "~120 pages" },
-  fantasy_scifi:   { normal: "~80 pages", thick: "~120 pages" },
-};
 
 type Character = {
   id: string;
@@ -83,14 +72,14 @@ export default function Create() {
   const [length, setLength] = useState<string>("thin");
 
   // Derived: which lengths are valid for the currently selected category
-  const allowedLengths = GENRE_LENGTHS[category] ?? ["thin", "normal", "thick"];
+  const allowedLengths = getAllowedLengthsForCategory(category);
 
   // Auto-correct: if the current length is not allowed for the new genre, pick the first allowed one
   useEffect(() => {
-    if (!allowedLengths.includes(length)) {
-      setLength(allowedLengths[0]);
+    if (!allowedLengths.includes(length as (typeof allowedLengths)[number])) {
+      setLength(getDefaultLengthForCategory(category));
     }
-  }, [category]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allowedLengths, category, length]);
   const [description, setDescription] = useState("");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [safetyChecked, setSafetyChecked] = useState(true);
@@ -273,7 +262,7 @@ export default function Create() {
                     >
                       <div className="font-semibold">{t(`create.${len.id}` as any)}</div>
                       <div className="text-xs opacity-70 mt-0.5">
-                        {PAGE_COUNT_LABELS[category]?.[len.id] ?? t(len.pagesKey as any)}
+                        {allowedLengths.includes(len.id as (typeof allowedLengths)[number]) ? getPageCountLabel(category, len.id) : t(len.pagesKey as any)}
                       </div>
                     </button>
                   ))}

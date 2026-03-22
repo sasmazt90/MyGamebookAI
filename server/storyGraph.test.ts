@@ -19,6 +19,7 @@ describe("story graph planning", () => {
       description: "A child follows magical lanterns through a moonlit forest.",
       readablePathLength: 10,
       branchCount: 3,
+      category: "fairy_tale",
     });
 
     const pathLengths = enumerateReadablePathLengths(graph);
@@ -26,6 +27,21 @@ describe("story graph planning", () => {
     expect(pathLengths.length).toBeGreaterThan(1);
     expect(pathLengths.every((value) => value === 10)).toBe(true);
     expect(validateStoryShape(graph, 10)).toEqual([]);
+  });
+
+  it("localises fallback branch choices when a non-English language is requested", () => {
+    const graph = buildFallbackStoryGraph({
+      title: "Aya Yolculuk",
+      description: "Bir cocuk ve babasi Ay'a dogru yolculuga cikar.",
+      readablePathLength: 10,
+      branchCount: 1,
+      category: "fairy_tale",
+      language: "tr",
+    });
+
+    const branchPage = graph.find((page) => page.isBranchPage);
+    expect(branchPage?.choiceA).toBe("Cesur yolu sec");
+    expect(branchPage?.choiceB).toBe("Dikkatli yolu sec");
   });
 
   it("detects cycles instead of recursing indefinitely", () => {

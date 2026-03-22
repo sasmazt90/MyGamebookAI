@@ -1,3 +1,5 @@
+import { getBookGenerationRule } from "../shared/bookGenerationRules";
+
 export type StoryPage = {
   pageNumber: number;
   branchPath: string;
@@ -16,6 +18,11 @@ export type StoryGenerationTargets = {
   branchCount: number;
   branchImageCount: number;
   graphPageCount: number;
+};
+
+type FallbackChoiceLabels = {
+  choiceA: string;
+  choiceB: string;
 };
 
 type PlannedNode = {
@@ -37,29 +44,12 @@ type ActivePath = {
 };
 
 export function computeStoryGenerationTargets(category: string, length: string): StoryGenerationTargets {
-  if (category === "fairy_tale") {
-    return {
-      readablePathLength: 10,
-      branchCount: 3,
-      branchImageCount: 0,
-      graphPageCount: 16,
-    };
-  }
-
-  if (category === "comic") {
-    return {
-      readablePathLength: length === "thin" ? 10 : 18,
-      branchCount: length === "thin" ? 3 : 5,
-      branchImageCount: 0,
-      graphPageCount: length === "thin" ? 16 : 28,
-    };
-  }
-
+  const rule = getBookGenerationRule(category, length);
   return {
-    readablePathLength: length === "normal" ? 80 : 120,
-    branchCount: length === "normal" ? 8 : 12,
-    branchImageCount: length === "normal" ? 8 : 12,
-    graphPageCount: length === "normal" ? 104 : 156,
+    readablePathLength: rule.readablePathLength,
+    branchCount: rule.branchCount,
+    branchImageCount: rule.branchImageCount,
+    graphPageCount: rule.graphPageCount,
   };
 }
 
@@ -185,16 +175,83 @@ export function validateStoryShape(pages: StoryPage[], readablePathLength: numbe
   return errors;
 }
 
-function branchDepths(readablePathLength: number, branchCount: number): number[] {
+function normaliseLanguageCode(language?: string): string {
+  return (language ?? "en").trim().toLowerCase().split(/[-_]/)[0] || "en";
+}
+
+function getFallbackChoiceLabels(language?: string): FallbackChoiceLabels {
+  switch (normaliseLanguageCode(language)) {
+    case "tr":
+      return {
+        choiceA: "Cesur yolu sec",
+        choiceB: "Dikkatli yolu sec",
+      };
+    case "de":
+      return {
+        choiceA: "Wahle den mutigen Weg",
+        choiceB: "Wahle den vorsichtigen Weg",
+      };
+    case "fr":
+      return {
+        choiceA: "Choisis la voie audacieuse",
+        choiceB: "Choisis la voie prudente",
+      };
+    case "es":
+      return {
+        choiceA: "Elige el camino valiente",
+        choiceB: "Elige el camino prudente",
+      };
+    default:
+      return {
+        choiceA: "Take the bold path",
+        choiceB: "Take the cautious path",
+      };
+  }
+}
+
+function branchDepths(readablePathLength: number, branchCount: number, category?: string): number[] {
   if (branchCount <= 0) return [];
-  const start = Math.max(2, Math.floor(readablePathLength * 0.55));
+  const branchStart = category === "fairy_tale" ? 3 : 4;
+  const start = Math.min(Math.max(2, branchStart), Math.max(2, readablePathLength - 3));
   const end = Math.max(start, readablePathLength - 2);
   if (branchCount === 1) return [Math.floor((start + end) / 2)];
 
+  const spacing = Math.max(1, Math.floor((end - start) / (branchCount - 1)));
+
   return Array.from({ length: branchCount }, (_, index) => {
-    const ratio = index / (branchCount - 1);
-    return Math.max(2, Math.min(readablePathLength - 2, Math.round(start + (end - start) * ratio)));
+    return Math.max(start, Math.min(readablePathLength - 2, start + index * spacing));
   });
+}
+
+function buildFallbackOutline(input: {
+  title: string;
+  description: string;
+  branchPath: string;
+  depth: number;
+  readablePathLength: number;
+  isBranchPage: boolean;
+  isEnding: boolean;
+}): string {
+  const premise = input.description.trim() || `the adventure in "${input.title}"`;
+  const branchLabel = input.branchPath === "root" ? "main path" : `branch ${input.branchPath}`;
+
+  if (input.depth === 1) {
+    return `Open "${input.title}" by introducing the main characters, the setting, and the central problem drawn from ${premise}.`;
+  }
+
+  if (input.isBranchPage) {
+    return `Create a concrete decision on the ${branchLabel}. The next scene must split into two visibly different outcomes tied directly to ${premise}.`;
+  }
+
+  if (input.isEnding) {
+    return `Deliver a satisfying ending on the ${branchLabel}. Resolve the central problem from ${premise} with a distinct emotional payoff for this route.`;
+  }
+
+  if (input.branchPath === "root") {
+    return `Advance the main route on page-depth ${input.depth}. Build directly on the previous action and keep the narrative specific to ${premise}.`;
+  }
+
+  return `Continue the ${branchLabel} consequence on page-depth ${input.depth}. Show a concrete new development that could not happen on the unchosen route, while staying faithful to ${premise}.`;
 }
 
 export function buildFallbackStoryGraph(input: {
@@ -202,10 +259,13 @@ export function buildFallbackStoryGraph(input: {
   description: string;
   readablePathLength: number;
   branchCount: number;
+  category?: string;
+  language?: string;
 }): StoryPage[] {
   let nextId = 1;
   const nodes = new Map<number, PlannedNode>();
   const rootPathNodes: number[] = [];
+  const fallbackChoices = getFallbackChoiceLabels(input.language);
 
   for (let depth = 1; depth <= input.readablePathLength; depth += 1) {
     const id = nextId++;
@@ -218,17 +278,22 @@ export function buildFallbackStoryGraph(input: {
       isEnding: depth === input.readablePathLength,
       nextA: depth < input.readablePathLength ? id + 1 : null,
       nextB: null,
-      content:
-        depth === 1
-          ? `Opening setup for "${input.title}". Introduce the cast, world, and core problem drawn from: ${input.description}`
-          : `Continue the root storyline on page-depth ${depth}. Keep the story specific to ${input.description}`,
+      content: buildFallbackOutline({
+        title: input.title,
+        description: input.description,
+        branchPath: "root",
+        depth,
+        readablePathLength: input.readablePathLength,
+        isBranchPage: false,
+        isEnding: depth === input.readablePathLength,
+      }),
       choiceA: null,
       choiceB: null,
     });
   }
 
   const activePaths: ActivePath[] = [{ label: "root", nodes: rootPathNodes }];
-  const depths = branchDepths(input.readablePathLength, input.branchCount);
+  const depths = branchDepths(input.readablePathLength, input.branchCount, input.category);
 
   for (let branchIndex = 0; branchIndex < input.branchCount; branchIndex += 1) {
     const targetDepth = depths[branchIndex];
@@ -258,37 +323,61 @@ export function buildFallbackStoryGraph(input: {
     const branchBNodes: number[] = [];
 
     branchNode.isBranchPage = true;
-    branchNode.choiceA = "Take the bold option";
-    branchNode.choiceB = "Take the cautious option";
+    branchNode.choiceA = fallbackChoices.choiceA;
+    branchNode.choiceB = fallbackChoices.choiceB;
 
     for (let offset = 0; offset < existingSuffix.length; offset += 1) {
       const existingId = existingSuffix[offset];
       const existingNode = nodes.get(existingId);
-      if (existingNode) {
-        existingNode.branchPath = aLabel;
-        existingNode.content = `Branch ${aLabel} at depth ${existingNode.depth}: continue the bold consequence of the earlier choice. ${input.description}`;
-      }
+        if (existingNode) {
+          existingNode.branchPath = aLabel;
+          existingNode.content = buildFallbackOutline({
+            title: input.title,
+            description: input.description,
+            branchPath: aLabel,
+            depth: existingNode.depth,
+            readablePathLength: input.readablePathLength,
+            isBranchPage: existingNode.isBranchPage,
+            isEnding: existingNode.isEnding,
+          });
+        }
 
       const clonedId = nextId++;
       const clonedDepth = targetDepth + offset + 1;
       branchBNodes.push(clonedId);
-      nodes.set(clonedId, {
-        id: clonedId,
-        branchPath: bLabel,
-        depth: clonedDepth,
-        isBranchPage: false,
-        isEnding: clonedDepth === input.readablePathLength,
-        nextA: null,
-        nextB: null,
-        content: `Branch ${bLabel} at depth ${clonedDepth}: continue the cautious consequence of the earlier choice. ${input.description}`,
-        choiceA: null,
-        choiceB: null,
-      });
-    }
+        nodes.set(clonedId, {
+          id: clonedId,
+          branchPath: bLabel,
+          depth: clonedDepth,
+          isBranchPage: false,
+          isEnding: clonedDepth === input.readablePathLength,
+          nextA: null,
+          nextB: null,
+          content: buildFallbackOutline({
+            title: input.title,
+            description: input.description,
+            branchPath: bLabel,
+            depth: clonedDepth,
+            readablePathLength: input.readablePathLength,
+            isBranchPage: false,
+            isEnding: clonedDepth === input.readablePathLength,
+          }),
+          choiceA: null,
+          choiceB: null,
+        });
+      }
 
     branchNode.nextA = existingSuffix[0] ?? null;
     branchNode.nextB = branchBNodes[0] ?? null;
-    branchNode.content = `Decision point at depth ${targetDepth}. Force a meaningful split in outcome and atmosphere for "${input.title}".`;
+    branchNode.content = buildFallbackOutline({
+      title: input.title,
+      description: input.description,
+      branchPath: path.label,
+      depth: targetDepth,
+      readablePathLength: input.readablePathLength,
+      isBranchPage: true,
+      isEnding: false,
+    });
 
     for (let index = 0; index < existingSuffix.length; index += 1) {
       const currentId = branchBNodes[index];
