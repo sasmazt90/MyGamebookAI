@@ -17,6 +17,16 @@ export interface SoundEntry {
   url: string;
 }
 
+function normaliseSoundMatchText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9\s_-]+/g, " ");
+}
+
 // ─── Genre → preferred categories ────────────────────────────────────────────
 
 export const GENRE_SOUND_CATEGORIES: Record<string, string[]> = {
@@ -33,10 +43,10 @@ export const GENRE_SOUND_CATEGORIES: Record<string, string[]> = {
 
 export const CONTENT_KEYWORD_MAP: Array<{ keywords: string[]; soundFragments: string[] }> = [
   // Nature / outdoor
-  { keywords: ["forest", "tree", "woods", "jungle"], soundFragments: ["forest", "birds", "wind", "leaves"] },
-  { keywords: ["rain", "storm", "thunder", "lightning"], soundFragments: ["rain", "thunder", "storm"] },
-  { keywords: ["ocean", "sea", "wave", "beach", "water"], soundFragments: ["ocean", "wave", "water", "rain"] },
-  { keywords: ["wind", "breeze", "gust"], soundFragments: ["wind", "breeze"] },
+  { keywords: ["forest", "tree", "woods", "jungle", "orman", "agac"], soundFragments: ["forest", "birds", "wind", "leaves"] },
+  { keywords: ["rain", "storm", "thunder", "lightning", "yagmur", "firtina", "gok gurultusu", "simsek"], soundFragments: ["rain", "thunder", "storm"] },
+  { keywords: ["ocean", "sea", "wave", "beach", "water", "okyanus", "deniz", "dalga", "su"], soundFragments: ["ocean", "wave", "water", "rain"] },
+  { keywords: ["wind", "breeze", "gust", "ruzgar", "esinti"], soundFragments: ["wind", "breeze"] },
   { keywords: ["fire", "flame", "burn", "blaze"], soundFragments: ["fire", "crackle"] },
   { keywords: ["cave", "underground", "dungeon"], soundFragments: ["cave", "drip", "echo"] },
   // Animals
@@ -46,39 +56,40 @@ export const CONTENT_KEYWORD_MAP: Array<{ keywords: string[]; soundFragments: st
   { keywords: ["cat", "meow", "purr"], soundFragments: ["cat", "meow"] },
   { keywords: ["dragon", "roar", "beast", "monster"], soundFragments: ["roar", "monster", "growl"] },
   // Human / crowd
-  { keywords: ["crowd", "people", "market", "town", "city"], soundFragments: ["crowd", "market", "city"] },
-  { keywords: ["laugh", "cheer", "celebrate"], soundFragments: ["laugh", "cheer", "crowd"] },
-  { keywords: ["scream", "cry", "shout", "yell"], soundFragments: ["scream", "shout"] },
-  { keywords: ["whisper", "quiet", "silence"], soundFragments: ["whisper", "quiet"] },
+  { keywords: ["crowd", "people", "market", "town", "city", "kalabalik", "insanlar", "pazar", "sehir"], soundFragments: ["crowd", "market", "city"] },
+  { keywords: ["laugh", "cheer", "celebrate", "gul", "kahkaha", "sevin", "kutla"], soundFragments: ["laugh", "cheer", "crowd"] },
+  { keywords: ["scream", "cry", "shout", "yell", "ciglik", "bagir", "agla"], soundFragments: ["scream", "shout"] },
+  { keywords: ["whisper", "quiet", "silence", "fisilda", "sessiz", "sessizlik"], soundFragments: ["whisper", "quiet"] },
   // Action / combat
-  { keywords: ["fight", "battle", "sword", "attack", "punch", "hit"], soundFragments: ["sword", "punch", "hit", "fight", "battle"] },
+  { keywords: ["fight", "battle", "sword", "attack", "punch", "hit", "kavga", "savas", "kilic", "saldiri", "vur"], soundFragments: ["sword", "punch", "hit", "fight", "battle"] },
   { keywords: ["gun", "shoot", "bullet", "pistol", "rifle"], soundFragments: ["gun", "shot", "bullet"] },
-  { keywords: ["explosion", "bomb", "blast"], soundFragments: ["explosion", "blast"] },
-  { keywords: ["run", "chase", "escape", "flee"], soundFragments: ["run", "footstep"] },
+  { keywords: ["explosion", "bomb", "blast", "patlama", "bomba"], soundFragments: ["explosion", "blast"] },
+  { keywords: ["run", "chase", "escape", "flee", "kos", "kovala", "kac"], soundFragments: ["run", "footstep"] },
   // Doors / buildings
-  { keywords: ["door", "open", "close", "enter", "room"], soundFragments: ["door", "creak"] },
-  { keywords: ["stairs", "step", "walk", "footstep"], soundFragments: ["footstep", "step"] },
+  { keywords: ["door", "open", "close", "enter", "room", "kapi", "ac", "kapat", "giris", "oda", "gecit"], soundFragments: ["door", "creak"] },
+  { keywords: ["stairs", "step", "walk", "footstep", "merdiven", "adim", "yuru"], soundFragments: ["footstep", "step"] },
   { keywords: ["window", "glass", "break", "shatter"], soundFragments: ["glass", "break"] },
   // Transport
-  { keywords: ["car", "drive", "road", "highway"], soundFragments: ["car", "engine", "road"] },
+  { keywords: ["car", "drive", "road", "highway", "araba", "yol"], soundFragments: ["car", "engine", "road"] },
   { keywords: ["train", "rail", "station"], soundFragments: ["train"] },
-  { keywords: ["ship", "boat", "sail", "sea"], soundFragments: ["ship", "boat"] },
-  { keywords: ["plane", "fly", "aircraft", "jet"], soundFragments: ["plane", "jet"] },
+  { keywords: ["ship", "boat", "sail", "sea", "gemi", "tekne"], soundFragments: ["ship", "boat"] },
+  { keywords: ["plane", "fly", "aircraft", "jet", "ucak", "uc"], soundFragments: ["plane", "jet"] },
+  { keywords: ["rocket", "roket", "spaceship", "uzay gemisi", "motor"], soundFragments: ["rocket", "engine", "space", "jet"] },
   // Sci-fi / fantasy
-  { keywords: ["space", "planet", "star", "galaxy", "cosmos"], soundFragments: ["space", "sci", "laser"] },
-  { keywords: ["magic", "spell", "enchant", "wizard", "witch"], soundFragments: ["magic", "sparkle", "chime"] },
-  { keywords: ["robot", "machine", "computer", "tech"], soundFragments: ["robot", "machine", "computer"] },
+  { keywords: ["space", "planet", "star", "galaxy", "cosmos", "uzay", "gezegen", "yildiz", "galaksi", "evren", "ay"], soundFragments: ["space", "sci", "laser", "night"] },
+  { keywords: ["magic", "spell", "enchant", "wizard", "witch", "sihir", "buyu", "buyulu", "masal"], soundFragments: ["magic", "sparkle", "chime"] },
+  { keywords: ["robot", "machine", "computer", "tech", "robot", "makine", "bilgisayar", "teknoloji", "harita"], soundFragments: ["robot", "machine", "computer", "beep"] },
   // Horror
   { keywords: ["ghost", "haunted", "spirit", "dark", "shadow"], soundFragments: ["ghost", "haunted", "horror"] },
   { keywords: ["blood", "death", "kill", "murder"], soundFragments: ["horror", "stab", "heartbeat"] },
   { keywords: ["heartbeat", "pulse", "heart"], soundFragments: ["heartbeat"] },
   // Romance / peaceful
-  { keywords: ["love", "kiss", "romance", "tender", "gentle"], soundFragments: ["piano", "gentle", "soft"] },
-  { keywords: ["music", "song", "sing", "dance"], soundFragments: ["music", "piano", "guitar"] },
+  { keywords: ["love", "kiss", "romance", "tender", "gentle", "ask", "opucuk", "romantik", "nazik", "yumusak"], soundFragments: ["piano", "gentle", "soft"] },
+  { keywords: ["music", "song", "sing", "dance", "muzik", "sarki", "soyle", "dans", "melodi"], soundFragments: ["music", "piano", "guitar", "chime"] },
   // Children / fairy tale
-  { keywords: ["fairy", "magic", "wish", "dream", "wonder"], soundFragments: ["chime", "sparkle", "fairy"] },
-  { keywords: ["child", "children", "kid", "play", "toy"], soundFragments: ["children", "play", "toy"] },
-  { keywords: ["moon", "night", "star", "sleep"], soundFragments: ["night", "cricket", "owl"] },
+  { keywords: ["fairy", "magic", "wish", "dream", "wonder", "peri", "dilek", "ruya", "hayal"], soundFragments: ["chime", "sparkle", "fairy", "magic"] },
+  { keywords: ["child", "children", "kid", "play", "toy", "cocuk", "oyun", "oyuncak"], soundFragments: ["children", "play", "toy"] },
+  { keywords: ["moon", "night", "star", "sleep", "ay", "gece", "uyku"], soundFragments: ["night", "cricket", "owl", "chime"] },
 ];
 
 /**
@@ -93,34 +104,36 @@ export function findBestSound(
 ): string | null {
   if (entries.length === 0) return null;
 
-  const contentLower = pageContent.toLowerCase();
+  const contentLower = normaliseSoundMatchText(pageContent);
   const preferredCategories = GENRE_SOUND_CATEGORIES[genre] ?? [];
 
   // Build candidate list from content keywords
   const candidateFragments: string[] = [];
   for (const { keywords, soundFragments } of CONTENT_KEYWORD_MAP) {
-    if (keywords.some(kw => contentLower.includes(kw))) {
+    if (keywords.some(kw => contentLower.includes(normaliseSoundMatchText(kw)))) {
       candidateFragments.push(...soundFragments);
     }
   }
 
   // Also add sfxTags as fragments (split by _ and -)
   for (const tag of sfxTags) {
-    candidateFragments.push(...tag.split(/[_-]/));
+    candidateFragments.push(...normaliseSoundMatchText(tag).split(/[_\s-]+/));
   }
+
+  const dedupedFragments = Array.from(new Set(candidateFragments.filter(Boolean)));
 
   // Score each entry
   const scored = entries.map(entry => {
     let score = 0;
-    const soundLower = entry.sound.toLowerCase();
-    const catLower = entry.category.toLowerCase();
+    const soundLower = normaliseSoundMatchText(entry.sound);
+    const catLower = normaliseSoundMatchText(entry.category);
 
     // Preferred genre category bonus
-    if (preferredCategories.includes(catLower)) score += 3;
+    if (preferredCategories.map(normaliseSoundMatchText).includes(catLower)) score += 3;
 
     // Fragment match bonus
-    for (const frag of candidateFragments) {
-      if (soundLower.includes(frag.toLowerCase())) score += 5;
+    for (const frag of dedupedFragments) {
+      if (soundLower.includes(frag)) score += 5;
     }
 
     return { entry, score };

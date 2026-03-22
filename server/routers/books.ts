@@ -2466,6 +2466,8 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       sceneSpec?.requiredObjects?.length ? `MANDATORY OBJECT PRESENCE: show these exact recurring objects if story-relevant: ${sceneSpec.requiredObjects.join(", ")}` : "",
       sceneSpec?.forbiddenObjects?.length ? `FORBIDDEN VISUAL ELEMENTS: do not show ${sceneSpec.forbiddenObjects.join(", ")}` : "",
       "CHARACTER CONTINUITY: same face shape, hair, age impression, clothing design, and silhouette across the entire book",
+      "NO LATE-PAGE DRIFT: never change haircut length, fringe/bangs, eyebrow shape, eye colour, nose shape, jawline, signature clothing print, jewelry, or age impression unless the story explicitly states a transformation",
+      "IDENTITY ANCHOR: if a character appears again, render them as the exact same person from earlier pages, not a lookalike or a newly interpreted variant",
       "PROP CONTINUITY: recurring objects must keep the same design language, shape, colors, markings, and scale across pages",
       "SCENE ACCURACY: depict the concrete page action, not a generic magical or atmospheric substitute",
     ].filter(Boolean).join(" | ");

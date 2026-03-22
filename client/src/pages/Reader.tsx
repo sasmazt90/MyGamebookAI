@@ -498,9 +498,8 @@ export default function Reader() {
   }, [bookId, pages, saveProgress, stopAmbience, stopPageSfx]);
 
   const handleBeginReading = useCallback(() => {
-    // Don't play sound on first 2 pages (pages 0-2)
-    // Set to page 1 (index 1) which is still silent
-    setCurrentPageIndex(1);
+    // Start on the first story page; early-page audio guards still keep the opening quiet.
+    setCurrentPageIndex(0);
     setShowCover(false);
   }, []);
 
