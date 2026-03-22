@@ -8,7 +8,7 @@ import {
 } from "./bookContinuity";
 
 describe("book continuity reference selection", () => {
-  it("returns raw photos before illustrated portraits for named characters", () => {
+  it("returns illustrated portraits before raw photos for named characters", () => {
     const blueprint = createBookVisualBlueprint({
       readablePathLength: 10,
       graphPageCount: 16,
@@ -36,6 +36,9 @@ describe("book continuity reference selection", () => {
             body_shape: "lean",
             facial_hair: "none",
             distinctive: "none",
+            outfit_summary: "navy shirt, tan trousers",
+            accessories: "silver watch",
+            headwear: "none",
             prose_summary: "test",
           },
         }
@@ -82,8 +85,8 @@ describe("book continuity reference selection", () => {
     });
 
     expect(refs.map((ref) => ref.url)).toEqual([
-      "https://example.com/tolgar-photo.jpg",
       "https://example.com/tolgar-portrait.png",
+      "https://example.com/tolgar-photo.jpg",
     ]);
   });
 });

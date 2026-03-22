@@ -18,6 +18,9 @@ type PhotoAnalysisInput = {
   body_shape: string;
   facial_hair: string;
   distinctive: string;
+  outfit_summary?: string;
+  accessories?: string;
+  headwear?: string;
   prose_summary: string;
   age_band?: string;
   age_detail?: string;
@@ -124,9 +127,29 @@ function extractLifeStage(appearance: string, photo: PhotoAnalysisInput | undefi
   return "keep the same age impression and physical maturity in every scene";
 }
 
-function extractClothingLock(appearance: string): string {
+function extractClothingLock(appearance: string, photo: PhotoAnalysisInput | undefined): string {
   const explicit = firstMatchingSentence(appearance, "CLOTHING") || firstMatchingSentence(appearance, "outfit");
-  return explicit || "Preserve the exact same outfit, accessories, and colour arrangement unless the story explicitly changes clothing.";
+  const outfitFromPhoto = squashWhitespace(photo?.outfit_summary);
+  const accessories = squashWhitespace(photo?.accessories);
+  const headwear = squashWhitespace(photo?.headwear);
+
+  if (explicit) return explicit;
+  if (outfitFromPhoto || accessories || headwear) {
+    return [
+      outfitFromPhoto ? `Preserve this exact outfit from the reference: ${outfitFromPhoto}.` : "",
+      accessories && accessories.toLowerCase() !== "none"
+        ? `Keep the same accessories: ${accessories}.`
+        : "",
+      headwear && headwear.toLowerCase() !== "none"
+        ? `Keep the same headwear/hair accessory: ${headwear}.`
+        : "",
+      "Do not change clothing colours, garments, accessories, or silhouette between pages.",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  return "Preserve the exact same outfit, accessories, and colour arrangement unless the story explicitly changes clothing.";
 }
 
 function buildIdentityLock(card: CharacterCardInput, photo: PhotoAnalysisInput | undefined): string {
@@ -142,6 +165,9 @@ function buildIdentityLock(card: CharacterCardInput, photo: PhotoAnalysisInput |
     photo?.body_shape ? `body build: ${photo.body_shape}` : "",
     photo?.facial_hair && photo.facial_hair.toLowerCase() !== "none" ? `facial hair: ${photo.facial_hair}` : "",
     photo?.distinctive && photo.distinctive.toLowerCase() !== "none" ? `distinctive traits: ${photo.distinctive}` : "",
+    photo?.outfit_summary ? `outfit: ${photo.outfit_summary}` : "",
+    photo?.accessories && photo.accessories.toLowerCase() !== "none" ? `accessories: ${photo.accessories}` : "",
+    photo?.headwear && photo.headwear.toLowerCase() !== "none" ? `headwear: ${photo.headwear}` : "",
   ].filter(Boolean);
 
   const identityAxes = axes.length > 0 ? axes.join("; ") : squashWhitespace(card.appearance);
@@ -159,7 +185,7 @@ export function createCanonicalCharacterProfiles(
   return characterCards.map((card) => {
     const photo = photoAnalyses[card.name];
     const ageLock = extractLifeStage(card.appearance, photo);
-    const clothingLock = extractClothingLock(card.appearance);
+    const clothingLock = extractClothingLock(card.appearance, photo);
     const identityLock = buildIdentityLock(card, photo);
     const promptBlock = [
       `${card.name} (${card.role})`,
@@ -371,8 +397,8 @@ export function selectReferenceImages(input: {
     return Array.from(
       new Map(
         [
-          ...Array.from(input.photoRefs.values()),
           ...Array.from(input.portraitRefs.values()),
+          ...Array.from(input.photoRefs.values()),
         ]
           .filter((ref) => !!ref.url || !!ref.b64Json)
           .map((ref) => [`${ref.url ?? ""}|${ref.b64Json ?? ""}`, ref])
@@ -383,10 +409,10 @@ export function selectReferenceImages(input: {
   const refs: ReferenceImage[] = [];
   for (const profile of input.blueprint.characterProfiles) {
     if (!names.has(profile.name.toLowerCase())) continue;
-    const raw = input.photoRefs.get(profile.name);
     const portrait = input.portraitRefs.get(profile.name);
-    if (raw) refs.push(raw);
     if (portrait) refs.push(portrait);
+    const raw = input.photoRefs.get(profile.name);
+    if (raw) refs.push(raw);
   }
 
   return Array.from(

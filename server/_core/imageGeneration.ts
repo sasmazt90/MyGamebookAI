@@ -119,7 +119,9 @@ async function generateWithGoogle(options: GenerateImageOptions): Promise<Genera
     },
   };
 
-  console.log(`[ImageGen] Calling model=${model}, isNewerModel=${isNewerModel}, prompt=${effectivePrompt.substring(0, 100)}...`);
+  console.log(
+    `[ImageGen] Calling model=${model}, isNewerModel=${isNewerModel}, promptPreview=${effectivePrompt.substring(0, 100)}...`
+  );
 
   const response = await withTimeout(endpoint, {
     method: "POST",

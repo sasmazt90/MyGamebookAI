@@ -603,6 +603,9 @@ export async function generateBookContent(bookId: number, bookData: {
       body_shape: string;
       facial_hair: string;
       distinctive: string;
+      outfit_summary?: string;
+      accessories?: string;
+      headwear?: string;
       age_band?: string;
       age_detail?: string;
       prose_summary: string;  // 2-3 sentence flowing description for the card
@@ -648,6 +651,9 @@ export async function generateBookContent(bookId: number, bookData: {
   "body_shape": "<height estimate + build, e.g. tall athletic build with broad shoulders, medium height stocky muscular frame, petite slim build>",
   "facial_hair": "<e.g. clean-shaven, short dark stubble, full neatly-trimmed brown beard, thin moustache  or 'none' if absent>",
   "distinctive": "<any notable features: freckles, moles, scars, dimples, glasses, tattoos  or 'none'>",
+  "outfit_summary": "<specific current outfit from the photo: garments, colours, shoes, and overall silhouette>",
+  "accessories": "<visible accessories such as necklace, watch, bracelet, backpack, glasses  or 'none'>",
+  "headwear": "<hat, hood, hair bow, hair clip, crown, helmet  or 'none'>",
   "age_band": "<child, teen, young adult, adult, middle-aged adult, older adult>",
   "age_detail": "<short age/maturity note, e.g. around seven years old, visibly teenage, early thirties adult>",
   "prose_summary": "<2-3 flowing sentences combining all the above into a natural character description suitable for an illustrated book>"
@@ -703,6 +709,9 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
   Body shape: ${a.body_shape}
   Facial hair: ${a.facial_hair}
   Distinctive features: ${a.distinctive}
+  Outfit: ${a.outfit_summary || "not specified"}
+  Accessories: ${a.accessories || "none"}
+  Headwear: ${a.headwear || "none"}
   Prose summary: ${a.prose_summary}`;
               }
               return `${c.name}: ${photoDescriptions[c.name]}`;
@@ -829,6 +838,9 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
             `Body: ${a.body_shape}`,
             `Facial hair: ${a.facial_hair}`,
             `Distinctive features: ${a.distinctive}`,
+            `Outfit: ${a.outfit_summary || "not specified"}`,
+            `Accessories: ${a.accessories || "none"}`,
+            `Headwear: ${a.headwear || "none"}`,
             `INSTRUCTION: Prioritise facial accuracy above all else. The face must be recognisable as this specific person. Do NOT genericise, idealise, or alter any facial feature.`,
           ].join("\n");
         });
@@ -1263,6 +1275,9 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
               a.skin_tone,
               a.face_shape,
               a.body_shape,
+              a.outfit_summary || "",
+              a.accessories && a.accessories !== "none" ? a.accessories : "",
+              a.headwear && a.headwear !== "none" ? a.headwear : "",
               a.facial_hair !== "none" ? a.facial_hair : "",
               a.distinctive !== "none" ? a.distinctive : "",
             ].filter(Boolean).join(", ")
@@ -1309,19 +1324,50 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         : canonicalCharacterProfiles.map(profile => profile.name);
       const refs: Array<{ url: string; mimeType: string }> = [];
       for (const name of names) {
-        const raw = photoRefByName.get(name);
-        if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
         const illustrated = illustratedPortraitsMap.get(name);
         if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
+        const raw = photoRefByName.get(name);
+        if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
       }
       if (refs.length === 0) {
         refs.push(
-          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
           ...Array.from(illustratedPortraitsMap.values())
             .filter((img): img is { url: string; mimeType: string } => !!img?.url),
+          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
         );
       }
       return refs.filter((img, idx, arr) => arr.findIndex(candidate => candidate.url === img.url) === idx);
+    };
+
+    const buildSceneIdentityPriorityBlock = (characterNames?: string[]): string => {
+      const names = characterNames && characterNames.length > 0
+        ? Array.from(new Set(characterNames))
+        : canonicalCharacterProfiles.map((profile) => profile.name);
+      const blocks = names
+        .map((name) => {
+          const canonical = canonicalCharacterProfiles.find((profile) => profile.name === name);
+          if (!canonical) return "";
+          const photo = photoAnalyses[name];
+          return [
+            `CHARACTER PRIORITY: ${name}`,
+            `Face lock: ${canonical.identityLock}`,
+            `Age lock: ${canonical.ageLock}`,
+            `Outfit lock: ${canonical.clothingLock}`,
+            photo?.outfit_summary ? `Exact photographed outfit: ${photo.outfit_summary}` : "",
+            photo?.accessories && photo.accessories.toLowerCase() !== "none"
+              ? `Exact accessories: ${photo.accessories}`
+              : "",
+            photo?.headwear && photo.headwear.toLowerCase() !== "none"
+              ? `Exact headwear/hair accessory: ${photo.headwear}`
+              : "",
+            "Do not replace this character with a generic cartoon version.",
+          ].filter(Boolean).join(" | ");
+        })
+        .filter(Boolean);
+
+      return blocks.length > 0
+        ? `SCENE-SPECIFIC IDENTITY PRIORITY:\n${blocks.join("\n")}`
+        : "";
     };
 
     //  Image generation wrapper 
@@ -1374,8 +1420,14 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       for (let attempt = 1; attempt <= maxImageAttempts; attempt++) {
         try {
           if (mergedRefs.length > 0) {
+            const rawRefCount = mergedRefs.filter((ref) =>
+              !!ref.url && charPhotos.some((photo) => photo.url === ref.url)
+            ).length;
+            const portraitRefCount = mergedRefs.filter((ref) =>
+              !!ref.url && Array.from(illustratedPortraitsMap.values()).some((portrait) => portrait.url === ref.url)
+            ).length;
             console.log(
-              `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode  ${mergedRefs.length} image reference(s), attempt ${attempt}/${maxImageAttempts})`
+              `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode ${mergedRefs.length} image reference(s): ${portraitRefCount} portrait, ${rawRefCount} raw photo; attempt ${attempt}/${maxImageAttempts})`
             );
             const result = await generateImage({
               prompt: effectivePrompt,
@@ -1641,7 +1693,7 @@ All topology fields must remain identical to the scaffold.`,
           const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
           const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
           repaired = parseStoryDataFromRaw(fixedContent);
-          console.warn(`[Books] Scaffold hydration JSON repaired via normalization pass for book ${bookId}`);
+          console.log(`[Books] Scaffold hydration JSON repaired via normalization pass for book ${bookId}`);
         }
         const repairedByPage = new Map(repaired.pages.map((page) => [page.pageNumber, page]));
 
@@ -2715,6 +2767,9 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       const coverResult = await generateImageWithRefCheck(
         "cover",
         [
+          buildSceneIdentityPriorityBlock(
+            canonicalCharacterProfiles.slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length))).map((profile) => profile.name)
+          ),
           coverScenePrompt,
           `book cover illustration for a gamebook`,
           "professional publishing quality, full-bleed composition",
@@ -2722,9 +2777,9 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             ? `CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the EXACT SAME individuals from their reference photos. Preserve without any modification: exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness. Do NOT genericise, idealise, or redesign any facial feature.`
             : null,
         ].filter(Boolean).join(" | "),
-        Array.from(illustratedPortraitsMap.values()).length > 0
-          ? Array.from(illustratedPortraitsMap.values())
-          : (charPhotos.length > 0 ? charPhotos : undefined),
+        getCharacterReferenceImages(
+          canonicalCharacterProfiles.slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length))).map((profile) => profile.name)
+        ),
       );
       if (coverResult.url) {
         coverImageUrl = coverResult.url;
@@ -2886,6 +2941,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           // Step 2: Generate ONE composite comic page image
           // NO text in the image speech bubbles are React overlays, not baked into the image.
           const compositePrompt = [
+            buildSceneIdentityPriorityBlock(panelCharacterNames),
             buildScenePrompt({
               blueprint: visualBlueprint,
               sceneSpec: comicSceneSpec,
@@ -3004,6 +3060,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           const imgResult = await generateImageWithRefCheck(
             `page-${page.pageNumber}`,
             [
+              buildSceneIdentityPriorityBlock(pageSceneSpec.characters.map((character) => character.name)),
               buildScenePrompt({
                 blueprint: visualBlueprint,
                 sceneSpec: pageSceneSpec,
@@ -3033,6 +3090,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             const imgResult = await generateImageWithRefCheck(
               `page-${page.pageNumber}-branch`,
               [
+                buildSceneIdentityPriorityBlock(pageSceneSpec.characters.map((character) => character.name)),
                 buildScenePrompt({
                   blueprint: visualBlueprint,
                   sceneSpec: pageSceneSpec,
