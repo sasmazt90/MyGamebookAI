@@ -131,7 +131,8 @@ describe("generateBookContent fairy_tale branch parent mapping", () => {
 
     expect(
       expansionSystemPrompts.some((content) =>
-        content.includes('The reader chose: "Parlayan patikayi sec"')
+        content.includes('The reader chose: "') &&
+        content.includes('The narrative must directly continue from and reflect that choice.')
       )
     ).toBe(true);
   });

@@ -1309,16 +1309,16 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         : canonicalCharacterProfiles.map(profile => profile.name);
       const refs: Array<{ url: string; mimeType: string }> = [];
       for (const name of names) {
-        const illustrated = illustratedPortraitsMap.get(name);
         const raw = photoRefByName.get(name);
-        if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
         if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
+        const illustrated = illustratedPortraitsMap.get(name);
+        if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
       }
       if (refs.length === 0) {
         refs.push(
+          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
           ...Array.from(illustratedPortraitsMap.values())
             .filter((img): img is { url: string; mimeType: string } => !!img?.url),
-          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
         );
       }
       return refs.filter((img, idx, arr) => arr.findIndex(candidate => candidate.url === img.url) === idx);
@@ -1346,21 +1346,28 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       const rawPhotoRefs: ReferenceCandidate[] = charPhotos
         .filter((img) => !!img?.url)
         .map((img) => ({ url: img.url, mimeType: img.mimeType }));
-      const candidateRefs =
-        explicitRefs.length > 0
-          ? explicitRefs
-          : fallbackPortraitRefs.length > 0
-          ? fallbackPortraitRefs
-          : rawPhotoRefs;
+      const candidateRefs = [
+        ...explicitRefs,
+        ...rawPhotoRefs,
+        ...fallbackPortraitRefs,
+      ];
       const mergedRefs = candidateRefs
         .filter((img, idx, arr) =>
           arr.findIndex((candidate) =>
             (candidate.url ?? "") === (img.url ?? "") &&
             (candidate.b64Json ?? "") === (img.b64Json ?? "")
           ) === idx
-        );
+        )
+        .slice(0, 6);
 
-      const effectivePrompt = prompt.includes(IDENTITY_LOCK) ? prompt : IDENTITY_LOCK + "\n\n" + prompt;
+      const identityAuthorityLayer = rawPhotoRefs.length > 0
+        ? "RAW PHOTO AUTHORITY (MANDATORY): when raw photos and illustrated portraits are both provided, the raw photos are the ground-truth for exact facial likeness, age impression, haircut, eyebrow shape, nose, jawline, skin tone, and distinctive features. Use illustrated portraits only to transfer the book's art style. Never beautify, genericise, or replace the photographed identity."
+        : "";
+      const effectivePrompt = [
+        prompt.includes(IDENTITY_LOCK) ? "" : IDENTITY_LOCK,
+        identityAuthorityLayer,
+        prompt,
+      ].filter(Boolean).join("\n\n");
 
       const maxImageAttempts = 3;
       let lastErr: string | null = null;
@@ -1500,6 +1507,7 @@ Rules:
     let storyData: StoryData | null = null;
     let structureErr: string | null = null;
     const maxStructureAttempts = 3;
+    const useDeterministicScaffoldTopology = true;
     const parseStoryDataFromRaw = (raw: string): StoryData => {
       try {
         return JSON.parse(repairJSON(raw)) as StoryData;
@@ -1609,7 +1617,32 @@ All topology fields must remain identical to the scaffold.`,
         });
 
         const repairRaw = repairResp.choices[0]?.message?.content || "{}";
-        const repaired = parseStoryDataFromRaw(typeof repairRaw === "string" ? repairRaw : JSON.stringify(repairRaw));
+        let repaired: StoryData;
+        try {
+          repaired = parseStoryDataFromRaw(typeof repairRaw === "string" ? repairRaw : JSON.stringify(repairRaw));
+        } catch (primaryRepairParseErr) {
+          const repairContent = typeof repairRaw === "string" ? repairRaw : JSON.stringify(repairRaw);
+          const fixerResp = await invokeLLM({
+            messages: [
+              {
+                role: "system" as const,
+                content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
+              },
+              {
+                role: "user" as const,
+                content:
+                  `Repair this malformed scaffold-hydration JSON into valid JSON object with key "pages". Do not add commentary.\n\n` +
+                  `MALFORMED_INPUT:\n${repairContent.slice(0, 12000)}`,
+              },
+            ],
+            response_format: { type: "json_object" },
+            max_tokens: 12000,
+          });
+          const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
+          const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
+          repaired = parseStoryDataFromRaw(fixedContent);
+          console.warn(`[Books] Scaffold hydration JSON repaired via normalization pass for book ${bookId}`);
+        }
         const repairedByPage = new Map(repaired.pages.map((page) => [page.pageNumber, page]));
 
         return {
@@ -1636,68 +1669,71 @@ All topology fields must remain identical to the scaffold.`,
       }
     };
 
-    for (let attempt = 1; attempt <= maxStructureAttempts; attempt++) {
-      try {
-        const structureResponse = await invokeLLM({
-          messages: [
-            { role: "system" as const, content: structureSystemPrompt },
-            { role: "user" as const, content: structurePrompt },
-          ],
-          response_format: { type: "json_object" },
-          max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
-        });
-
-        const rawContent = structureResponse.choices[0]?.message?.content || "{}";
-        const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-        let parsed: StoryData | null = null;
+    if (useDeterministicScaffoldTopology) {
+      storyData = await buildDeterministicScaffoldStory(null);
+      structureErr = null;
+    } else {
+      for (let attempt = 1; attempt <= maxStructureAttempts; attempt++) {
         try {
-          parsed = parseStoryDataFromRaw(content);
-        } catch (primaryParseErr) {
-          const preview = content.slice(0, 240).replace(/\s+/g, " ");
-          console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`);
-          console.warn(`[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`);
+          const structureResponse = await invokeLLM({
+            messages: [
+              { role: "system" as const, content: structureSystemPrompt },
+              { role: "user" as const, content: structurePrompt },
+            ],
+            response_format: { type: "json_object" },
+            max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
+          });
 
-          // Last-chance normalization pass: ask the LLM to convert malformed output
-          // into strict JSON with the expected schema.
+          const rawContent = structureResponse.choices[0]?.message?.content || "{}";
+          const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+          let parsed: StoryData | null = null;
           try {
-            const fixerResp = await invokeLLM({
-              messages: [
-                {
-                  role: "system" as const,
-                  content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
-                },
-                {
-                  role: "user" as const,
-                  content:
-                    `Repair this malformed gamebook JSON into valid JSON object with key "pages". Do not add commentary.\n\n` +
-                    `MALFORMED_INPUT:\n${content.slice(0, 12000)}`,
-                },
-              ],
-              response_format: { type: "json_object" },
-              max_tokens: 12000,
-            });
-            const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
-            const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
-            parsed = parseStoryDataFromRaw(fixedContent);
-            console.warn(`[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`);
-          } catch (fixErr) {
-            console.warn(`[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`);
+            parsed = parseStoryDataFromRaw(content);
+          } catch (primaryParseErr) {
+            const preview = content.slice(0, 240).replace(/\s+/g, " ");
+            console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`);
+            console.warn(`[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`);
+
+            try {
+              const fixerResp = await invokeLLM({
+                messages: [
+                  {
+                    role: "system" as const,
+                    content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
+                  },
+                  {
+                    role: "user" as const,
+                    content:
+                      `Repair this malformed gamebook JSON into valid JSON object with key "pages". Do not add commentary.\n\n` +
+                      `MALFORMED_INPUT:\n${content.slice(0, 12000)}`,
+                  },
+                ],
+                response_format: { type: "json_object" },
+                max_tokens: 12000,
+              });
+              const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
+              const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
+              parsed = parseStoryDataFromRaw(fixedContent);
+              console.warn(`[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`);
+            } catch (fixErr) {
+              console.warn(`[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`);
+            }
           }
+
+          if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+            storyData = parsed;
+            structureErr = null;
+            break;
+          }
+
+          structureErr = `Attempt ${attempt}: empty pages array`;
+        } catch (err) {
+          structureErr = `Attempt ${attempt}: ${err instanceof Error ? err.message : String(err)}`;
         }
 
-        if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
-          storyData = parsed;
-          structureErr = null;
-          break;
+        if (attempt < maxStructureAttempts) {
+          console.warn(`[Books] Structure generation retry ${attempt}/${maxStructureAttempts} for book ${bookId}: ${structureErr}`);
         }
-
-        structureErr = `Attempt ${attempt}: empty pages array`;
-      } catch (err) {
-        structureErr = `Attempt ${attempt}: ${err instanceof Error ? err.message : String(err)}`;
-      }
-
-      if (attempt < maxStructureAttempts) {
-        console.warn(`[Books] Structure generation retry ${attempt}/${maxStructureAttempts} for book ${bookId}: ${structureErr}`);
       }
     }
 

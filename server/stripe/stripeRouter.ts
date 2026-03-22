@@ -4,9 +4,25 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { CREDIT_PACKAGES, type CreditPackageId } from "./products";
 import { TRPCError } from "@trpc/server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-02-25.clover",
-});
+let stripeClient: Stripe | null = null;
+
+function getStripeClient(): Stripe {
+  if (stripeClient) return stripeClient;
+
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Stripe is not configured.",
+    });
+  }
+
+  stripeClient = new Stripe(secretKey, {
+    apiVersion: "2026-02-25.clover",
+  });
+
+  return stripeClient;
+}
 
 export const stripeRouter = router({
   /**
@@ -44,6 +60,8 @@ export const stripeRouter = router({
       if (!pkg) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid package" });
       }
+
+      const stripe = getStripeClient();
 
       const session = await stripe.checkout.sessions.create({
         mode: "payment",

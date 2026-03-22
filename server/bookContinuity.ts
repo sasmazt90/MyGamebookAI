@@ -368,18 +368,34 @@ export function selectReferenceImages(input: {
   );
 
   if (names.size === 0) {
-    return Array.from(input.portraitRefs.values()).length > 0
-      ? Array.from(input.portraitRefs.values())
-      : Array.from(input.photoRefs.values());
+    return Array.from(
+      new Map(
+        [
+          ...Array.from(input.photoRefs.values()),
+          ...Array.from(input.portraitRefs.values()),
+        ]
+          .filter((ref) => !!ref.url || !!ref.b64Json)
+          .map((ref) => [`${ref.url ?? ""}|${ref.b64Json ?? ""}`, ref])
+      ).values()
+    );
   }
 
   const refs: ReferenceImage[] = [];
   for (const profile of input.blueprint.characterProfiles) {
     if (!names.has(profile.name.toLowerCase())) continue;
-    refs.push(input.portraitRefs.get(profile.name) || input.photoRefs.get(profile.name) || {});
+    const raw = input.photoRefs.get(profile.name);
+    const portrait = input.portraitRefs.get(profile.name);
+    if (raw) refs.push(raw);
+    if (portrait) refs.push(portrait);
   }
 
-  return refs.filter((ref) => !!ref.url || !!ref.b64Json);
+  return Array.from(
+    new Map(
+      refs
+        .filter((ref) => !!ref.url || !!ref.b64Json)
+        .map((ref) => [`${ref.url ?? ""}|${ref.b64Json ?? ""}`, ref])
+    ).values()
+  );
 }
 
 export function branchSimilarityScore(left: string, right: string): number {

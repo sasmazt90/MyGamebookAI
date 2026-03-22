@@ -111,7 +111,12 @@ describe("No-Runtime-AI guardrails", () => {
   // ── books.leaderboard ─────────────────────────────────────────────────────
   it("books.leaderboard does NOT call invokeLLM or generateImage", async () => {
     const caller = appRouter.createCaller(makeActiveCtx());
-    await expect(caller.books.leaderboard({})).rejects.toThrow();
+    const result = await caller.books.leaderboard({});
+    expect(result).toEqual({
+      bestSellers: [],
+      newArrivals: [],
+      mostPopular: [],
+    });
     expect(invokeLLM).not.toHaveBeenCalled();
     expect(generateImage).not.toHaveBeenCalled();
   });
