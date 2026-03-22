@@ -2409,6 +2409,9 @@ CHILDREN'S WRITING RULES:
 - Use vivid, sensory details: colours, sounds, smells, textures
 - Maintain a warm, hopeful, and whimsical tone throughout
 - Characters must match their descriptions exactly  no aliases
+- Every new page must introduce a NEW concrete beat, discovery, obstacle, decision, or emotional turn. Do not merely restate the previous page's wonder.
+- Avoid repetitive exclamations, repeated parent-child call-and-response, and generic filler lines. Dialogue and narration should feel fresh from page to page.
+- If a vehicle, journey, or magical setting has already been established, show visible progress or a changed situation instead of repeating the same scene description.
 - If this is page 1 (the very first page of the story), write a proper OPENING that introduces the main characters, sets the scene, and establishes the world. The reader must feel this is the clear beginning of a brand-new adventure.
 - If this is NOT page 1, NEVER restart the story, never reintroduce the cast from scratch, and never repeat the opening premise. Continue the immediate action already in progress.
 - If this page follows a branch choice, make the chosen consequence explicit and materially different from the unchosen route.
@@ -3302,11 +3305,41 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
     const descSnippet = description
       ? description.substring(0, 120)
       : "an epic adventure";
+    const openingIllustratedPage =
+      storyData.pages.find(page =>
+        plannedIllustratedPageNumbers.has(page.pageNumber)
+      ) || storyData.pages[0];
+    const openingSceneSpec = openingIllustratedPage
+      ? sceneSpecsByPageNumber.get(openingIllustratedPage.pageNumber)
+      : undefined;
+    const coverCharacterNames = (
+      openingSceneSpec?.characters?.map(character => character.name) ||
+      canonicalCharacterProfiles
+        .slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length)))
+        .map(profile => profile.name)
+    )
+      .filter(Boolean)
+      .slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length)));
+    const coverCharacters =
+      coverCharacterNames.length > 0
+        ? coverCharacterNames
+        : canonicalCharacterProfiles
+            .slice(
+              0,
+              Math.max(1, Math.min(2, canonicalCharacterProfiles.length))
+            )
+            .map(profile => profile.name);
+    const openingNarrativeSnippet =
+      openingIllustratedPage?.content?.slice(0, 220) || descSnippet;
+    const fairyCoverContinuityNote =
+      category === "fairy_tale"
+        ? "Use the ACTUAL opening story situation and environment as the cover key art. Keep family members together in one coherent scene, with age-accurate height and body scale. Do not invent disconnected collage elements or random fantasy scenery that is not supported by the story opening."
+        : null;
     // Cover-specific framing note added on top of the global style lock
     const coverFramingNote =
       {
         fairy_tale:
-          "full-scene establishing shot, magical landscape with characters in foreground",
+          "storybook key art of the real opening scene, emotionally warm and coherent, all primary characters grouped in a believable shared environment",
         comic: "iconic hero pose, full-body shot, dramatic background",
         crime_mystery:
           "atmospheric establishing shot, moody cityscape or interior",
@@ -3322,44 +3355,61 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       blueprint: visualBlueprint,
       sceneSpec: {
         pageNumber: 0,
-        sceneSummary: `Cover scene for "${title}". ${descSnippet}`,
+        sceneSummary: `Cover scene for "${title}". ${openingNarrativeSnippet}`,
         narrativeBeat:
-          "Establish the central premise and lead character with a coherent environment.",
-        location: "cover illustration scene",
-        environment: coverFramingNote,
-        timeOfDay: "match the story premise",
+          "Establish the central premise and primary cast with one coherent, story-accurate environment.",
+        location: openingSceneSpec?.location || "cover illustration scene",
+        environment: openingSceneSpec?.environment || coverFramingNote,
+        timeOfDay: openingSceneSpec?.timeOfDay || "match the story premise",
         lighting:
+          openingSceneSpec?.lighting ||
           "match the locked global style and remain physically coherent",
-        physics: "credible scale, shadows, and environment logic",
-        camera: coverFramingNote,
+        physics:
+          openingSceneSpec?.physics ||
+          "credible scale, shadows, and environment logic",
+        camera: openingSceneSpec?.camera || coverFramingNote,
         composition:
-          "cover composition with fully visible hero subject and readable silhouette",
+          "cover composition with all primary characters fully visible, readable silhouette, age-accurate scale, and one unified setting",
         continuityFromPrevious:
           "Set the canonical visual contract for the rest of the book.",
         branchDelta:
-          "Do not show text; emphasize the core story hook visually.",
-        mustShow: [descSnippet],
+          "Do not show text; emphasize the core story hook visually and faithfully.",
+        mustShow: Array.from(
+          new Set(
+            [
+              descSnippet,
+              openingNarrativeSnippet,
+              ...(openingSceneSpec?.mustShow || []),
+            ].filter(Boolean)
+          )
+        ),
         explicitExclusions: [
           "text",
           "letters",
           "captions",
           "logos",
           "author names",
+          "split-screen collage",
+          "disconnected floating props",
         ],
-        characters: canonicalCharacterProfiles
-          .slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length)))
-          .map(profile => ({
-            name: profile.name,
-            action: "hero cover pose",
-            pose: "confident, readable pose",
-            framing: "fully visible",
-            visibility: "fully visible",
-          })),
-        recurringObjects: recurringObjects.slice(0, 2).map(object => ({
-          name: object.name,
-          state: "canonical cover appearance",
-          visibility: "visible if relevant",
+        characters: coverCharacters.map(name => ({
+          name,
+          action: "hero cover pose",
+          pose:
+            category === "fairy_tale"
+              ? "warm, story-accurate shared moment"
+              : "confident, readable pose",
+          framing: "fully visible",
+          visibility: "fully visible",
         })),
+        recurringObjects: (openingSceneSpec?.recurringObjects?.length
+          ? openingSceneSpec.recurringObjects
+          : recurringObjects.slice(0, 2).map(object => ({
+              name: object.name,
+              state: "canonical cover appearance",
+              visibility: "visible if relevant",
+            }))
+        ).slice(0, 2),
       },
       pageKind: "cover",
     });
@@ -3367,31 +3417,19 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       const coverResult = await generateImageWithRefCheck(
         "cover",
         [
-          buildSceneIdentityPriorityBlock(
-            canonicalCharacterProfiles
-              .slice(
-                0,
-                Math.max(1, Math.min(2, canonicalCharacterProfiles.length))
-              )
-              .map(profile => profile.name)
-          ),
+          buildSceneIdentityPriorityBlock(coverCharacters),
           coverScenePrompt,
           `book cover illustration for a gamebook`,
           "professional publishing quality, full-bleed composition",
+          `COVER CAST LOCK: show exactly these named character(s) on the cover if they are provided in the scene: ${coverCharacters.join(", ")}. Preserve realistic relative ages, body scale, and heights between adults and children.`,
+          fairyCoverContinuityNote,
           charPhotos.length > 0
             ? `CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the EXACT SAME individuals from their reference photos. Preserve without any modification: exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness. Do NOT genericise, idealise, or redesign any facial feature.`
             : null,
         ]
           .filter(Boolean)
           .join(" | "),
-        getCharacterReferenceImages(
-          canonicalCharacterProfiles
-            .slice(
-              0,
-              Math.max(1, Math.min(2, canonicalCharacterProfiles.length))
-            )
-            .map(profile => profile.name)
-        )
+        getCharacterReferenceImages(coverCharacters)
       );
       if (coverResult.url) {
         coverImageUrl = coverResult.url;
@@ -3878,6 +3916,9 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                   sceneSpec: pageSceneSpec,
                   pageKind: "page",
                 }),
+                "SCENE PROGRESSION (MANDATORY): depict the specific new story beat from this page, not a generic reprise of earlier moon, window, rocket, or wonder imagery.",
+                "COMPOSITION VARIETY (MANDATORY): avoid repeating the same camera angle, pose, or staging from previous fairy tale pages unless the narrative explicitly demands it.",
+                "AGE AND SCALE LOCK: adults and children must keep realistic relative ages, heights, and body proportions across all illustrations. Never render an older child as a toddler or baby-faced infant unless the story explicitly says so.",
                 CHARACTER_COLOUR_LOCK,
                 STRUCTURED_IDENTITY_BLOCK || undefined,
                 CHARACTER_LOCK_INSTRUCTION,

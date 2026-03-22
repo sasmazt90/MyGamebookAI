@@ -895,7 +895,10 @@ export default function Reader() {
   return (
     <div
       ref={fullscreenRef}
-      className="min-h-screen bg-[#0A0818] text-white flex flex-col"
+      className={cn(
+        "min-h-screen bg-[#0A0818] text-white flex flex-col",
+        isFullscreen && "h-screen overflow-y-auto"
+      )}
     >
       {/* Inject CSS keyframes */}
       <style>{FLIP_STYLES}</style>
@@ -976,897 +979,932 @@ export default function Reader() {
       )}
 
       {/* Two-page spread -- drag/swipe container */}
-      <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative">
-        {/* Left edge zone (click to go back) */}
-        {!showCover && !showBackCover && !cameFromBranch && (
-          <button
-            onClick={flipBackward}
-            disabled={isAnimating}
-            aria-label="Previous page"
-            className="absolute left-0 top-0 h-full w-12 md:w-16 z-10 flex items-center justify-start pl-2 opacity-0 hover:opacity-100 transition-opacity"
-          >
-            <div className="bg-black/30 rounded-r-full p-2">
-              <ChevronLeft className="w-5 h-5 text-white/60" />
-            </div>
-          </button>
+      <div
+        className={cn(
+          "flex-1 relative overflow-y-auto",
+          isFullscreen && "overscroll-contain"
         )}
-
-        {/* Right edge zone (click to go forward) */}
-        {!showCover && !showBackCover && !hasChoices && (
-          <button
-            onClick={flipForward}
-            disabled={isAnimating}
-            aria-label="Next page"
-            className="absolute right-0 top-0 h-full w-12 md:w-16 z-10 flex items-center justify-end pr-2 opacity-0 hover:opacity-100 transition-opacity"
-          >
-            <div className="bg-black/30 rounded-l-full p-2">
-              <ChevronLeft className="w-5 h-5 text-white/60 rotate-180" />
-            </div>
-          </button>
-        )}
-
-        {/* Main spread container -- receives swipe/drag events */}
-        {/* Comics: portrait (max-w-xl), Fairy Tale: wide landscape (max-w-5xl), Others: two-page spread (max-w-5xl) */}
+      >
         <div
-          {...containerProps}
           className={cn(
-            "w-full relative",
-            isComic && !showCover && !effectiveSpreadMode
-              ? "max-w-xl"
-              : "max-w-5xl",
-            isFairyTale ? flipAnimClass : ""
+            "min-h-full flex justify-center p-4 md:p-8 relative",
+            isFullscreen || hasChoices ? "items-start" : "items-center"
           )}
-          style={{
-            ...curlStyle,
-            ...(isDraggingCorner
-              ? {}
-              : { transformOrigin: isFairyTale ? "top center" : undefined }),
-            perspective: "1200px",
-            cursor: cornerCursorStyle,
-          }}
         >
-          {/* Corner drag indicator */}
-          <div style={cornerIndicatorStyle} />
-          {/* Content */}
-          {showBackCover ? (
-            /* ── Back Cover ──────────────────────────────────────────────────────── */
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
-              {/* Left: decorative back page */}
-              <div className="bg-[#F5F0E8] text-[#1A1033] p-10 min-h-[500px] flex flex-col justify-center items-center text-center">
-                <div className="w-full max-w-xs">
-                  <div className="w-16 h-1 bg-[#F59E0B] mx-auto mb-8" />
-                  <p className="text-4xl font-serif italic text-[#2D1B69] mb-6">
-                    {t("reader.theEnd")}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-10">{bookTitle}</p>
-                  <div className="w-16 h-1 bg-[#7C3AED] mx-auto mb-10" />
-                  <div className="flex flex-col gap-3">
-                    <Button
-                      onClick={handleRestart}
-                      variant="outline"
-                      className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      {t("reader.restart")}
-                    </Button>
-                    <Link href="/library">
-                      <Button className="w-full bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
-                        <Home className="w-4 h-4 mr-2" />
-                        {t("reader.backToLibrary")}
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+          {/* Left edge zone (click to go back) */}
+          {!showCover && !showBackCover && !cameFromBranch && (
+            <button
+              onClick={flipBackward}
+              disabled={isAnimating}
+              aria-label="Previous page"
+              className="absolute left-0 top-0 h-full w-12 md:w-16 z-10 flex items-center justify-start pl-2 opacity-0 hover:opacity-100 transition-opacity"
+            >
+              <div className="bg-black/30 rounded-r-full p-2">
+                <ChevronLeft className="w-5 h-5 text-white/60" />
               </div>
-              {/* Right: back cover image (same as front, slightly dimmed) */}
-              <div className="relative bg-[#0D0B1A] min-h-[500px] overflow-hidden">
-                {coverUrl ? (
-                  <img
-                    src={coverUrl}
-                    alt={bookTitle || "Book Cover"}
-                    className="w-full h-full object-cover absolute inset-0 opacity-40"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center min-h-[500px]">
-                    <BookOpen className="w-20 h-20 text-purple-700 opacity-30" />
-                  </div>
-                )}
-                <div className="absolute inset-0 flex items-end justify-center pb-10">
-                  <p className="text-xs uppercase tracking-widest text-white/60">
-                    {genreLabel}
-                  </p>
-                </div>
+            </button>
+          )}
+
+          {/* Right edge zone (click to go forward) */}
+          {!showCover && !showBackCover && !hasChoices && (
+            <button
+              onClick={flipForward}
+              disabled={isAnimating}
+              aria-label="Next page"
+              className="absolute right-0 top-0 h-full w-12 md:w-16 z-10 flex items-center justify-end pr-2 opacity-0 hover:opacity-100 transition-opacity"
+            >
+              <div className="bg-black/30 rounded-l-full p-2">
+                <ChevronLeft className="w-5 h-5 text-white/60 rotate-180" />
               </div>
-            </div>
-          ) : showCover ? (
-            /* -- Cover Spread -- */
-            <>
+            </button>
+          )}
+
+          {/* Main spread container -- receives swipe/drag events */}
+          {/* Comics: portrait (max-w-xl), Fairy Tale: wide landscape (max-w-5xl), Others: two-page spread (max-w-5xl) */}
+          <div
+            {...containerProps}
+            className={cn(
+              "w-full relative",
+              isComic && !showCover && !effectiveSpreadMode
+                ? "max-w-xl"
+                : "max-w-5xl",
+              isFairyTale ? flipAnimClass : ""
+            )}
+            style={{
+              ...curlStyle,
+              ...(isDraggingCorner
+                ? {}
+                : { transformOrigin: isFairyTale ? "top center" : undefined }),
+              perspective: "1200px",
+              cursor: cornerCursorStyle,
+            }}
+          >
+            {/* Corner drag indicator */}
+            <div style={cornerIndicatorStyle} />
+            {/* Content */}
+            {showBackCover ? (
+              /* ── Back Cover ──────────────────────────────────────────────────────── */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
-                {/* Left: Cover image */}
+                {/* Left: decorative back page */}
+                <div className="bg-[#F5F0E8] text-[#1A1033] p-10 min-h-[500px] flex flex-col justify-center items-center text-center">
+                  <div className="w-full max-w-xs">
+                    <div className="w-16 h-1 bg-[#F59E0B] mx-auto mb-8" />
+                    <p className="text-4xl font-serif italic text-[#2D1B69] mb-6">
+                      {t("reader.theEnd")}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-10">{bookTitle}</p>
+                    <div className="w-16 h-1 bg-[#7C3AED] mx-auto mb-10" />
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        onClick={handleRestart}
+                        variant="outline"
+                        className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        {t("reader.restart")}
+                      </Button>
+                      <Link href="/library">
+                        <Button className="w-full bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
+                          <Home className="w-4 h-4 mr-2" />
+                          {t("reader.backToLibrary")}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+                {/* Right: back cover image (same as front, slightly dimmed) */}
                 <div className="relative bg-[#0D0B1A] min-h-[500px] overflow-hidden">
                   {coverUrl ? (
                     <img
                       src={coverUrl}
                       alt={bookTitle || "Book Cover"}
-                      className="w-full h-full object-cover absolute inset-0"
+                      className="w-full h-full object-cover absolute inset-0 opacity-40"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center min-h-[500px]">
-                      <div className="text-center">
-                        <BookOpen className="w-20 h-20 text-purple-700 mx-auto mb-4" />
-                        <p className="text-gray-500 text-sm">
-                          {t("reader.noCoverImage")}
-                        </p>
-                      </div>
+                      <BookOpen className="w-20 h-20 text-purple-700 opacity-30" />
                     </div>
                   )}
-                </div>
-
-                {/* Right: Title page */}
-                <div className="bg-[#F5F0E8] text-[#1A1033] p-10 min-h-[500px] flex flex-col justify-center items-center text-center">
-                  <div className="w-full max-w-xs">
-                    <div className="w-16 h-1 bg-[#7C3AED] mx-auto mb-8" />
-                    <h1 className="text-3xl font-bold text-[#1A1033] font-serif leading-tight mb-4">
-                      {bookTitle}
-                    </h1>
-                    {authorName && (
-                      <p className="text-base text-gray-600 italic mb-3">
-                        {t("reader.by")} {authorName}
-                      </p>
-                    )}
-                    <p className="text-xs uppercase tracking-widest text-[#7C3AED] mb-8">
+                  <div className="absolute inset-0 flex items-end justify-center pb-10">
+                    <p className="text-xs uppercase tracking-widest text-white/60">
                       {genreLabel}
-                    </p>
-                    <div className="w-16 h-1 bg-[#F59E0B] mx-auto mb-10" />
-                    <Button
-                      onClick={handleBeginReading}
-                      className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-8 py-3 text-sm font-semibold w-full"
-                    >
-                      {t("reader.beginReading")}
-                    </Button>
-                    <p className="text-xs text-gray-400 mt-4">
-                      {t("reader.swipeHint")}
                     </p>
                   </div>
                 </div>
               </div>
-            </>
-          ) : (
-            /* -- Story Pages Spread -- */
-            <>
-              {isComic && effectiveSpreadMode ? (
-                /* -- Comic Spread: Two pages side-by-side -- */
-                <ComicSpreadLayout
-                  leftPanels={(() => {
-                    const raw = Array.isArray(currentPage?.panels)
-                      ? (currentPage.panels as unknown[])
-                      : [];
-                    const fallback =
-                      typeof currentPage?.imageUrl === "string"
-                        ? currentPage.imageUrl
-                        : "";
-                    const normalised = raw.slice(0, 3).map(item => {
-                      if (typeof item === "string") {
-                        return {
-                          imageUrl: item,
-                          narration: "",
-                          dialogue: null,
-                          speaker: null,
-                          bubbleType: null,
-                          position: null,
-                        };
-                      } else if (
-                        item &&
-                        typeof item === "object" &&
-                        "imageUrl" in item &&
-                        typeof (item as Record<string, unknown>).imageUrl ===
-                          "string"
-                      ) {
-                        const p = item as Record<string, unknown>;
-                        return {
-                          imageUrl: p.imageUrl as string,
-                          narration:
-                            typeof p.narration === "string" ? p.narration : "",
-                          dialogue:
-                            typeof p.dialogue === "string" ? p.dialogue : null,
-                          speaker:
-                            typeof p.speaker === "string" ? p.speaker : null,
-                          bubbleType:
-                            typeof p.bubbleType === "string"
-                              ? (p.bubbleType as "speech" | "thought" | "shout")
-                              : null,
-                          position:
-                            typeof p.position === "string"
-                              ? (p.position as
-                                  | "top-left"
-                                  | "top-right"
-                                  | "bottom-left"
-                                  | "bottom-right")
-                              : null,
-                        };
-                      } else {
-                        return {
+            ) : showCover ? (
+              /* -- Cover Spread -- */
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
+                  {/* Left: Cover image */}
+                  <div className="relative bg-[#0D0B1A] min-h-[500px] overflow-hidden">
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt={bookTitle || "Book Cover"}
+                        className="w-full h-full object-cover absolute inset-0"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center min-h-[500px]">
+                        <div className="text-center">
+                          <BookOpen className="w-20 h-20 text-purple-700 mx-auto mb-4" />
+                          <p className="text-gray-500 text-sm">
+                            {t("reader.noCoverImage")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Title page */}
+                  <div className="bg-[#F5F0E8] text-[#1A1033] p-10 min-h-[500px] flex flex-col justify-center items-center text-center">
+                    <div className="w-full max-w-xs">
+                      <div className="w-16 h-1 bg-[#7C3AED] mx-auto mb-8" />
+                      <h1 className="text-3xl font-bold text-[#1A1033] font-serif leading-tight mb-4">
+                        {bookTitle}
+                      </h1>
+                      {authorName && (
+                        <p className="text-base text-gray-600 italic mb-3">
+                          {t("reader.by")} {authorName}
+                        </p>
+                      )}
+                      <p className="text-xs uppercase tracking-widest text-[#7C3AED] mb-8">
+                        {genreLabel}
+                      </p>
+                      <div className="w-16 h-1 bg-[#F59E0B] mx-auto mb-10" />
+                      <Button
+                        onClick={handleBeginReading}
+                        className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-8 py-3 text-sm font-semibold w-full"
+                      >
+                        {t("reader.beginReading")}
+                      </Button>
+                      <p className="text-xs text-gray-400 mt-4">
+                        {t("reader.swipeHint")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* -- Story Pages Spread -- */
+              <>
+                {isComic && effectiveSpreadMode ? (
+                  /* -- Comic Spread: Two pages side-by-side -- */
+                  <ComicSpreadLayout
+                    leftPanels={(() => {
+                      const raw = Array.isArray(currentPage?.panels)
+                        ? (currentPage.panels as unknown[])
+                        : [];
+                      const fallback =
+                        typeof currentPage?.imageUrl === "string"
+                          ? currentPage.imageUrl
+                          : "";
+                      const normalised = raw.slice(0, 3).map(item => {
+                        if (typeof item === "string") {
+                          return {
+                            imageUrl: item,
+                            narration: "",
+                            dialogue: null,
+                            speaker: null,
+                            bubbleType: null,
+                            position: null,
+                          };
+                        } else if (
+                          item &&
+                          typeof item === "object" &&
+                          "imageUrl" in item &&
+                          typeof (item as Record<string, unknown>).imageUrl ===
+                            "string"
+                        ) {
+                          const p = item as Record<string, unknown>;
+                          return {
+                            imageUrl: p.imageUrl as string,
+                            narration:
+                              typeof p.narration === "string"
+                                ? p.narration
+                                : "",
+                            dialogue:
+                              typeof p.dialogue === "string"
+                                ? p.dialogue
+                                : null,
+                            speaker:
+                              typeof p.speaker === "string" ? p.speaker : null,
+                            bubbleType:
+                              typeof p.bubbleType === "string"
+                                ? (p.bubbleType as
+                                    | "speech"
+                                    | "thought"
+                                    | "shout")
+                                : null,
+                            position:
+                              typeof p.position === "string"
+                                ? (p.position as
+                                    | "top-left"
+                                    | "top-right"
+                                    | "bottom-left"
+                                    | "bottom-right")
+                                : null,
+                          };
+                        } else {
+                          return {
+                            imageUrl: fallback,
+                            narration: "",
+                            dialogue: null,
+                            speaker: null,
+                            bubbleType: null,
+                            position: null,
+                          };
+                        }
+                      });
+                      while (normalised.length < 3) {
+                        normalised.push({
                           imageUrl: fallback,
                           narration: "",
                           dialogue: null,
                           speaker: null,
                           bubbleType: null,
                           position: null,
-                        };
+                        });
                       }
-                    });
-                    while (normalised.length < 3) {
-                      normalised.push({
-                        imageUrl: fallback,
-                        narration: "",
-                        dialogue: null,
-                        speaker: null,
-                        bubbleType: null,
-                        position: null,
+                      return normalised;
+                    })()}
+                    rightPanels={(() => {
+                      const raw = Array.isArray(nextPage?.panels)
+                        ? (nextPage.panels as unknown[])
+                        : [];
+                      const fallback =
+                        typeof nextPage?.imageUrl === "string"
+                          ? nextPage.imageUrl
+                          : "";
+                      const normalised = raw.slice(0, 3).map(item => {
+                        if (typeof item === "string") {
+                          return {
+                            imageUrl: item,
+                            narration: "",
+                            dialogue: null,
+                            speaker: null,
+                            bubbleType: null,
+                            position: null,
+                          };
+                        } else if (
+                          item &&
+                          typeof item === "object" &&
+                          "imageUrl" in item &&
+                          typeof (item as Record<string, unknown>).imageUrl ===
+                            "string"
+                        ) {
+                          const p = item as Record<string, unknown>;
+                          return {
+                            imageUrl: p.imageUrl as string,
+                            narration:
+                              typeof p.narration === "string"
+                                ? p.narration
+                                : "",
+                            dialogue:
+                              typeof p.dialogue === "string"
+                                ? p.dialogue
+                                : null,
+                            speaker:
+                              typeof p.speaker === "string" ? p.speaker : null,
+                            bubbleType:
+                              typeof p.bubbleType === "string"
+                                ? (p.bubbleType as
+                                    | "speech"
+                                    | "thought"
+                                    | "shout")
+                                : null,
+                            position:
+                              typeof p.position === "string"
+                                ? (p.position as
+                                    | "top-left"
+                                    | "top-right"
+                                    | "bottom-left"
+                                    | "bottom-right")
+                                : null,
+                          };
+                        } else {
+                          return {
+                            imageUrl: fallback,
+                            narration: "",
+                            dialogue: null,
+                            speaker: null,
+                            bubbleType: null,
+                            position: null,
+                          };
+                        }
                       });
-                    }
-                    return normalised;
-                  })()}
-                  rightPanels={(() => {
-                    const raw = Array.isArray(nextPage?.panels)
-                      ? (nextPage.panels as unknown[])
-                      : [];
-                    const fallback =
-                      typeof nextPage?.imageUrl === "string"
-                        ? nextPage.imageUrl
-                        : "";
-                    const normalised = raw.slice(0, 3).map(item => {
-                      if (typeof item === "string") {
-                        return {
-                          imageUrl: item,
-                          narration: "",
-                          dialogue: null,
-                          speaker: null,
-                          bubbleType: null,
-                          position: null,
-                        };
-                      } else if (
-                        item &&
-                        typeof item === "object" &&
-                        "imageUrl" in item &&
-                        typeof (item as Record<string, unknown>).imageUrl ===
-                          "string"
-                      ) {
-                        const p = item as Record<string, unknown>;
-                        return {
-                          imageUrl: p.imageUrl as string,
-                          narration:
-                            typeof p.narration === "string" ? p.narration : "",
-                          dialogue:
-                            typeof p.dialogue === "string" ? p.dialogue : null,
-                          speaker:
-                            typeof p.speaker === "string" ? p.speaker : null,
-                          bubbleType:
-                            typeof p.bubbleType === "string"
-                              ? (p.bubbleType as "speech" | "thought" | "shout")
-                              : null,
-                          position:
-                            typeof p.position === "string"
-                              ? (p.position as
-                                  | "top-left"
-                                  | "top-right"
-                                  | "bottom-left"
-                                  | "bottom-right")
-                              : null,
-                        };
-                      } else {
-                        return {
+                      while (normalised.length < 3) {
+                        normalised.push({
                           imageUrl: fallback,
                           narration: "",
                           dialogue: null,
                           speaker: null,
                           bubbleType: null,
                           position: null,
-                        };
+                        });
                       }
-                    });
-                    while (normalised.length < 3) {
-                      normalised.push({
-                        imageUrl: fallback,
-                        narration: "",
-                        dialogue: null,
-                        speaker: null,
-                        bubbleType: null,
-                        position: null,
-                      });
+                      return normalised;
+                    })()}
+                    leftPageNumber={currentRoutePageNumber}
+                    rightPageNumber={nextRoutePageNumber}
+                    leftChoiceSlot={
+                      hasChoices && visibleChoiceSide === "left" ? (
+                        <div className="space-y-3">
+                          {visibleChoiceOptions.map((choice, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleChoice(
+                                  visibleChoicePageIndex,
+                                  idx,
+                                  choice.nextId
+                                )
+                              }
+                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                              style={{
+                                fontFamily: comicChoiceFontFamily,
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              <span className="font-bold text-yellow-400 flex-shrink-0">
+                                {String.fromCharCode(65 + idx)}.
+                              </span>
+                              <span className="flex-1 break-words">
+                                {choice.text}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : undefined
                     }
-                    return normalised;
-                  })()}
-                  leftPageNumber={currentRoutePageNumber}
-                  rightPageNumber={nextRoutePageNumber}
-                  leftChoiceSlot={
-                    hasChoices && visibleChoiceSide === "left" ? (
-                      <div className="space-y-3">
-                        {visibleChoiceOptions.map((choice, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleChoice(
-                                visibleChoicePageIndex,
-                                idx,
-                                choice.nextId
-                              )
-                            }
-                            className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
-                            style={{
-                              fontFamily: comicChoiceFontFamily,
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            <span className="font-bold text-yellow-400 flex-shrink-0">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            <span className="flex-1 break-words">
-                              {choice.text}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : undefined
-                  }
-                  rightChoiceSlot={
-                    hasChoices && visibleChoiceSide === "right" ? (
-                      <div className="space-y-3">
-                        {visibleChoiceOptions.map((choice, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleChoice(
-                                visibleChoicePageIndex,
-                                idx,
-                                choice.nextId
-                              )
-                            }
-                            className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
-                            style={{
-                              fontFamily: comicChoiceFontFamily,
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            <span className="font-bold text-yellow-400 flex-shrink-0">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            <span className="flex-1 break-words">
-                              {choice.text}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : undefined
-                  }
-                />
-              ) : isComic ? (
-                /* -- Comic: ComicPageLayout with top panel + two bottom panels from panels[] -- */
-                <ComicPageLayout
-                  panels={(() => {
-                    // Runtime panels shape validation:
-                    // DB JSON can be: string[] (old format), ComicPanel[] (new format), or unknown
-                    const raw = Array.isArray(currentPage?.panels)
-                      ? (currentPage.panels as unknown[])
-                      : [];
-                    const fallback =
-                      typeof currentPage?.imageUrl === "string"
-                        ? currentPage.imageUrl
-                        : "";
-                    const normalised = raw.slice(0, 3).map(item => {
-                      if (typeof item === "string") {
-                        // Old format: plain string URL
-                        return {
-                          imageUrl: item,
-                          narration: "",
-                          dialogue: null,
-                          speaker: null,
-                          bubbleType: null,
-                          position: null,
-                        };
-                      } else if (
-                        item &&
-                        typeof item === "object" &&
-                        "imageUrl" in item &&
-                        typeof (item as Record<string, unknown>).imageUrl ===
-                          "string"
-                      ) {
-                        // New format: ComicPanel object
-                        const p = item as Record<string, unknown>;
-                        return {
-                          imageUrl: p.imageUrl as string,
-                          narration:
-                            typeof p.narration === "string" ? p.narration : "",
-                          dialogue:
-                            typeof p.dialogue === "string" ? p.dialogue : null,
-                          speaker:
-                            typeof p.speaker === "string" ? p.speaker : null,
-                          bubbleType:
-                            typeof p.bubbleType === "string"
-                              ? (p.bubbleType as "speech" | "thought" | "shout")
-                              : null,
-                          position:
-                            typeof p.position === "string"
-                              ? (p.position as
-                                  | "top-left"
-                                  | "top-right"
-                                  | "bottom-left"
-                                  | "bottom-right")
-                              : null,
-                        };
-                      } else {
-                        // Unknown shape: fallback gracefully
-                        return {
+                    rightChoiceSlot={
+                      hasChoices && visibleChoiceSide === "right" ? (
+                        <div className="space-y-3">
+                          {visibleChoiceOptions.map((choice, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleChoice(
+                                  visibleChoicePageIndex,
+                                  idx,
+                                  choice.nextId
+                                )
+                              }
+                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                              style={{
+                                fontFamily: comicChoiceFontFamily,
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              <span className="font-bold text-yellow-400 flex-shrink-0">
+                                {String.fromCharCode(65 + idx)}.
+                              </span>
+                              <span className="flex-1 break-words">
+                                {choice.text}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : undefined
+                    }
+                  />
+                ) : isComic ? (
+                  /* -- Comic: ComicPageLayout with top panel + two bottom panels from panels[] -- */
+                  <ComicPageLayout
+                    panels={(() => {
+                      // Runtime panels shape validation:
+                      // DB JSON can be: string[] (old format), ComicPanel[] (new format), or unknown
+                      const raw = Array.isArray(currentPage?.panels)
+                        ? (currentPage.panels as unknown[])
+                        : [];
+                      const fallback =
+                        typeof currentPage?.imageUrl === "string"
+                          ? currentPage.imageUrl
+                          : "";
+                      const normalised = raw.slice(0, 3).map(item => {
+                        if (typeof item === "string") {
+                          // Old format: plain string URL
+                          return {
+                            imageUrl: item,
+                            narration: "",
+                            dialogue: null,
+                            speaker: null,
+                            bubbleType: null,
+                            position: null,
+                          };
+                        } else if (
+                          item &&
+                          typeof item === "object" &&
+                          "imageUrl" in item &&
+                          typeof (item as Record<string, unknown>).imageUrl ===
+                            "string"
+                        ) {
+                          // New format: ComicPanel object
+                          const p = item as Record<string, unknown>;
+                          return {
+                            imageUrl: p.imageUrl as string,
+                            narration:
+                              typeof p.narration === "string"
+                                ? p.narration
+                                : "",
+                            dialogue:
+                              typeof p.dialogue === "string"
+                                ? p.dialogue
+                                : null,
+                            speaker:
+                              typeof p.speaker === "string" ? p.speaker : null,
+                            bubbleType:
+                              typeof p.bubbleType === "string"
+                                ? (p.bubbleType as
+                                    | "speech"
+                                    | "thought"
+                                    | "shout")
+                                : null,
+                            position:
+                              typeof p.position === "string"
+                                ? (p.position as
+                                    | "top-left"
+                                    | "top-right"
+                                    | "bottom-left"
+                                    | "bottom-right")
+                                : null,
+                          };
+                        } else {
+                          // Unknown shape: fallback gracefully
+                          return {
+                            imageUrl: fallback,
+                            narration: "",
+                            dialogue: null,
+                            speaker: null,
+                            bubbleType: null,
+                            position: null,
+                          };
+                        }
+                      });
+                      // Ensure exactly 3 panels (pad with fallback if needed)
+                      while (normalised.length < 3) {
+                        normalised.push({
                           imageUrl: fallback,
                           narration: "",
                           dialogue: null,
                           speaker: null,
                           bubbleType: null,
                           position: null,
-                        };
+                        });
                       }
-                    });
-                    // Ensure exactly 3 panels (pad with fallback if needed)
-                    while (normalised.length < 3) {
-                      normalised.push({
-                        imageUrl: fallback,
-                        narration: "",
-                        dialogue: null,
-                        speaker: null,
-                        bubbleType: null,
-                        position: null,
-                      });
+                      return normalised;
+                    })()}
+                    pageNumber={currentRoutePageNumber}
+                    choiceSlot={
+                      hasChoices && !madeChoice ? (
+                        <div className="space-y-3">
+                          {visibleChoiceOptions.map((choice, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleChoice(
+                                  visibleChoicePageIndex,
+                                  idx,
+                                  choice.nextId
+                                )
+                              }
+                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                              style={{
+                                fontFamily: comicChoiceFontFamily,
+                                letterSpacing: "0.05em",
+                              }}
+                            >
+                              <span className="font-bold text-yellow-400 flex-shrink-0">
+                                {String.fromCharCode(65 + idx)}.
+                              </span>
+                              <span className="flex-1 break-words">
+                                {choice.text}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : undefined
                     }
-                    return normalised;
-                  })()}
-                  pageNumber={currentRoutePageNumber}
-                  choiceSlot={
-                    hasChoices && !madeChoice ? (
-                      <div className="space-y-3">
-                        {visibleChoiceOptions.map((choice, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleChoice(
-                                visibleChoicePageIndex,
-                                idx,
-                                choice.nextId
-                              )
-                            }
-                            className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
-                            style={{
-                              fontFamily: comicChoiceFontFamily,
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            <span className="font-bold text-yellow-400 flex-shrink-0">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            <span className="flex-1 break-words">
-                              {choice.text}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : undefined
-                  }
-                  endSlot={
-                    isLastPage && !hasChoices ? (
-                      <div className="text-center space-y-3">
-                        <div className="bg-yellow-900/40 border-2 border-yellow-400 rounded-xl p-4 flex flex-col items-center gap-2">
-                          <Trophy className="w-8 h-8 text-yellow-400" />
+                    endSlot={
+                      isLastPage && !hasChoices ? (
+                        <div className="text-center space-y-3">
+                          <div className="bg-yellow-900/40 border-2 border-yellow-400 rounded-xl p-4 flex flex-col items-center gap-2">
+                            <Trophy className="w-8 h-8 text-yellow-400" />
+                            <p
+                              className="text-base font-bold text-yellow-400 uppercase tracking-wide"
+                              style={{
+                                fontFamily: "'Bangers', 'Impact', sans-serif",
+                              }}
+                            >
+                              Adventure Complete!
+                            </p>
+                            {justCompleted && (
+                              <span className="text-green-400 font-bold text-sm">
+                                Completed
+                              </span>
+                            )}
+                          </div>
                           <p
-                            className="text-base font-bold text-yellow-400 uppercase tracking-wide"
+                            className="text-lg font-bold text-white"
                             style={{
                               fontFamily: "'Bangers', 'Impact', sans-serif",
                             }}
                           >
-                            Adventure Complete!
+                            ~ {t("reader.theEnd")} ~
                           </p>
-                          {justCompleted && (
-                            <span className="text-green-400 font-bold text-sm">
-                              Completed
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          className="text-lg font-bold text-white"
-                          style={{
-                            fontFamily: "'Bangers', 'Impact', sans-serif",
-                          }}
-                        >
-                          ~ {t("reader.theEnd")} ~
-                        </p>
-                        <div className="space-y-3">
-                          <p className="text-xs font-semibold text-gray-300">
-                            Close this book and return to your library
-                          </p>
-                          <div className="flex gap-3 justify-center">
-                            <Button
-                              onClick={handleRestart}
-                              variant="outline"
-                              className="border-2 border-yellow-400 text-yellow-400 text-sm"
-                            >
-                              <RotateCcw className="w-4 h-4 mr-2" />
-                              {t("reader.restart")}
-                            </Button>
-                            <Link href="/library">
-                              <Button className="close-book-button bg-yellow-400 text-black text-sm hover:bg-yellow-300 font-bold">
-                                <Home className="w-4 h-4 mr-2" />
-                                Close Book
+                          <div className="space-y-3">
+                            <p className="text-xs font-semibold text-gray-300">
+                              Close this book and return to your library
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                              <Button
+                                onClick={handleRestart}
+                                variant="outline"
+                                className="border-2 border-yellow-400 text-yellow-400 text-sm"
+                              >
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                {t("reader.restart")}
                               </Button>
-                            </Link>
+                              <Link href="/library">
+                                <Button className="close-book-button bg-yellow-400 text-black text-sm hover:bg-yellow-300 font-bold">
+                                  <Home className="w-4 h-4 mr-2" />
+                                  Close Book
+                                </Button>
+                              </Link>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ) : undefined
-                  }
-                  className="w-full"
-                />
-              ) : isFairyTale ? (
-                /* -- Fairy Tale: full-viewport landscape -- matches reference screenshot -- */
-                <div
-                  className="shadow-2xl rounded-xl overflow-hidden w-full"
-                  style={{ background: "#0D0B1A" }}
-                >
-                  {/* Full-width illustration with overlays */}
+                      ) : undefined
+                    }
+                    className="w-full"
+                  />
+                ) : isFairyTale ? (
+                  /* -- Fairy Tale: full-viewport landscape -- matches reference screenshot -- */
                   <div
-                    className="relative w-full"
-                    style={{ aspectRatio: "16/9" }}
+                    className="shadow-2xl rounded-xl overflow-hidden w-full"
+                    style={{ background: "#0D0B1A" }}
                   >
-                    {currentPage?.imageUrl ? (
-                      <img
-                        src={currentPage.imageUrl}
-                        alt="Page illustration"
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-[#1A1033] flex items-center justify-center">
-                        <BookOpen className="w-16 h-16 text-purple-300 opacity-40" />
-                      </div>
-                    )}
-                    {/* Page number -- top left overlay */}
+                    {/* Full-width illustration with overlays */}
                     <div
-                      className="absolute top-3 left-4 text-white text-sm font-semibold drop-shadow-lg"
-                      style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                      className="relative w-full"
+                      style={{ aspectRatio: "16/9" }}
                     >
-                      {currentRoutePageNumber}
-                    </div>
-                    {/* Book title -- top right overlay */}
-                    <div
-                      className="absolute top-3 right-4 text-white text-sm font-semibold drop-shadow-lg max-w-[50%] text-right line-clamp-1"
-                      style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
-                    >
-                      {bookTitle}
-                    </div>
-                  </div>
-
-                  {/* Text bar at bottom */}
-                  <div className="bg-white px-8 py-5 relative">
-                    <div className="prose prose-base max-w-4xl mx-auto">
-                      <p className="text-[#1A1033] leading-relaxed font-serif text-base md:text-lg m-0">
-                        {currentPage?.content || ""}
-                      </p>
-                    </div>
-
-                    {/* A/B Choices */}
-                    {hasChoices && (
-                      <div className="mt-5 space-y-3 max-w-xl mx-auto">
-                        {visibleChoiceOptions.map((choice, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleChoice(
-                                visibleChoicePageIndex,
-                                idx,
-                                choice.nextId
-                              )
-                            }
-                            className="w-full text-left px-5 py-4 bg-[#2D1B69] text-white rounded-xl text-base hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
-                          >
-                            <span className="font-semibold text-[#F59E0B] mr-2">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            {choice.text}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* End of book */}
-                    {isLastPage && !hasChoices && (
-                      <div className="mt-8 text-center space-y-4">
-                        <div className="bg-gradient-to-r from-purple-900/60 to-amber-900/40 border border-amber-500/40 rounded-xl p-4 flex flex-col items-center gap-2">
-                          <Trophy className="w-8 h-8 text-[#F59E0B]" />
-                          <p className="text-base font-bold text-white">
-                            Adventure Complete!
-                          </p>
-                          {justCompleted && (
-                            <span className="text-green-400 font-semibold text-sm">
-                              Completed
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-lg font-bold text-[#2D1B69]">
-                          ~ {t("reader.theEnd")} ~
-                        </p>
-                        <div className="space-y-3">
-                          <p className="text-xs font-semibold text-[#2D1B69]">
-                            Close this book and return to your library
-                          </p>
-                          <div className="flex gap-3 justify-center">
-                            <Button
-                              onClick={handleRestart}
-                              variant="outline"
-                              className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
-                            >
-                              <RotateCcw className="w-4 h-4 mr-2" />
-                              {t("reader.restart")}
-                            </Button>
-                            <Link href="/library">
-                              <Button className="close-book-button bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
-                                <Home className="w-4 h-4 mr-2" />
-                                Close Book
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                /* -- Non-comic, non-fairy-tale: two-page portrait book spread -- */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
-                  {/* Left page */}
-                  <div className="bg-[#F5F0E8] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative border-r border-[#D4C9A8]">
-                    <div className="absolute bottom-4 left-6 text-xs text-gray-500">
-                      {currentRoutePageNumber}
-                    </div>
-                    {currentPage?.imageUrl && (
-                      <div
-                        className="mb-6 rounded-lg overflow-hidden"
-                        style={{ aspectRatio: "4/3" }}
-                      >
+                      {currentPage?.imageUrl ? (
                         <img
                           src={currentPage.imageUrl}
                           alt="Page illustration"
                           style={{
+                            position: "absolute",
+                            inset: 0,
                             width: "100%",
                             height: "100%",
-                            objectFit: "contain",
+                            objectFit: "cover",
                             display: "block",
                           }}
                         />
+                      ) : (
+                        <div className="absolute inset-0 bg-[#1A1033] flex items-center justify-center">
+                          <BookOpen className="w-16 h-16 text-purple-300 opacity-40" />
+                        </div>
+                      )}
+                      {/* Page number -- top left overlay */}
+                      <div
+                        className="absolute top-3 left-4 text-white text-sm font-semibold drop-shadow-lg"
+                        style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                      >
+                        {currentRoutePageNumber}
                       </div>
-                    )}
-                    <div className="prose prose-sm max-w-none">
-                      <p className="text-[#2D1B69] leading-relaxed font-serif text-base">
-                        {currentPage?.content || ""}
-                      </p>
+                      {/* Book title -- top right overlay */}
+                      <div
+                        className="absolute top-3 right-4 text-white text-sm font-semibold drop-shadow-lg max-w-[50%] text-right line-clamp-1"
+                        style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                      >
+                        {bookTitle}
+                      </div>
                     </div>
 
-                    {hasChoices && visibleChoiceSide === "left" && (
-                      <div className="mt-6 space-y-3">
-                        {visibleChoiceOptions.map((choice, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleChoice(
-                                visibleChoicePageIndex,
-                                idx,
-                                choice.nextId
-                              )
-                            }
-                            className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
-                          >
-                            <span className="font-semibold text-[#F59E0B] mr-2">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            {choice.text}
-                          </button>
-                        ))}
+                    {/* Text bar at bottom */}
+                    <div className="bg-white px-8 py-5 relative">
+                      <div className="prose prose-base max-w-4xl mx-auto">
+                        <p className="text-[#1A1033] leading-relaxed font-serif text-base md:text-lg m-0">
+                          {currentPage?.content || ""}
+                        </p>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Right page */}
-                  <div
-                    className={cn(
-                      "bg-[#EDE8DC] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative",
-                      flipAnimClass
-                    )}
-                    style={
-                      flipAnimClass
-                        ? { transformOrigin: "left center" }
-                        : undefined
-                    }
-                  >
-                    <div className="absolute bottom-4 right-6 text-xs text-gray-500">
-                      {nextRoutePageNumber}
-                    </div>
-                    {nextPage ? (
-                      <>
-                        {nextPage.imageUrl && (
-                          <div
-                            className="mb-6 rounded-lg overflow-hidden"
-                            style={{ aspectRatio: "4/3" }}
-                          >
-                            <img
-                              src={nextPage.imageUrl}
-                              alt="Page illustration"
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                                display: "block",
-                              }}
-                            />
-                          </div>
-                        )}
-                        <div className="prose prose-sm max-w-none">
-                          <p className="text-[#2D1B69] leading-relaxed font-serif text-base">
-                            {nextPage.content}
-                          </p>
+                      {/* A/B Choices */}
+                      {hasChoices && (
+                        <div className="mt-5 space-y-3 max-w-xl mx-auto">
+                          {visibleChoiceOptions.map((choice, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleChoice(
+                                  visibleChoicePageIndex,
+                                  idx,
+                                  choice.nextId
+                                )
+                              }
+                              className="w-full text-left px-5 py-4 bg-[#2D1B69] text-white rounded-xl text-base hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
+                            >
+                              <span className="font-semibold text-[#F59E0B] mr-2">
+                                {String.fromCharCode(65 + idx)}.
+                              </span>
+                              {choice.text}
+                            </button>
+                          ))}
                         </div>
-                      </>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center text-gray-500">
-                          <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                          <p className="text-sm italic">End of this section</p>
-                        </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* A/B Choices */}
-                    {hasChoices && visibleChoiceSide === "right" && (
-                      <div className="mt-6 space-y-3">
-                        {visibleChoiceOptions.map((choice, idx: number) => (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              handleChoice(
-                                visibleChoicePageIndex,
-                                idx,
-                                choice.nextId
-                              )
-                            }
-                            className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
-                          >
-                            <span className="font-semibold text-[#F59E0B] mr-2">
-                              {String.fromCharCode(65 + idx)}.
-                            </span>
-                            {choice.text}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* End of book */}
-                    {isLastPage && !hasChoices && (
-                      <div className="mt-6 text-center space-y-4">
-                        <div className="bg-gradient-to-r from-purple-900/60 to-amber-900/40 border border-amber-500/40 rounded-xl p-4 flex flex-col items-center gap-2">
-                          <Trophy className="w-8 h-8 text-[#F59E0B]" />
-                          <p className="text-base font-bold text-white">
-                            Adventure Complete!
-                          </p>
-                          <p className="text-xs text-gray-300">
-                            You've reached the end of this story.{" "}
+                      {/* End of book */}
+                      {isLastPage && !hasChoices && (
+                        <div className="mt-8 text-center space-y-4">
+                          <div className="bg-gradient-to-r from-purple-900/60 to-amber-900/40 border border-amber-500/40 rounded-xl p-4 flex flex-col items-center gap-2">
+                            <Trophy className="w-8 h-8 text-[#F59E0B]" />
+                            <p className="text-base font-bold text-white">
+                              Adventure Complete!
+                            </p>
                             {justCompleted && (
-                              <span className="text-green-400 font-semibold">
+                              <span className="text-green-400 font-semibold text-sm">
                                 Completed
                               </span>
                             )}
+                          </div>
+                          <p className="text-lg font-bold text-[#2D1B69]">
+                            ~ {t("reader.theEnd")} ~
                           </p>
-                        </div>
-                        <p className="text-lg font-bold text-[#2D1B69]">
-                          ~ {t("reader.theEnd")} ~
-                        </p>
-                        <div className="space-y-3">
-                          <p className="text-xs font-semibold text-[#2D1B69]">
-                            Close this book and return to your library
-                          </p>
-                          <div className="flex gap-3 justify-center">
-                            <Button
-                              onClick={handleRestart}
-                              variant="outline"
-                              className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
-                            >
-                              <RotateCcw className="w-4 h-4 mr-2" />
-                              {t("reader.restart")}
-                            </Button>
-                            <Link href="/library">
-                              <Button className="close-book-button bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
-                                <Home className="w-4 h-4 mr-2" />
-                                Close Book
+                          <div className="space-y-3">
+                            <p className="text-xs font-semibold text-[#2D1B69]">
+                              Close this book and return to your library
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                              <Button
+                                onClick={handleRestart}
+                                variant="outline"
+                                className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
+                              >
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                {t("reader.restart")}
                               </Button>
-                            </Link>
+                              <Link href="/library">
+                                <Button className="close-book-button bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
+                                  <Home className="w-4 h-4 mr-2" />
+                                  Close Book
+                                </Button>
+                              </Link>
+                            </div>
                           </div>
                         </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* -- Non-comic, non-fairy-tale: two-page portrait book spread -- */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-0 shadow-2xl rounded-xl overflow-hidden">
+                    {/* Left page */}
+                    <div className="bg-[#F5F0E8] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative border-r border-[#D4C9A8]">
+                      <div className="absolute bottom-4 left-6 text-xs text-gray-500">
+                        {currentRoutePageNumber}
                       </div>
+                      {currentPage?.imageUrl && (
+                        <div
+                          className="mb-6 rounded-lg overflow-hidden"
+                          style={{ aspectRatio: "4/3" }}
+                        >
+                          <img
+                            src={currentPage.imageUrl}
+                            alt="Page illustration"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                              display: "block",
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-[#2D1B69] leading-relaxed font-serif text-base">
+                          {currentPage?.content || ""}
+                        </p>
+                      </div>
+
+                      {hasChoices && visibleChoiceSide === "left" && (
+                        <div className="mt-6 space-y-3">
+                          {visibleChoiceOptions.map((choice, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleChoice(
+                                  visibleChoicePageIndex,
+                                  idx,
+                                  choice.nextId
+                                )
+                              }
+                              className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
+                            >
+                              <span className="font-semibold text-[#F59E0B] mr-2">
+                                {String.fromCharCode(65 + idx)}.
+                              </span>
+                              {choice.text}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right page */}
+                    <div
+                      className={cn(
+                        "bg-[#EDE8DC] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative",
+                        flipAnimClass
+                      )}
+                      style={
+                        flipAnimClass
+                          ? { transformOrigin: "left center" }
+                          : undefined
+                      }
+                    >
+                      <div className="absolute bottom-4 right-6 text-xs text-gray-500">
+                        {nextRoutePageNumber}
+                      </div>
+                      {nextPage ? (
+                        <>
+                          {nextPage.imageUrl && (
+                            <div
+                              className="mb-6 rounded-lg overflow-hidden"
+                              style={{ aspectRatio: "4/3" }}
+                            >
+                              <img
+                                src={nextPage.imageUrl}
+                                alt="Page illustration"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "contain",
+                                  display: "block",
+                                }}
+                              />
+                            </div>
+                          )}
+                          <div className="prose prose-sm max-w-none">
+                            <p className="text-[#2D1B69] leading-relaxed font-serif text-base">
+                              {nextPage.content}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center text-gray-500">
+                            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                            <p className="text-sm italic">
+                              End of this section
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* A/B Choices */}
+                      {hasChoices && visibleChoiceSide === "right" && (
+                        <div className="mt-6 space-y-3">
+                          {visibleChoiceOptions.map((choice, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() =>
+                                handleChoice(
+                                  visibleChoicePageIndex,
+                                  idx,
+                                  choice.nextId
+                                )
+                              }
+                              className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
+                            >
+                              <span className="font-semibold text-[#F59E0B] mr-2">
+                                {String.fromCharCode(65 + idx)}.
+                              </span>
+                              {choice.text}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* End of book */}
+                      {isLastPage && !hasChoices && (
+                        <div className="mt-6 text-center space-y-4">
+                          <div className="bg-gradient-to-r from-purple-900/60 to-amber-900/40 border border-amber-500/40 rounded-xl p-4 flex flex-col items-center gap-2">
+                            <Trophy className="w-8 h-8 text-[#F59E0B]" />
+                            <p className="text-base font-bold text-white">
+                              Adventure Complete!
+                            </p>
+                            <p className="text-xs text-gray-300">
+                              You've reached the end of this story.{" "}
+                              {justCompleted && (
+                                <span className="text-green-400 font-semibold">
+                                  Completed
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <p className="text-lg font-bold text-[#2D1B69]">
+                            ~ {t("reader.theEnd")} ~
+                          </p>
+                          <div className="space-y-3">
+                            <p className="text-xs font-semibold text-[#2D1B69]">
+                              Close this book and return to your library
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                              <Button
+                                onClick={handleRestart}
+                                variant="outline"
+                                className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
+                              >
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                {t("reader.restart")}
+                              </Button>
+                              <Link href="/library">
+                                <Button className="close-book-button bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
+                                  <Home className="w-4 h-4 mr-2" />
+                                  Close Book
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bottom nav: Prev / dots / Next -- matches reference screenshot */}
+                <div className="flex items-center justify-between mt-4 px-2">
+                  {/* Prev button */}
+                  <button
+                    onClick={flipBackward}
+                    disabled={
+                      isAnimating || currentPageIndex === 0 || cameFromBranch
+                    }
+                    className={cn(
+                      "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                      currentPageIndex === 0 || cameFromBranch
+                        ? "text-gray-600 cursor-not-allowed opacity-40"
+                        : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
+                    )}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    {t("reader.prev") || "Prev"}
+                  </button>
+
+                  {/* Dot indicators */}
+                  <div className="flex items-center gap-1.5">
+                    {hasNonLinearGraph
+                      ? Array.from({ length: routeDotCount }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "rounded-full transition-all duration-200",
+                              i === activeRouteDotIndex
+                                ? "w-3 h-3 bg-[#7C3AED]"
+                                : "w-2 h-2 bg-purple-900/40"
+                            )}
+                          />
+                        ))
+                      : pageNavigationIndices.map(pageIndex => (
+                          <button
+                            key={pageIndex}
+                            onClick={() => handleGoTo(pageIndex)}
+                            className={cn(
+                              "rounded-full transition-all duration-200",
+                              pageIndex === currentPageIndex
+                                ? "w-3 h-3 bg-[#7C3AED]"
+                                : "w-2 h-2 bg-purple-900/40 hover:bg-purple-700/60"
+                            )}
+                          />
+                        ))}
+                    {(hasNonLinearGraph || pages.length > 15) && (
+                      <span className="text-xs text-gray-500 ml-1">
+                        {currentRoutePageNumber}/
+                        {targetReadablePageCount || pages.length}
+                      </span>
                     )}
                   </div>
+
+                  {/* Next button */}
+                  <button
+                    onClick={flipForward}
+                    disabled={isAnimating || (isLastPage && !hasChoices)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                      isLastPage && !hasChoices
+                        ? "text-gray-600 cursor-not-allowed opacity-40"
+                        : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
+                    )}
+                  >
+                    {t("reader.next") || "Next"}
+                    <ChevronLeft className="w-4 h-4 rotate-180" />
+                  </button>
                 </div>
-              )}
-
-              {/* Bottom nav: Prev / dots / Next -- matches reference screenshot */}
-              <div className="flex items-center justify-between mt-4 px-2">
-                {/* Prev button */}
-                <button
-                  onClick={flipBackward}
-                  disabled={
-                    isAnimating || currentPageIndex === 0 || cameFromBranch
-                  }
-                  className={cn(
-                    "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
-                    currentPageIndex === 0 || cameFromBranch
-                      ? "text-gray-600 cursor-not-allowed opacity-40"
-                      : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
-                  )}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  {t("reader.prev") || "Prev"}
-                </button>
-
-                {/* Dot indicators */}
-                <div className="flex items-center gap-1.5">
-                  {hasNonLinearGraph
-                    ? Array.from({ length: routeDotCount }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            "rounded-full transition-all duration-200",
-                            i === activeRouteDotIndex
-                              ? "w-3 h-3 bg-[#7C3AED]"
-                              : "w-2 h-2 bg-purple-900/40"
-                          )}
-                        />
-                      ))
-                    : pageNavigationIndices.map(pageIndex => (
-                        <button
-                          key={pageIndex}
-                          onClick={() => handleGoTo(pageIndex)}
-                          className={cn(
-                            "rounded-full transition-all duration-200",
-                            pageIndex === currentPageIndex
-                              ? "w-3 h-3 bg-[#7C3AED]"
-                              : "w-2 h-2 bg-purple-900/40 hover:bg-purple-700/60"
-                          )}
-                        />
-                      ))}
-                  {(hasNonLinearGraph || pages.length > 15) && (
-                    <span className="text-xs text-gray-500 ml-1">
-                      {currentRoutePageNumber}/
-                      {targetReadablePageCount || pages.length}
-                    </span>
-                  )}
-                </div>
-
-                {/* Next button */}
-                <button
-                  onClick={flipForward}
-                  disabled={isAnimating || (isLastPage && !hasChoices)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
-                    isLastPage && !hasChoices
-                      ? "text-gray-600 cursor-not-allowed opacity-40"
-                      : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
-                  )}
-                >
-                  {t("reader.next") || "Next"}
-                  <ChevronLeft className="w-4 h-4 rotate-180" />
-                </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
