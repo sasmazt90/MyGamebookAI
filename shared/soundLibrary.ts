@@ -38,6 +38,48 @@ export const GENRE_SOUND_CATEGORIES: Record<string, string[]> = {
   horror_thriller: ["horror", "ambiences", "doors", "weather", "impacts"],
 };
 
+// Canonical tag -> sound library fragments.
+// These tags should stay language-agnostic and are the primary signal for audio matching.
+export const SFX_TAG_FRAGMENT_MAP: Record<string, string[]> = {
+  wind: ["wind", "breeze", "gust"],
+  rain: ["rain", "storm"],
+  thunder: ["thunder", "storm"],
+  water: ["water", "ocean", "wave", "river"],
+  forest: ["forest", "birds", "leaves"],
+  birds: ["bird", "birds", "owl"],
+  fire: ["fire", "crackle"],
+  door: ["door", "creak", "gate"],
+  footstep: ["footstep", "step", "run"],
+  crowd: ["crowd", "market", "city"],
+  city: ["city", "street", "traffic"],
+  paper: ["paper", "page", "book"],
+  music: ["music", "piano", "guitar"],
+  soft: ["soft", "gentle", "calm"],
+  quiet: ["quiet", "silence", "whisper"],
+  heartbeat: ["heartbeat", "pulse", "heart"],
+  horror: ["horror", "haunted", "ghost", "creak"],
+  magic: ["magic", "sparkle", "chime", "fairy"],
+  chime: ["chime", "bell", "sparkle"],
+  star: ["night", "space", "star"],
+  moon: ["night", "owl", "cricket"],
+  rocket: ["rocket", "launch", "engine", "jet"],
+  spaceship: ["space", "ship", "engine", "sci"],
+  space: ["space", "sci", "laser", "cosmic"],
+  machine: ["machine", "robot", "computer", "mechanical"],
+  computer: ["computer", "beep", "digital"],
+  alarm: ["alarm", "siren", "alert"],
+  static: ["static", "radio", "buzz"],
+  radio: ["radio", "static", "broadcast"],
+  mystery: ["suspense", "mystery", "tension"],
+  suspense: ["suspense", "tense", "heartbeat"],
+  impact: ["impact", "hit", "punch", "crash"],
+  hero: ["hero", "impact", "whoosh"],
+  whoosh: ["whoosh", "swish", "swoosh"],
+  train: ["train", "rail", "station"],
+  cafe: ["restaurant", "cafe", "indoor"],
+  lantern: ["lantern", "chime", "night"],
+};
+
 // ─── Keyword → sound name fragments ──────────────────────────────────────────
 // Used to match page content to relevant sounds
 
@@ -105,22 +147,28 @@ export function findBestSound(
   if (entries.length === 0) return null;
 
   const contentLower = normaliseSoundMatchText(pageContent);
-  const preferredCategories = GENRE_SOUND_CATEGORIES[genre] ?? [];
+  const preferredCategories = (GENRE_SOUND_CATEGORIES[genre] ?? []).map(normaliseSoundMatchText);
+
+  const tagFragments = Array.from(
+    new Set(
+      sfxTags.flatMap((tag) => {
+        const normalizedTag = normaliseSoundMatchText(tag).trim();
+        const baseFragments = normalizedTag.split(/[_\s-]+/).filter(Boolean);
+        const mappedFragments = SFX_TAG_FRAGMENT_MAP[normalizedTag] ?? [];
+        return [...baseFragments, ...mappedFragments].map(normaliseSoundMatchText);
+      }).filter(Boolean)
+    )
+  );
 
   // Build candidate list from content keywords
-  const candidateFragments: string[] = [];
+  const contentFragments: string[] = [];
   for (const { keywords, soundFragments } of CONTENT_KEYWORD_MAP) {
     if (keywords.some(kw => contentLower.includes(normaliseSoundMatchText(kw)))) {
-      candidateFragments.push(...soundFragments);
+      contentFragments.push(...soundFragments.map(normaliseSoundMatchText));
     }
   }
 
-  // Also add sfxTags as fragments (split by _ and -)
-  for (const tag of sfxTags) {
-    candidateFragments.push(...normaliseSoundMatchText(tag).split(/[_\s-]+/));
-  }
-
-  const dedupedFragments = Array.from(new Set(candidateFragments.filter(Boolean)));
+  const dedupedContentFragments = Array.from(new Set(contentFragments.filter(Boolean)));
 
   // Score each entry
   const scored = entries.map(entry => {
@@ -129,11 +177,16 @@ export function findBestSound(
     const catLower = normaliseSoundMatchText(entry.category);
 
     // Preferred genre category bonus
-    if (preferredCategories.map(normaliseSoundMatchText).includes(catLower)) score += 3;
+    if (preferredCategories.includes(catLower)) score += 3;
 
-    // Fragment match bonus
-    for (const frag of dedupedFragments) {
-      if (soundLower.includes(frag)) score += 5;
+    // Canonical sfx tags are the primary, language-agnostic signal.
+    for (const frag of tagFragments) {
+      if (soundLower.includes(frag)) score += 9;
+    }
+
+    // Page-content keyword matching is only a weak fallback/tie-breaker.
+    for (const frag of dedupedContentFragments) {
+      if (soundLower.includes(frag)) score += 2;
     }
 
     return { entry, score };

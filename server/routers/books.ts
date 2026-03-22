@@ -1508,6 +1508,133 @@ Rules:
         return JSON.parse(repairJSON(extracted)) as StoryData;
       }
     };
+    const buildDeterministicScaffoldStory = async (invalidDraft?: StoryData | null): Promise<StoryData> => {
+      const scaffoldPages = buildFallbackStoryGraph({
+        title,
+        description,
+        readablePathLength: pageCount,
+        branchCount,
+        category,
+        language,
+      });
+
+      const scaffoldStory: StoryData = {
+        pages: scaffoldPages.map((page) => ({
+          ...page,
+          outlineContent: page.content,
+        })),
+      };
+
+      const invalidDraftSummary = invalidDraft?.pages?.length
+        ? invalidDraft.pages
+            .slice(0, Math.min(40, invalidDraft.pages.length))
+            .map((page) => {
+              const choiceBits = page.isBranchPage
+                ? ` choices=(${page.choiceA ?? "null"} | ${page.choiceB ?? "null"})`
+                : "";
+              return `Page ${page.pageNumber} [${page.branchPath}] branch=${page.isBranchPage} ending=${page.isEnding ? "yes" : "no"} next=(${page.nextPageA ?? "null"}, ${page.nextPageB ?? "null"})${choiceBits} content=${(page.content ?? "").slice(0, 180)}`;
+            })
+            .join("\n")
+        : "No usable invalid draft was available.";
+
+      try {
+        const repairResp = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content: `You are a gamebook structure repair author. Output valid JSON only.${characterCardBlock}
+
+Your task is NOT to invent a new graph topology. You must preserve the provided scaffold exactly and only enrich page text, branch choices, and sound tags.
+
+MANDATORY TOPOLOGY RULES:
+- Keep EVERY pageNumber exactly as given in the scaffold.
+- Keep EVERY branchPath exactly as given in the scaffold.
+- Keep isBranchPage, isEnding, nextPageA, and nextPageB exactly as given in the scaffold.
+- Do not add or remove pages.
+- Do not merge branches.
+- The scaffold already guarantees that every playable route has exactly ${pageCount} readable pages; preserve that.
+
+WRITING RULES:
+- All content and choices must be fully written in ${language}.
+- Page 1 must feel like a true beginning.
+- Branch pages must present two clearly different narrative directions.
+- The page reached after choice A must immediately continue choice A.
+- The page reached after choice B must immediately continue choice B.
+- Preserve continuity of characters, props, and stakes.
+- Return 1-3 specific English sfxTags per page.
+
+UNICODE RULE:
+- Preserve all Unicode exactly as written.`,
+            },
+            {
+              role: "user" as const,
+              content: `Repair this story by transferring its intent onto the valid scaffold.
+
+TITLE: ${title}
+CATEGORY: ${category}
+LANGUAGE: ${language}
+DESCRIPTION: ${description}
+
+INVALID DRAFT SUMMARY:
+${invalidDraftSummary}
+
+VALID SCAFFOLD TO KEEP EXACTLY:
+${JSON.stringify(scaffoldStory)}
+
+Return JSON:
+{
+  "pages": [
+    {
+      "pageNumber": 1,
+      "branchPath": "root",
+      "isBranchPage": false,
+      "isEnding": false,
+      "content": "",
+      "outlineContent": "",
+      "sfxTags": ["wind"],
+      "choiceA": null,
+      "choiceB": null,
+      "nextPageA": 2,
+      "nextPageB": null
+    }
+  ]
+}
+
+You may rewrite content, outlineContent, choiceA, choiceB, and sfxTags only.
+All topology fields must remain identical to the scaffold.`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 18000 : 10000,
+        });
+
+        const repairRaw = repairResp.choices[0]?.message?.content || "{}";
+        const repaired = parseStoryDataFromRaw(typeof repairRaw === "string" ? repairRaw : JSON.stringify(repairRaw));
+        const repairedByPage = new Map(repaired.pages.map((page) => [page.pageNumber, page]));
+
+        return {
+          pages: scaffoldStory.pages.map((page) => {
+            const candidate = repairedByPage.get(page.pageNumber);
+            const contentValue = candidate?.content?.trim() || page.content;
+            const outlineValue = candidate?.outlineContent?.trim() || contentValue;
+            const sfxTagsValue = Array.isArray(candidate?.sfxTags)
+              ? candidate!.sfxTags.map((tag) => String(tag ?? "").trim()).filter(Boolean).slice(0, 3)
+              : page.sfxTags;
+            return {
+              ...page,
+              content: contentValue,
+              outlineContent: outlineValue,
+              sfxTags: sfxTagsValue.length > 0 ? sfxTagsValue : page.sfxTags,
+              choiceA: page.isBranchPage ? (candidate?.choiceA?.trim() || page.choiceA) : null,
+              choiceB: page.isBranchPage ? (candidate?.choiceB?.trim() || page.choiceB) : null,
+            };
+          }),
+        };
+      } catch (repairErr) {
+        console.warn(`[Books] Deterministic scaffold hydration failed for book ${bookId}; using raw scaffold content instead.`, repairErr);
+        return scaffoldStory;
+      }
+    };
 
     for (let attempt = 1; attempt <= maxStructureAttempts; attempt++) {
       try {
@@ -1580,20 +1707,28 @@ Rules:
 
     const structuralShapeErrors = validateStoryShape(storyData.pages, pageCount);
     if (structuralShapeErrors.length > 0) {
-      console.warn("[Books] Structure shape validation failed; using deterministic fallback graph.", {
+      console.warn("[Books] Structure shape validation failed; rebuilding onto deterministic scaffold.", {
         bookId,
         structuralShapeErrors,
       });
-      storyData = {
-        pages: buildFallbackStoryGraph({
-          title,
-          description,
-          readablePathLength: pageCount,
-          branchCount,
-          category,
-          language,
-        }),
-      };
+      storyData = await buildDeterministicScaffoldStory(storyData);
+      const scaffoldShapeErrors = validateStoryShape(storyData.pages, pageCount);
+      if (scaffoldShapeErrors.length > 0) {
+        console.warn("[Books] Deterministic scaffold hydration still invalid; using deterministic fallback graph.", {
+          bookId,
+          scaffoldShapeErrors,
+        });
+        storyData = {
+          pages: buildFallbackStoryGraph({
+            title,
+            description,
+            readablePathLength: pageCount,
+            branchCount,
+            category,
+            language,
+          }),
+        };
+      }
     }
 
     // Step 3: Post-structure validation 
