@@ -52,7 +52,6 @@ async function imageUrlToBase64DataUrl(url: string): Promise<string> {
 
 import { validateUpload } from "../uploadValidation";
 import { claimAndRunJob } from "../generationWorker";
-import sharp from "sharp";
 import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
 
 
@@ -2792,7 +2791,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
     // Parallel image generation with concurrency limit
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
     // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
-    const CONCURRENCY_LIMIT = isOtherGenre ? 1 : 2;
+    const CONCURRENCY_LIMIT = isOtherGenre || isComic ? 1 : 2;
     const totalPages = storyData.pages.length;
     const imageFailures: Array<{ pageNumber: number; error: string }> = [];
 
@@ -2836,12 +2835,9 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           });
 
         if (isComic) {
-          // COMIC: generate ONE composite page image, then crop into 3 panels
-          // Spec: comic thin = 10 pages x 1 composite image = 10 image calls + 1 cover = 11 total
-          //       comic normal = 18 pages x 1 composite image = 18 image calls + 1 cover = 19 total
-          // Layout: large top panel (60% height) + two equal bottom panels (40% height each)
-          // After generation, sharp crops the composite into panel_top, panel_bottom_left, panel_bottom_right
-          // and stores the 3 cropped URLs in panels[] JSON array.
+          // COMIC: generate THREE independent panel images per page.
+          // This replaces the old "single composite + fetch + sharp crop" pipeline,
+          // which caused both OOM spikes and inaccurate crop boundaries.
 
           // Step 1: Extract 3 panel descriptions using LLM for narration + dialogue metadata
           type PanelDialogue = { narration: string; dialogue: string | null; speaker: string | null };
@@ -2869,7 +2865,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             console.error("[Books] Panel dialogue extraction failed:", dlgErr);
           }
 
-          // Build narration summaries for the composite prompt
+          // Build narration summaries for panel-specific prompts
           // IMPORTANT: speech bubble text is stored in panelDialogue[] and rendered as React overlay
           // by ComicPageLayout. It must NOT be embedded in the image prompt (NO_TEXT_CONSTRAINT).
           const p1 = panelDialogue[0];
@@ -2881,21 +2877,42 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           // NOTE: dialogue is intentionally NOT included in the image prompt.
           // Speech bubbles are rendered as React overlays by ComicPageLayout.
 
-          // Extract which characters are mentioned in each panel's narration
+          const pageCharacterNames = pageSceneSpec.characters.map((character) => character.name);
+
+          // Extract which characters are mentioned in each panel's narration/dialogue.
+          // Fall back to the characters already present in this page's scene spec instead of
+          // "all book characters", which makes panel prompts noisy and weakens identity locks.
           const extractMentionedCharacters = (text: string): string[] => {
-            const mentioned: string[] = [];
+            const mentioned = new Set<string>();
             for (const char of characterCards) {
               const nameRegex = new RegExp(`\\b${char.name}\\b`, 'i');
               if (nameRegex.test(text)) {
-                mentioned.push(char.name);
+                mentioned.add(char.name);
               }
             }
-            return mentioned.length > 0 ? mentioned : characterCards.map(c => c.name);
+            return mentioned.size > 0
+              ? Array.from(mentioned)
+              : pageCharacterNames.length > 0
+                ? pageCharacterNames
+                : canonicalCharacterProfiles.slice(0, 1).map((profile) => profile.name);
           };
 
-          const p1Chars = extractMentionedCharacters(p1Narr);
-          const p2Chars = extractMentionedCharacters(p2Narr);
-          const p3Chars = extractMentionedCharacters(p3Narr);
+          const combineCharacterMentions = (narration: string, dialogue?: string | null, speaker?: string | null) => {
+            const names = new Set<string>(extractMentionedCharacters(narration));
+            if (dialogue) {
+              for (const name of extractMentionedCharacters(dialogue)) {
+                names.add(name);
+              }
+            }
+            if (speaker && canonicalCharacterProfiles.some((profile) => profile.name === speaker)) {
+              names.add(speaker);
+            }
+            return Array.from(names);
+          };
+
+          const p1Chars = combineCharacterMentions(p1Narr, p1?.dialogue ?? null, p1?.speaker ?? null);
+          const p2Chars = combineCharacterMentions(p2Narr, p2?.dialogue ?? null, p2?.speaker ?? null);
+          const p3Chars = combineCharacterMentions(p3Narr, p3?.dialogue ?? null, p3?.speaker ?? null);
 
           // Build filtered character anchor blocks for each panel
           // ENHANCED: Explicit character count enforcement, negative prompts, visual distinctness
@@ -2926,132 +2943,173 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           const p1CharAnchor = buildFilteredCharAnchor(p1Chars);
           const p2CharAnchor = buildFilteredCharAnchor(p2Chars);
           const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
-          const panelCharacterNames = Array.from(new Set([...p1Chars, ...p2Chars, ...p3Chars]));
-          const comicSceneSpec: SceneSpec = {
-            ...pageSceneSpec,
-            characters: panelCharacterNames.map((name) => ({
-              name,
-              action: "active in the comic page",
-              pose: "panel-specific action pose",
-              framing: "fully visible within panel bounds",
-              visibility: "fully visible",
-            })),
-          };
-          const comicRelevantRefs = selectReferenceImages({
-            sceneSpec: comicSceneSpec,
-            blueprint: visualBlueprint,
-            portraitRefs: portraitReferenceMap,
-            photoRefs: photoRefByName,
-          }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
-
-          // Step 2: Generate ONE composite comic page image
-          // NO text in the image speech bubbles are React overlays, not baked into the image.
-          const compositePrompt = [
-            buildSceneIdentityPriorityBlock(panelCharacterNames),
-            buildScenePrompt({
-              blueprint: visualBlueprint,
-              sceneSpec: comicSceneSpec,
-              pageKind: "comic",
-            }),
-            "Single comic book PAGE with EXACTLY 3 panels arranged as follows: ONE large panel on TOP (spanning full width, 60% of page height), then TWO equal panels side by side on the BOTTOM (each 50% width, 40% of page height). Thick black borders between all panels.",
-            `TOP PANEL (large): ${p1Narr}`,
-            `BOTTOM-LEFT PANEL: ${p2Narr}`,
-            `BOTTOM-RIGHT PANEL: ${p3Narr}`,
-            "Bold black panel borders, halftone dot shading, vivid colours, professional comic art, white gutters between panels, NO text, NO letters, NO speech bubbles baked into the image",
-            // Filtered character anchors per panel (prevents character blending)
-            p1CharAnchor,
-            p2CharAnchor,
-            p3CharAnchor,
-            "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
-            "NO SPONTANEOUS WARDROBE CHANGES: keep each named character in the exact same canonical outfit, accessories, tie, watch, hairstyle, and silhouette unless the narrative explicitly states a transformation.",
-            CHARACTER_COLOUR_LOCK,
-            STRUCTURED_IDENTITY_BLOCK || undefined,
-            CHARACTER_LOCK_INSTRUCTION,
-                        "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
-          ].filter(Boolean).join(" | ");
-
-          // ComicPanel metadata objects  speech bubbles rendered as React overlays by ComicPageLayout
+          type PanelLayout = "hero-top" | "support-left" | "support-right";
           type ComicPanelData = { imageUrl: string; narration: string; dialogue: string | null; speaker: string | null; bubbleType: string | null; position: string | null };
           const panelData: ComicPanelData[] = [];
-          const MIN_PANEL_SIZE_BYTES = 1024; // post-crop validation: panel must be over 1KB
-          const BLEED_PX = 2; // safety bleed: shrink each crop region by 2px on each side to avoid border artifacts
-
-          try {
-            const compositeResult = await generateImageWithRefCheck(
-              `page-${page.pageNumber}-composite`,
-              compositePrompt,
-              comicRelevantRefs.length > 0 ? comicRelevantRefs : getCharacterReferenceImages(panelCharacterNames),
+          const buildComicPanelSceneSpec = (
+            panelCharacters: string[],
+            narration: string,
+            layout: PanelLayout,
+          ): SceneSpec => {
+            const existingCharacters = pageSceneSpec.characters.filter((character) =>
+              panelCharacters.includes(character.name),
             );
+            const panelSpecificCharacters =
+              existingCharacters.length > 0
+                ? existingCharacters
+                : panelCharacters.map((name) => ({
+                    name,
+                    action: "active in the scene",
+                    pose: layout === "hero-top" ? "dynamic establishing pose" : "focused comic panel pose",
+                    framing: layout === "hero-top" ? "clearly readable within a wide hero panel" : "fully visible inside a supporting panel",
+                    visibility: "fully visible and unobstructed",
+                  }));
 
-            if (compositeResult.url) {
-              // Step 3: Download composite image and crop into 3 panels using sharp
-              // Crop regions use RATIO-BASED dimensions (not fixed pixels) for reliability
-              const compositeResp = await fetch(compositeResult.url);
-              const compositeBuf = Buffer.from(await compositeResp.arrayBuffer());
-              const meta = await sharp(compositeBuf).metadata();
-              const W = meta.width ?? 1024;
-              const H = meta.height ?? 1024;
+            return {
+              ...pageSceneSpec,
+              sceneSummary: narration,
+              narrativeBeat: narration,
+              lighting:
+                layout === "hero-top"
+                  ? pageSceneSpec.lighting || "dramatic comic-book establishing lighting"
+                  : pageSceneSpec.lighting || "focused comic-book panel lighting",
+              composition:
+                layout === "hero-top"
+                  ? "single wide comic hero panel; complete action readable within panel bounds"
+                  : "single comic supporting panel; keep the full action readable inside the frame",
+              camera:
+                layout === "hero-top"
+                  ? "wide cinematic establishing view"
+                  : layout === "support-left"
+                    ? "medium close-up comic panel"
+                    : "medium action comic panel",
+              characters: panelSpecificCharacters,
+            };
+          };
 
-              // Ratio-based crop regions (with BLEED_PX safety margin on each side)
-              // Layout: top panel = 60% height, bottom panels = 40% height each 50% width
-              const topH = Math.round(H * 0.60);
-              const botH = H - topH;
-              const halfW = Math.round(W / 2);
+          const buildPanelPrompt = (
+            panelCharacters: string[],
+            narration: string,
+            filteredAnchor: string,
+            layout: PanelLayout,
+          ) => {
+            const panelSceneSpec = buildComicPanelSceneSpec(panelCharacters, narration, layout);
+            const panelRefs = selectReferenceImages({
+              sceneSpec: panelSceneSpec,
+              blueprint: visualBlueprint,
+              portraitRefs: portraitReferenceMap,
+              photoRefs: photoRefByName,
+            }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
 
-              const crops: Array<{ label: string; left: number; top: number; width: number; height: number; panelIndex: number }> = [
-                { label: "top",          left: BLEED_PX,        top: BLEED_PX,        width: W - 2*BLEED_PX,        height: topH - 2*BLEED_PX,  panelIndex: 0 },
-                { label: "bottom-left",  left: BLEED_PX,        top: topH + BLEED_PX, width: halfW - 2*BLEED_PX,    height: botH - 2*BLEED_PX,  panelIndex: 1 },
-                { label: "bottom-right", left: halfW + BLEED_PX, top: topH + BLEED_PX, width: (W - halfW) - 2*BLEED_PX, height: botH - 2*BLEED_PX, panelIndex: 2 },
-              ];
+            const layoutInstruction =
+              layout === "hero-top"
+                ? "Render ONE standalone comic hero panel image only. Compose it as a wide establishing panel with the full action entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art."
+                : layout === "support-left"
+                  ? "Render ONE standalone comic support panel image only. Compose it as the LEFT supporting panel of a page, keeping the full subject entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art."
+                  : "Render ONE standalone comic support panel image only. Compose it as the RIGHT supporting panel of a page, keeping the full subject entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art.";
 
-              for (const crop of crops) {
-                const pd = panelDialogue[crop.panelIndex];
-                let cropUrl = compositeResult.url!; // fallback = full composite
-                try {
-                  const croppedBuf = await sharp(compositeBuf)
-                    .extract({ left: crop.left, top: crop.top, width: crop.width, height: crop.height })
-                    .png()
-                    .toBuffer();
+            const prompt = [
+              buildSceneIdentityPriorityBlock(panelCharacters),
+              buildScenePrompt({
+                blueprint: visualBlueprint,
+                sceneSpec: panelSceneSpec,
+                pageKind: "comic",
+              }),
+              layoutInstruction,
+              `PANEL STORY BEAT: ${narration}`,
+              filteredAnchor,
+              "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL comic panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
+              "NO SPONTANEOUS WARDROBE CHANGES: keep each named character in the exact same canonical outfit, accessories, tie, watch, hairstyle, and silhouette unless the narrative explicitly states a transformation.",
+              CHARACTER_COLOUR_LOCK,
+              STRUCTURED_IDENTITY_BLOCK || undefined,
+              CHARACTER_LOCK_INSTRUCTION,
+              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image. Every interior comic panel must look like it belongs to the same book as the cover.",
+            ].filter(Boolean).join(" | ");
 
-                  // Post-crop validation: reject crops that are too small (corrupted or blank)
-                  if (croppedBuf.length < MIN_PANEL_SIZE_BYTES) {
-                    console.warn(`[Books] Panel crop "${crop.label}" too small (${croppedBuf.length}B) for page ${page.pageNumber}, using composite fallback`);
-                  } else {
-                    const cropKey = `panels/${bookId}-page${page.pageNumber}-${crop.label}-${Date.now()}.png`;
-                    const { url: storedUrl } = await storagePut(cropKey, croppedBuf, "image/png");
-                    cropUrl = storedUrl;
-                    console.log(`[Books] Panel crop "${crop.label}" stored at ${cropUrl}`);
-                  }
-                } catch (cropErr) {
-                  console.error(`[Books] Panel crop "${crop.label}" failed for page ${page.pageNumber}:`, cropErr);
-                  // cropUrl already set to composite fallback above
-                }
-                panelData.push({
-                  imageUrl: cropUrl,
-                  narration: pd?.narration ?? "",
-                  dialogue: pd?.dialogue ?? null,
-                  speaker: pd?.speaker ?? null,
-                  bubbleType: "speech",
-                  position: crop.panelIndex === 0 ? "top-right" : crop.panelIndex === 1 ? "top-left" : "top-right",
-                });
-              }
-            }
-          } catch (compositeErr) {
-            console.error(`[Books] Composite page generation failed for page ${page.pageNumber}:`, compositeErr);
+            return { panelRefs, prompt };
+          };
+
+          const comicPanels = [
+            {
+              stage: `page-${page.pageNumber}-panel-top`,
+              narration: p1Narr,
+              dialogue: p1?.dialogue ?? null,
+              speaker: p1?.speaker ?? null,
+              characters: p1Chars,
+              anchor: p1CharAnchor,
+              layout: "hero-top" as const,
+              position: "top-right",
+            },
+            {
+              stage: `page-${page.pageNumber}-panel-left`,
+              narration: p2Narr,
+              dialogue: p2?.dialogue ?? null,
+              speaker: p2?.speaker ?? null,
+              characters: p2Chars,
+              anchor: p2CharAnchor,
+              layout: "support-left" as const,
+              position: "top-left",
+            },
+            {
+              stage: `page-${page.pageNumber}-panel-right`,
+              narration: p3Narr,
+              dialogue: p3?.dialogue ?? null,
+              speaker: p3?.speaker ?? null,
+              characters: p3Chars,
+              anchor: p3CharAnchor,
+              layout: "support-right" as const,
+              position: "top-right",
+            },
+          ];
+
+          for (const panel of comicPanels) {
+            const { panelRefs, prompt } = buildPanelPrompt(
+              panel.characters,
+              panel.narration,
+              panel.anchor,
+              panel.layout,
+            );
             const fallbackPanelUrl =
-              comicRelevantRefs[0]?.url ||
+              panelRefs[0]?.url ||
+              getCharacterReferenceImages(panel.characters)[0]?.url ||
               coverImageUrl ||
               Array.from(illustratedPortraitsMap.values())[0]?.url ||
               null;
-            if (fallbackPanelUrl) {
-              panelData.push(
-                { imageUrl: fallbackPanelUrl, narration: p1Narr, dialogue: p1?.dialogue ?? null, speaker: p1?.speaker ?? null, bubbleType: "speech", position: "top-right" },
-                { imageUrl: fallbackPanelUrl, narration: p2Narr, dialogue: p2?.dialogue ?? null, speaker: p2?.speaker ?? null, bubbleType: "speech", position: "top-left" },
-                { imageUrl: fallbackPanelUrl, narration: p3Narr, dialogue: p3?.dialogue ?? null, speaker: p3?.speaker ?? null, bubbleType: "speech", position: "top-right" },
+
+            try {
+              const panelResult = await generateImageWithRefCheck(
+                panel.stage,
+                prompt,
+                panelRefs.length > 0 ? panelRefs : getCharacterReferenceImages(panel.characters),
               );
-              console.warn(`[Books] Page ${page.pageNumber}: used fallback panel placeholders after composite generation failure`);
+              if (panelResult.url) {
+                panelData.push({
+                  imageUrl: panelResult.url,
+                  narration: panel.narration,
+                  dialogue: panel.dialogue,
+                  speaker: panel.speaker,
+                  bubbleType: "speech",
+                  position: panel.position,
+                });
+                continue;
+              }
+            } catch (panelErr) {
+              console.error(`[Books] Comic panel generation failed for page ${page.pageNumber} (${panel.stage}):`, panelErr);
+            }
+
+            if (fallbackPanelUrl) {
+              panelData.push({
+                imageUrl: fallbackPanelUrl,
+                narration: panel.narration,
+                dialogue: panel.dialogue,
+                speaker: panel.speaker,
+                bubbleType: "speech",
+                position: panel.position,
+              });
+              console.warn(`[Books] Page ${page.pageNumber}: used fallback panel placeholder for ${panel.stage}`);
             }
           }
+
           // Store full ComicPanel objects (not plain string URLs) so React overlay can render speech bubbles
           panels = panelData.length > 0 ? (panelData as unknown as string[]) : null;
           imageUrl = null; // panels stored separately
