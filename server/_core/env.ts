@@ -7,7 +7,8 @@ export const ENV = {
     isProduction: process.env.NODE_ENV === "production",
     forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
     forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-    googleApiKey: process.env.GOOGLE_API_KEY ?? "",
-    googleImageModel: process.env.GOOGLE_IMAGE_MODEL ?? "gemini-2.0-flash-exp",
+    googleApiKey: process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY ?? "",
+    googleImageModel:
+        process.env.GOOGLE_IMAGE_MODEL ?? "gemini-3.1-flash-image-preview",
     imageProvider: process.env.IMAGE_PROVIDER ?? "google",
 };

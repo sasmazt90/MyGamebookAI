@@ -37,6 +37,10 @@ type GooglePart =
 const MAX_REFERENCE_EDGE = 1536;
 const WEBP_REFERENCE_QUALITY = 90;
 const WEBP_OUTPUT_QUALITY = 86;
+const GEMINI_IMAGE_TEMPERATURE = 1;
+const GEMINI_IMAGE_TOP_P = 0.85;
+const GEMINI_IMAGE_SIZE = "512";
+const GEMINI_THINKING_LEVEL = "MINIMAL";
 
 function fileExtensionForMimeType(mimeType?: string): string {
   switch ((mimeType || "").toLowerCase()) {
@@ -185,6 +189,8 @@ async function generateWithGoogle(
   // Older models (2.0) used ["TEXT", "IMAGE"]
   const isNewerModel =
     /gemini-(2\.5|3[\.\d]*)-.*image/i.test(model) || /nano-banana/i.test(model);
+  const isGemini31FlashImagePreview =
+    /gemini-3\.1-flash-image-preview/i.test(model);
 
   const promptPrefix = [
     options.hardIdentity && (options.originalImages?.length ?? 0) > 0
@@ -210,11 +216,23 @@ async function generateWithGoogle(
     ],
     generationConfig: {
       responseModalities: isNewerModel ? ["IMAGE"] : ["TEXT", "IMAGE"],
+      temperature: GEMINI_IMAGE_TEMPERATURE,
+      topP: GEMINI_IMAGE_TOP_P,
+      ...(isGemini31FlashImagePreview
+        ? {
+            thinkingConfig: {
+              thinkingLevel: GEMINI_THINKING_LEVEL,
+            },
+            imageConfig: {
+              imageSize: GEMINI_IMAGE_SIZE,
+            },
+          }
+        : {}),
     },
   };
 
   console.log(
-    `[ImageGen] Calling model=${model}, isNewerModel=${isNewerModel}, promptPreview=${effectivePrompt.substring(0, 100)}...`
+    `[ImageGen] Calling model=${model}, isNewerModel=${isNewerModel}, temperature=${GEMINI_IMAGE_TEMPERATURE}, topP=${GEMINI_IMAGE_TOP_P}, imageSize=${isGemini31FlashImagePreview ? GEMINI_IMAGE_SIZE : "default"}, thinkingLevel=${isGemini31FlashImagePreview ? GEMINI_THINKING_LEVEL : "default"}, promptPreview=${effectivePrompt.substring(0, 100)}...`
   );
 
   const response = await withTimeout(endpoint, {

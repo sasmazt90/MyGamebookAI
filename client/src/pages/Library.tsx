@@ -43,14 +43,8 @@ const CATEGORY_FILTER_KEYS = [
   { id: "horror_thriller", labelKey: "library.cat.horror_thriller" },
 ] as const;
 
-// Polls getStatus every 5 s for a generating book and shows the current step text.
-function GeneratingBookStatus({ bookId }: { bookId: number }) {
+function GeneratingBookStatus({ step }: { step?: string | null }) {
   const { t } = useLanguage();
-  const { data } = trpc.books.getStatus.useQuery(
-    { bookId },
-    { refetchInterval: 5000, refetchIntervalInBackground: true }
-  );
-  const step = data?.generationStep;
   return (
     <div className="text-center px-2">
       <Loader2 className="w-10 h-10 text-purple-500 animate-spin mx-auto mb-2" />
@@ -305,7 +299,7 @@ export default function Library() {
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       {item.book.status === "generating" ? (
-                        <GeneratingBookStatus bookId={item.book.id} />
+                        <GeneratingBookStatus step={item.book.generationStep} />
                       ) : (
                         <BookOpen className="w-12 h-12 text-purple-700" />
                       )}

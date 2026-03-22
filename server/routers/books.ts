@@ -4490,7 +4490,24 @@ export const booksRouter = router({
 
       const query = await db
         .select({
-          book: books,
+          book: {
+            id: books.id,
+            authorId: books.authorId,
+            title: books.title,
+            category: books.category,
+            bookLanguage: books.bookLanguage,
+            length: books.length,
+            coverImageUrl: books.coverImageUrl,
+            status: books.status,
+            totalPages: books.totalPages,
+            isPublished: books.isPublished,
+            storePrice: books.storePrice,
+            reviewCount: books.reviewCount,
+            averageRating: books.averageRating,
+            generationStep: books.generationStep,
+            createdAt: books.createdAt,
+            updatedAt: books.updatedAt,
+          },
           authorName: profiles.authorName,
           authorAvatar: profiles.avatarUrl,
           completedAt: readingProgress.completedAt,
@@ -4702,7 +4719,11 @@ export const booksRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const book = await db
-        .select()
+        .select({
+          status: books.status,
+          totalPages: books.totalPages,
+          generationStep: books.generationStep,
+        })
         .from(books)
         .where(and(eq(books.id, input.bookId), eq(books.authorId, ctx.user.id)))
         .limit(1);
