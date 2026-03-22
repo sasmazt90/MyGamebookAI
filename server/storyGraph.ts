@@ -1,4 +1,4 @@
-import { getBookGenerationRule } from "../shared/bookGenerationRules";
+﻿import { getBookGenerationRule } from "../shared/bookGenerationRules";
 
 export type StoryPage = {
   pageNumber: number;
@@ -55,7 +55,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
         key: "star-trail",
         choiceText: {
           en: "Follow the glowing star trail",
-          tr: "Parlayan yildiz izini takip et",
+          tr: "Parlayan yıldız izini takip et",
           de: "Folge der leuchtenden Sternspur",
           fr: "Suis la piste des etoiles brillantes",
           es: "Sigue la senda de estrellas brillantes",
@@ -85,7 +85,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
         key: "moon-gate",
         choiceText: {
           en: "Enter the shining moon gate",
-          tr: "Parlayan ay kapisindan gir",
+          tr: "Parlayan ay kapısından gir",
           de: "Betritt das leuchtende Mondtor",
           fr: "Entre par la porte lumineuse de la lune",
           es: "Entra por la puerta brillante de la luna",
@@ -99,7 +99,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
         key: "lantern-garden",
         choiceText: {
           en: "Explore the lantern garden",
-          tr: "Fener bahcesini kesfet",
+          tr: "Fener bahçesini keşfet",
           de: "Erkunde den Laternen-Garten",
           fr: "Explore le jardin des lanternes",
           es: "Explora el jardin de faroles",
@@ -115,7 +115,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
         key: "comet-song",
         choiceText: {
           en: "Chase the singing comet",
-          tr: "Sarki soyleyen kuyruklu yildizi izle",
+          tr: "Şarkı söyleyen kuyruklu yıldızı izle",
           de: "Folge dem singenden Kometen",
           fr: "Suis la comete chantante",
           es: "Sigue al cometa cantor",
@@ -129,7 +129,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
         key: "silver-harbor",
         choiceText: {
           en: "Land at the silver harbor",
-          tr: "Gumus ay limanina in",
+          tr: "Gümüş ay limanına in",
           de: "Lande im silbernen Hafen",
           fr: "Pose-toi au port d'argent",
           es: "Aterriza en el puerto de plata",
@@ -145,7 +145,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "charge",
-        choiceText: { en: "Charge straight in", tr: "Dogrudan saldiriya gec", de: "Greif direkt an", fr: "Fonce droit devant", es: "Carga de frente" },
+        choiceText: { en: "Charge straight in", tr: "Doğrudan saldırıya geç", de: "Greif direkt an", fr: "Fonce droit devant", es: "Carga de frente" },
         sceneCue: "a bold, explosive opening move",
         consequenceCue: "the action surges forward with direct impact and visual punch",
         endingCue: "the bold move ends in a loud and satisfying victory beat",
@@ -153,7 +153,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "shadow-route",
-        choiceText: { en: "Slip through the shadows", tr: "Golgelerden siz", de: "Schlupfe durch die Schatten", fr: "Glisse par les ombres", es: "Deslizate por las sombras" },
+        choiceText: { en: "Slip through the shadows", tr: "Gölgelerden sız", de: "Schlupfe durch die Schatten", fr: "Glisse par les ombres", es: "Deslízate por las sombras" },
         sceneCue: "a stealthy route through darker cover",
         consequenceCue: "the scene shifts into stealth, tension, and clever positioning",
         endingCue: "the hidden route resolves with a smart and stylish payoff",
@@ -163,7 +163,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "skyline-swing",
-        choiceText: { en: "Swing across the skyline", tr: "Sehir cizgisinin ustunden atil", de: "Schwinge uber die Skyline", fr: "Elance-toi au-dessus de la skyline", es: "Balanceate sobre el horizonte" },
+        choiceText: { en: "Swing across the skyline", tr: "Şehir çizgisinin üstünden atıl", de: "Schwinge uber die Skyline", fr: "Elance-toi au-dessus de la skyline", es: "Balanceate sobre el horizonte" },
         sceneCue: "a fast skyline dash above the city lights",
         consequenceCue: "the chase climbs into open air with velocity, risk, and spectacle",
         endingCue: "the skyline route ends in a cinematic hero landing",
@@ -181,7 +181,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "rescue-crowd",
-        choiceText: { en: "Protect the civilians first", tr: "Once sivilleri koru", de: "Schutze zuerst die Zivilisten", fr: "Protege d'abord les civils", es: "Protege primero a los civiles" },
+        choiceText: { en: "Protect the civilians first", tr: "Önce sivilleri koru", de: "Schutze zuerst die Zivilisten", fr: "Protege d'abord les civils", es: "Protege primero a los civiles" },
         sceneCue: "a crowded danger zone where quick rescue matters most",
         consequenceCue: "the action gains urgency, heart, and visible collateral stakes",
         endingCue: "the rescue route finishes on an uplifting public victory beat",
@@ -189,7 +189,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "disable-core",
-        choiceText: { en: "Disable the enemy core", tr: "Dusman cekirdegini devre disi birak", de: "Schalte den feindlichen Kern aus", fr: "Desactive le noyau ennemi", es: "Desactiva el nucleo enemigo" },
+        choiceText: { en: "Disable the enemy core", tr: "Düşman çekirdeğini devre dışı bırak", de: "Schalte den feindlichen Kern aus", fr: "Desactive le noyau ennemi", es: "Desactiva el nucleo enemigo" },
         sceneCue: "a dangerous strike toward the enemy power core",
         consequenceCue: "the conflict sharpens into direct stakes, countdown pressure, and heavy impact",
         endingCue: "the core-strike route ends with a sharp final shutdown",
@@ -201,7 +201,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "witness-alley",
-        choiceText: { en: "Follow the witness into the alley", tr: "Tanigi ara sokaga kadar takip et", de: "Folge dem Zeugen in die Gasse", fr: "Suis le temoin dans la ruelle", es: "Sigue al testigo hasta el callejon" },
+        choiceText: { en: "Follow the witness into the alley", tr: "Tanığı ara sokağa kadar takip et", de: "Folge dem Zeugen in die Gasse", fr: "Suis le temoin dans la ruelle", es: "Sigue al testigo hasta el callejon" },
         sceneCue: "a narrow alley where a nervous witness slips into shadow",
         consequenceCue: "the investigation tightens with pressure, secrecy, and a living lead",
         endingCue: "the witness route ends with a sharp revelation finally spoken aloud",
@@ -209,7 +209,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "study-ledger",
-        choiceText: { en: "Search the hidden ledger", tr: "Gizli kayit defterini ara", de: "Suche nach dem versteckten Hauptbuch", fr: "Cherche le registre cache", es: "Busca el libro de cuentas oculto" },
+        choiceText: { en: "Search the hidden ledger", tr: "Gizli kayıt defterini ara", de: "Suche nach dem versteckten Hauptbuch", fr: "Cherche le registre cache", es: "Busca el libro de cuentas oculto" },
         sceneCue: "a quiet study full of paper clues and locked drawers",
         consequenceCue: "the case deepens through documents, patterns, and patient deduction",
         endingCue: "the ledger route closes with proof that finally fits together",
@@ -219,7 +219,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "rooftop-tail",
-        choiceText: { en: "Tail the suspect across the rooftops", tr: "Supheliyi catilarda izle", de: "Verfolge den Verdachtigen uber die Dacher", fr: "Suis le suspect sur les toits", es: "Sigue al sospechoso por los tejados" },
+        choiceText: { en: "Tail the suspect across the rooftops", tr: "Şüpheliyi çatılarda izle", de: "Verfolge den Verdachtigen uber die Dacher", fr: "Suis le suspect sur les toits", es: "Sigue al sospechoso por los tejados" },
         sceneCue: "a rooftop pursuit above the sleeping city",
         consequenceCue: "the mystery turns kinetic, exposing risk and urgency in the open",
         endingCue: "the rooftop route resolves with a dangerous truth cornered in the night",
@@ -227,7 +227,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "archive-room",
-        choiceText: { en: "Break into the archive room", tr: "Arsiv odasina gir", de: "Dringe in den Archivraum ein", fr: "Entre dans la salle d'archives", es: "Entra en la sala de archivos" },
+        choiceText: { en: "Break into the archive room", tr: "Arşiv odasına gir", de: "Dringe in den Archivraum ein", fr: "Entre dans la salle d'archives", es: "Entra en la sala de archivos" },
         sceneCue: "an archive room stacked with silent, incriminating records",
         consequenceCue: "the tension becomes quieter and sharper as hidden evidence surfaces",
         endingCue: "the archive route ends with the case turning on one buried record",
@@ -237,7 +237,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "interrogate-now",
-        choiceText: { en: "Interrogate the prime suspect now", tr: "Bas supheliyi hemen sorgula", de: "Verhore den Hauptverdachtigen sofort", fr: "Interroge tout de suite le principal suspect", es: "Interroga ahora al principal sospechoso" },
+        choiceText: { en: "Interrogate the prime suspect now", tr: "Baş şüpheliyi hemen sorgula", de: "Verhore den Hauptverdachtigen sofort", fr: "Interroge tout de suite le principal suspect", es: "Interroga ahora al principal sospechoso" },
         sceneCue: "a tense interrogation room with little time left",
         consequenceCue: "the pressure shifts onto dialogue, cracks in alibis, and emotional tells",
         endingCue: "the interrogation route ends when the lie finally breaks",
@@ -245,7 +245,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "set-trap",
-        choiceText: { en: "Set a trap at the handoff", tr: "Teslimat noktasinda tuzak kur", de: "Stelle beim Ubergabeort eine Falle", fr: "Tends un piege au point d'echange", es: "Tiende una trampa en la entrega" },
+        choiceText: { en: "Set a trap at the handoff", tr: "Teslimat noktasında tuzak kur", de: "Stelle beim Ubergabeort eine Falle", fr: "Tends un piege au point d'echange", es: "Tiende una trampa en la entrega" },
         sceneCue: "a planned sting at a risky handoff point",
         consequenceCue: "the investigation turns strategic, controlled, and dangerously precise",
         endingCue: "the trap route closes with the culprit caught in motion",
@@ -257,7 +257,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "nebula-gate",
-        choiceText: { en: "Enter the nebula gate", tr: "Bulutsu kapisina gir", de: "Betritt das Nebeltor", fr: "Entre dans la porte nebuleuse", es: "Entra en la puerta de la nebulosa" },
+        choiceText: { en: "Enter the nebula gate", tr: "Bulutsu kapısına gir", de: "Betritt das Nebeltor", fr: "Entre dans la porte nebuleuse", es: "Entra en la puerta de la nebulosa" },
         sceneCue: "a shimmering nebula gate bending light and space",
         consequenceCue: "the adventure shifts into the unknown with cosmic scale and unstable wonder",
         endingCue: "the nebula route resolves in a vast and awe-filled arrival",
@@ -265,7 +265,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "crystal-corridor",
-        choiceText: { en: "Cross the crystal corridor", tr: "Kristal koridordan gec", de: "Uberquere den Kristallkorridor", fr: "Traverse le couloir de cristal", es: "Cruza el corredor de cristal" },
+        choiceText: { en: "Cross the crystal corridor", tr: "Kristal koridordan geç", de: "Uberquere den Kristallkorridor", fr: "Traverse le couloir de cristal", es: "Cruza el corredor de cristal" },
         sceneCue: "a corridor of glowing crystal structures humming with power",
         consequenceCue: "the path becomes more precise, luminous, and technologically uncanny",
         endingCue: "the crystal route ends in a clear and elegant breakthrough",
@@ -275,7 +275,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "mech-deck",
-        choiceText: { en: "Board the mech command deck", tr: "Mekanik komuta guvertesine cik", de: "Gehe auf die Mech-Kommandobruecke", fr: "Monte sur le pont du mecha", es: "Sube a la cubierta del meca" },
+        choiceText: { en: "Board the mech command deck", tr: "Mekanik komuta güvertesine çık", de: "Gehe auf die Mech-Kommandobruecke", fr: "Monte sur le pont du mecha", es: "Sube a la cubierta del meca" },
         sceneCue: "a mechanical command deck pulsing with urgent signals",
         consequenceCue: "the story accelerates through systems, alarms, and high-stakes control",
         endingCue: "the mech route resolves in a hard-won command decision",
@@ -283,7 +283,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "starlight-ruins",
-        choiceText: { en: "Explore the starlight ruins", tr: "Yildiz isikli harabeleri kesfet", de: "Erkunde die Sternenruinen", fr: "Explore les ruines de lumiere stellaire", es: "Explora las ruinas de luz estelar" },
+        choiceText: { en: "Explore the starlight ruins", tr: "Yıldız ışıklı harabeleri keşfet", de: "Erkunde die Sternenruinen", fr: "Explore les ruines de lumiere stellaire", es: "Explora las ruinas de luz estelar" },
         sceneCue: "ancient ruins lit by strange starlight patterns",
         consequenceCue: "the journey turns archaeological and mystical, revealing older truths",
         endingCue: "the ruins route closes with a forgotten power understood at last",
@@ -293,7 +293,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "quantum-beacon",
-        choiceText: { en: "Activate the quantum beacon", tr: "Kuantum isaretcisini etkinlestir", de: "Aktiviere den Quanten-Sender", fr: "Active la balise quantique", es: "Activa la baliza cuantica" },
+        choiceText: { en: "Activate the quantum beacon", tr: "Kuantum işaretçisini etkinleştir", de: "Aktiviere den Quanten-Sender", fr: "Active la balise quantique", es: "Activa la baliza cuantica" },
         sceneCue: "a quantum beacon preparing to flare across the void",
         consequenceCue: "the route becomes brighter, riskier, and more immediate as systems awaken",
         endingCue: "the beacon route ends with a signal that changes everything",
@@ -301,7 +301,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "ancient-observatory",
-        choiceText: { en: "Climb to the ancient observatory", tr: "Kadim gozlemevine tirman", de: "Steige zur alten Sternwarte hinauf", fr: "Monte jusqu'a l'ancien observatoire", es: "Sube al antiguo observatorio" },
+        choiceText: { en: "Climb to the ancient observatory", tr: "Kadim gözlemevine tırman", de: "Steige zur alten Sternwarte hinauf", fr: "Monte jusqu'a l'ancien observatoire", es: "Sube al antiguo observatorio" },
         sceneCue: "an ancient observatory aligned with impossible constellations",
         consequenceCue: "the path slows into discovery, pattern-reading, and cosmic meaning",
         endingCue: "the observatory route resolves in a contemplative and powerful reveal",
@@ -313,7 +313,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "moonlit-garden",
-        choiceText: { en: "Meet beneath the moonlit garden lights", tr: "Ay isikli bahcede bulus", de: "Triff dich unter den Lichtern des Mondgartens", fr: "Retrouve-le sous les lumieres du jardin", es: "Encuentrate bajo las luces del jardin" },
+        choiceText: { en: "Meet beneath the moonlit garden lights", tr: "Ay ışıklı bahçede buluş", de: "Triff dich unter den Lichtern des Mondgartens", fr: "Retrouve-le sous les lumieres du jardin", es: "Encuentrate bajo las luces del jardin" },
         sceneCue: "a moonlit garden filled with quiet lights and private emotion",
         consequenceCue: "the story grows more intimate, gentle, and openly vulnerable",
         endingCue: "the garden route resolves in a tender emotional confession",
@@ -321,7 +321,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "lakeside-letter",
-        choiceText: { en: "Read the lakeside letter first", tr: "Gol kenarindaki mektubu once oku", de: "Lies zuerst den Brief am See", fr: "Lis d'abord la lettre au bord du lac", es: "Lee primero la carta junto al lago" },
+        choiceText: { en: "Read the lakeside letter first", tr: "Göl kenarındaki mektubu önce oku", de: "Lies zuerst den Brief am See", fr: "Lis d'abord la lettre au bord du lac", es: "Lee primero la carta junto al lago" },
         sceneCue: "a quiet lakeside where a heartfelt letter waits unopened",
         consequenceCue: "the romance becomes reflective, honest, and shaped by memory",
         endingCue: "the letter route ends with clarity that softens both hearts",
@@ -331,7 +331,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "dance-floor",
-        choiceText: { en: "Step onto the dance floor", tr: "Dans pistine adim at", de: "Betritt die Tanzflache", fr: "Entre sur la piste de danse", es: "Sal a la pista de baile" },
+        choiceText: { en: "Step onto the dance floor", tr: "Dans pistine adım at", de: "Betritt die Tanzflache", fr: "Entre sur la piste de danse", es: "Sal a la pista de baile" },
         sceneCue: "a glowing dance floor where tension turns into movement",
         consequenceCue: "the scene grows warmer, bolder, and more rhythmically alive",
         endingCue: "the dance route closes with a joyful and mutual leap of faith",
@@ -339,7 +339,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "cafe-window",
-        choiceText: { en: "Talk by the quiet cafe window", tr: "Sessiz kafe penceresinde konus", de: "Sprich am ruhigen Cafe-Fenster", fr: "Parle pres de la fenetre du cafe", es: "Habla junto a la ventana del cafe" },
+        choiceText: { en: "Talk by the quiet cafe window", tr: "Sessiz kafe penceresinde konuş", de: "Sprich am ruhigen Cafe-Fenster", fr: "Parle pres de la fenetre du cafe", es: "Habla junto a la ventana del cafe" },
         sceneCue: "a quiet cafe window framing a more careful conversation",
         consequenceCue: "the romance deepens through patience, honesty, and smaller gestures",
         endingCue: "the cafe route ends with a soft but decisive mutual understanding",
@@ -349,7 +349,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "train-platform",
-        choiceText: { en: "Run to the station platform", tr: "Istasyon peronuna kos", de: "Lauf zum Bahnsteig", fr: "Cours jusqu'au quai", es: "Corre al anden" },
+        choiceText: { en: "Run to the station platform", tr: "İstasyon peronuna koş", de: "Lauf zum Bahnsteig", fr: "Cours jusqu'au quai", es: "Corre al anden" },
         sceneCue: "a station platform where timing matters as much as courage",
         consequenceCue: "the emotion sharpens into urgency, momentum, and one last chance",
         endingCue: "the platform route resolves with a breathless emotional reunion",
@@ -357,7 +357,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "stay-and-speak",
-        choiceText: { en: "Stay and speak honestly", tr: "Kal ve durustce konus", de: "Bleib und sprich ehrlich", fr: "Reste et parle avec sincerite", es: "Quedate y habla con honestidad" },
+        choiceText: { en: "Stay and speak honestly", tr: "Kal ve dürüstçe konuş", de: "Bleib und sprich ehrlich", fr: "Reste et parle avec sincerite", es: "Quedate y habla con honestidad" },
         sceneCue: "a still moment where honesty matters more than spectacle",
         consequenceCue: "the route becomes quieter but emotionally stronger with every word",
         endingCue: "the honest route ends with trust restored in full view",
@@ -377,7 +377,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "attic-corridor",
-        choiceText: { en: "Cross the attic corridor", tr: "Tavan arasi koridorundan gec", de: "Geh durch den Dachbodenflur", fr: "Traverse le couloir du grenier", es: "Cruza el corredor del atico" },
+        choiceText: { en: "Cross the attic corridor", tr: "Tavan arası koridorundan geç", de: "Geh durch den Dachbodenflur", fr: "Traverse le couloir du grenier", es: "Cruza el corredor del atico" },
         sceneCue: "a narrow attic corridor creaking above the house",
         consequenceCue: "the fear becomes sharper, quieter, and more anticipatory",
         endingCue: "the attic route closes with a chilling answer waiting overhead",
@@ -395,7 +395,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
       },
       {
         key: "sealed-chapel",
-        choiceText: { en: "Force open the sealed chapel", tr: "Muhurlenmis sapeli zorla ac", de: "Brich die versiegelte Kapelle auf", fr: "Force l'ouverture de la chapelle scellee", es: "Abre por la fuerza la capilla sellada" },
+        choiceText: { en: "Force open the sealed chapel", tr: "Mühürlenmiş şapeli zorla aç", de: "Brich die versiegelte Kapelle auf", fr: "Force l'ouverture de la chapelle scellee", es: "Abre por la fuerza la capilla sellada" },
         sceneCue: "a sealed chapel hiding ritual traces behind old doors",
         consequenceCue: "the story turns sacramental, oppressive, and thick with forbidden signs",
         endingCue: "the chapel route resolves with a terrifying sacred truth exposed",
@@ -405,7 +405,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "run-to-light",
-        choiceText: { en: "Run toward the distant light", tr: "Uzaktaki isiga dogru kos", de: "Lauf auf das ferne Licht zu", fr: "Cours vers la lumiere lointaine", es: "Corre hacia la luz lejana" },
+        choiceText: { en: "Run toward the distant light", tr: "Uzaktaki ışığa doğru koş", de: "Lauf auf das ferne Licht zu", fr: "Cours vers la lumiere lointaine", es: "Corre hacia la luz lejana" },
         sceneCue: "a desperate run toward a light that might be safety or bait",
         consequenceCue: "the route becomes frantic, exposed, and charged with survival instinct",
         endingCue: "the light route ends in a brutal answer to whether hope was real",
@@ -425,7 +425,7 @@ const FALLBACK_THEME_BANKS: Record<string, Array<[FallbackTheme, FallbackTheme]>
     [
       {
         key: "direct-route",
-        choiceText: { en: "Take the direct route", tr: "Dogrudan git", de: "Nimm den direkten Weg", fr: "Prends la voie directe", es: "Toma la ruta directa" },
+        choiceText: { en: "Take the direct route", tr: "Doğrudan git", de: "Nimm den direkten Weg", fr: "Prends la voie directe", es: "Toma la ruta directa" },
         sceneCue: "a direct route with immediate pressure",
         consequenceCue: "the direct route forces fast, visible consequences",
         endingCue: "the direct route resolves with a decisive ending",
@@ -913,3 +913,5 @@ export function buildFallbackStoryGraph(input: {
     nextPageB: node.nextB ? (renumber.get(node.nextB) ?? null) : null,
   }));
 }
+
+

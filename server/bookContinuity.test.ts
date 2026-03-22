@@ -8,7 +8,7 @@ import {
 } from "./bookContinuity";
 
 describe("book continuity reference selection", () => {
-  it("returns illustrated portraits before raw photos for named characters", () => {
+  it("returns raw photos before illustrated portraits for named characters", () => {
     const blueprint = createBookVisualBlueprint({
       readablePathLength: 10,
       graphPageCount: 16,
@@ -85,8 +85,8 @@ describe("book continuity reference selection", () => {
     });
 
     expect(refs.map((ref) => ref.url)).toEqual([
-      "https://example.com/tolgar-portrait.png",
       "https://example.com/tolgar-photo.jpg",
+      "https://example.com/tolgar-portrait.png",
     ]);
   });
 });

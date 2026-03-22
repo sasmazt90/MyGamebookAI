@@ -45,6 +45,8 @@ export interface UseFlipbookOptions {
   onEnd?: () => void;
   /** Step size: 1 for comic single-page, 2 for two-page spread */
   step?: number;
+  /** Whether forward navigation should honor explicit nextPageIdA links instead of stepping */
+  useExplicitNextPageId?: boolean;
 }
 
 export interface UseFlipbookReturn {
@@ -83,6 +85,7 @@ export function useFlipbook({
   onReturnToCover,
   onEnd,
   step = 2,
+  useExplicitNextPageId = true,
 }: UseFlipbookOptions): UseFlipbookReturn {
   const [flipDirection, setFlipDirection] = useState<FlipDirection>(null);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -103,7 +106,7 @@ export function useFlipbook({
   // Preload adjacent pages whenever currentPageIndex changes
   useEffect(() => {
     const currentPage = pages[currentPageIndex];
-    const nextGraphIndex = currentPage?.nextPageIdA != null
+    const nextGraphIndex = useExplicitNextPageId && currentPage?.nextPageIdA != null
       ? pages.findIndex(page => page.id === currentPage.nextPageIdA)
       : currentPageIndex + step;
     const prevPage = pages[currentPageIndex - step];
@@ -117,7 +120,7 @@ export function useFlipbook({
     // Also preload panel images for comics
     prevPage?.panels?.forEach(p => preloadImage(p.imageUrl));
     nextPage?.panels?.forEach(p => preloadImage(p.imageUrl));
-  }, [currentPageIndex, pages, step]);
+  }, [currentPageIndex, pages, step, useExplicitNextPageId]);
 
   // ── Core navigation logic ────────────────────────────────────────────────
 
@@ -154,7 +157,7 @@ export function useFlipbook({
       return;
     }
 
-    if (currentPage?.nextPageIdA) {
+    if (useExplicitNextPageId && currentPage?.nextPageIdA) {
       const explicitIndex = pages.findIndex((page) => page.id === currentPage.nextPageIdA);
       if (explicitIndex >= 0) {
         animate("forward", () => onGoTo(explicitIndex, "forward"));
@@ -168,7 +171,7 @@ export function useFlipbook({
       return;
     }
     animate("forward", () => onGoTo(nextIndex, "forward"));
-  }, [showCover, hasChoices, currentPageIndex, step, pages.length, animate, onGoTo, onEnd]);
+  }, [showCover, hasChoices, currentPageIndex, step, pages, animate, onGoTo, onEnd, useExplicitNextPageId]);
 
   const flipBackward = useCallback(() => {
     if (showCover || animatingRef.current) return;

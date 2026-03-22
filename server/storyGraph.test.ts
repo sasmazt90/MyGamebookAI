@@ -40,7 +40,7 @@ describe("story graph planning", () => {
     });
 
     const branchPage = graph.find((page) => page.isBranchPage);
-    expect(branchPage?.choiceA).toBe("Parlayan yildiz izini takip et");
+    expect(branchPage?.choiceA).toBe("Parlayan yıldız izini takip et");
     expect(branchPage?.choiceB).toBe("Pembe bulut yolundan ilerle");
   });
 
@@ -75,8 +75,8 @@ describe("story graph planning", () => {
     });
 
     const branchPages = graph.filter((page) => page.isBranchPage);
-    expect(branchPages[0]?.choiceA).toBe("Dogrudan saldiriya gec");
-    expect(branchPages[0]?.choiceB).toBe("Golgelerden siz");
+    expect(branchPages[0]?.choiceA).toBe("Doğrudan saldırıya geç");
+    expect(branchPages[0]?.choiceB).toBe("Gölgelerden sız");
     expect(branchPages.some((page) => page.sfxTags.includes("impact") || page.sfxTags.includes("hero"))).toBe(true);
     expect(new Set(branchPages.map((page) => `${page.choiceA}|${page.choiceB}`)).size).toBeGreaterThan(1);
   });
@@ -102,7 +102,7 @@ describe("story graph planning", () => {
     const romanceBranch = romanceGraph.find((page) => page.isBranchPage);
     const horrorBranch = horrorGraph.find((page) => page.isBranchPage);
 
-    expect(romanceBranch?.choiceA).toBe("Ay isikli bahcede bulus");
+    expect(romanceBranch?.choiceA).toBe("Ay ışıklı bahçede buluş");
     expect(horrorBranch?.choiceA).toBe("Bodrum merdivenlerinden in");
     expect(romanceGraph.some((page) => page.sfxTags.includes("soft") || page.sfxTags.includes("music"))).toBe(true);
     expect(horrorGraph.some((page) => page.sfxTags.includes("horror") || page.sfxTags.includes("heartbeat"))).toBe(true);

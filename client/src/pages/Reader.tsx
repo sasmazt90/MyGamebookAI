@@ -393,6 +393,31 @@ export default function Reader() {
   const targetReadablePageCount = pages.reduce((max, page, index) => Math.max(max, parseRoutePageNumber(page, index + 1)), 0);
   const currentRoutePageNumber = parseRoutePageNumber(currentPage, Math.max(1, currentPageIndex + 1));
   const nextRoutePageNumber = parseRoutePageNumber(nextPage, currentRoutePageNumber + 1);
+  const currentPageHasChoices = !!(currentPage?.choiceA != null || currentPage?.choiceB != null);
+  const nextPageHasChoices = !!(nextPage?.choiceA != null || nextPage?.choiceB != null);
+  const visibleChoicePage =
+    effectiveSpreadMode && nextPageHasChoices && !currentPageHasChoices
+      ? nextPage
+      : currentPageHasChoices
+        ? currentPage
+        : effectiveSpreadMode && nextPageHasChoices
+          ? nextPage
+          : null;
+  const visibleChoicePageIndex =
+    visibleChoicePage === nextPage
+      ? currentPageIndex + 1
+      : currentPageIndex;
+  const visibleChoiceOptions = visibleChoicePage
+    ? [
+        { text: visibleChoicePage.choiceA, nextId: visibleChoicePage.nextPageIdA },
+        { text: visibleChoicePage.choiceB, nextId: visibleChoicePage.nextPageIdB },
+      ].filter((choice) => choice.text != null)
+    : [];
+  const pageNavigationIndices = hasNonLinearGraph
+    ? []
+    : effectiveSpreadMode
+      ? Array.from({ length: Math.ceil(pages.length / Math.max(1, step)) }, (_, i) => i * step).slice(0, 15)
+      : pages.slice(0, 15).map((_, i) => i);
   const routeDotCount = Math.min(targetReadablePageCount || pages.length, 15);
   const activeRouteDotIndex = routeDotCount <= 1
     ? 0
@@ -450,12 +475,13 @@ export default function Reader() {
   }, [pages]);
 
   const handleChoice = useCallback((
+    sourcePageIndex: number,
     _choiceIndex: number,
     nextPageDbId: number | null | undefined
   ) => {
     const targetIndex = nextPageDbId != null
       ? findPageIndexById(nextPageDbId)
-      : currentPageIndex + step;
+      : sourcePageIndex + 1;
 
     const targetPage = pages[targetIndex];
     // Only play sound from page 3 onwards (skip pages 0, 1, 2)
@@ -464,7 +490,7 @@ export default function Reader() {
       playPageTurn(sfxTags, targetPage?.content ?? "");
     }
 
-    setChoiceHistory(prev => [...prev, currentPageIndex]);
+    setChoiceHistory(prev => [...prev, sourcePageIndex]);
     setCurrentPageIndex(targetIndex);
     setMadeChoice(true);
     setCameFromBranch(true);
@@ -477,7 +503,7 @@ export default function Reader() {
       branchPath: targetPage?.branchPath ?? "root",
       isEndingNode: isEnding,
     });
-  }, [currentPageIndex, bookId, playPageTurn, saveProgress, isEndingPage, findPageIndexById, pages, step]);
+  }, [bookId, playPageTurn, saveProgress, isEndingPage, findPageIndexById, pages]);
 
   const handleEndReached = useCallback(() => {
     setShowBackCover(true);
@@ -507,7 +533,7 @@ export default function Reader() {
   // Flipbook hook
   // ---------------------------------------------------------------------------
 
-  const hasChoices = !!(currentPage?.choiceA != null || currentPage?.choiceB != null);
+  const hasChoices = visibleChoiceOptions.length > 0;
 
   const handleGoTo = useCallback((index: number) => {
     const targetPage = pages[index];
@@ -546,6 +572,7 @@ export default function Reader() {
     onReturnToCover: handleReturnToCover,
     onEnd: handleEndReached,
     step,
+    useExplicitNextPageId: !effectiveSpreadMode,
   });
 
   // Drag-to-turn corner interaction
@@ -903,15 +930,10 @@ export default function Reader() {
                   rightChoiceSlot={
                     hasChoices ? (
                       <div className="space-y-3">
-                        {[
-                          { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
-                          { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
-                        ]
-                          .filter(c => c.text != null)
-                          .map((choice, idx: number) => (
+                        {visibleChoiceOptions.map((choice, idx: number) => (
                             <button
                               key={idx}
-                              onClick={() => handleChoice(idx, choice.nextId)}
+                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
                               className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
                               style={{ fontFamily: "'Bangers', 'Impact', sans-serif", letterSpacing: "0.05em" }}
                             >
@@ -961,15 +983,10 @@ export default function Reader() {
                   choiceSlot={
                     hasChoices && !madeChoice ? (
                       <div className="space-y-3">
-                        {[
-                          { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
-                          { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
-                        ]
-                          .filter(c => c.text != null)
-                          .map((choice, idx: number) => (
+                        {visibleChoiceOptions.map((choice, idx: number) => (
                             <button
                               key={idx}
-                              onClick={() => handleChoice(idx, choice.nextId)}
+                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
                               className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
                               style={{ fontFamily: "'Bangers', 'Impact', sans-serif", letterSpacing: "0.05em" }}
                             >
@@ -1044,15 +1061,10 @@ export default function Reader() {
                     {/* A/B Choices */}
                     {hasChoices && (
                       <div className="mt-5 space-y-3 max-w-xl mx-auto">
-                        {[
-                          { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
-                          { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
-                        ]
-                          .filter(c => c.text != null)
-                          .map((choice, idx: number) => (
+                        {visibleChoiceOptions.map((choice, idx: number) => (
                             <button
                               key={idx}
-                              onClick={() => handleChoice(idx, choice.nextId)}
+                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
                               className="w-full text-left px-5 py-4 bg-[#2D1B69] text-white rounded-xl text-base hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
                             >
                               <span className="font-semibold text-[#F59E0B] mr-2">
@@ -1151,15 +1163,10 @@ export default function Reader() {
                     {/* A/B Choices */}
                     {hasChoices && (
                       <div className="mt-6 space-y-3">
-                        {[
-                          { text: currentPage?.choiceA, nextId: currentPage?.nextPageIdA },
-                          { text: currentPage?.choiceB, nextId: currentPage?.nextPageIdB },
-                        ]
-                          .filter(c => c.text != null)
-                          .map((choice, idx: number) => (
+                        {visibleChoiceOptions.map((choice, idx: number) => (
                             <button
                               key={idx}
-                              onClick={() => handleChoice(idx, choice.nextId)}
+                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
                               className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
                             >
                               <span className="font-semibold text-[#F59E0B] mr-2">
@@ -1239,13 +1246,13 @@ export default function Reader() {
                           )}
                         />
                       ))
-                    : pages.slice(0, Math.min(pages.length, 15)).map((_, i) => (
+                    : pageNavigationIndices.map((pageIndex) => (
                         <button
-                          key={i}
-                          onClick={() => handleGoTo(i)}
+                          key={pageIndex}
+                          onClick={() => handleGoTo(pageIndex)}
                           className={cn(
                             "rounded-full transition-all duration-200",
-                            i === currentPageIndex
+                            pageIndex === currentPageIndex
                               ? "w-3 h-3 bg-[#7C3AED]"
                               : "w-2 h-2 bg-purple-900/40 hover:bg-purple-700/60"
                           )}

@@ -397,8 +397,8 @@ export function selectReferenceImages(input: {
     return Array.from(
       new Map(
         [
-          ...Array.from(input.portraitRefs.values()),
           ...Array.from(input.photoRefs.values()),
+          ...Array.from(input.portraitRefs.values()),
         ]
           .filter((ref) => !!ref.url || !!ref.b64Json)
           .map((ref) => [`${ref.url ?? ""}|${ref.b64Json ?? ""}`, ref])
@@ -409,10 +409,10 @@ export function selectReferenceImages(input: {
   const refs: ReferenceImage[] = [];
   for (const profile of input.blueprint.characterProfiles) {
     if (!names.has(profile.name.toLowerCase())) continue;
-    const portrait = input.portraitRefs.get(profile.name);
-    if (portrait) refs.push(portrait);
     const raw = input.photoRefs.get(profile.name);
     if (raw) refs.push(raw);
+    const portrait = input.portraitRefs.get(profile.name);
+    if (portrait) refs.push(portrait);
   }
 
   return Array.from(

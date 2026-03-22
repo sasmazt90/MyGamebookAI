@@ -199,12 +199,12 @@ function getLocalizedChoiceFallbacks(language?: string) {
   switch (normaliseLanguageTag(language)) {
     case "tr":
       return {
-        optionA: "Secenek A",
-        optionB: "Secenek B",
-        tryDifferent: "Baska bir yol dene",
-        reconsider: "Durup baska bir yol dusun",
+        optionA: "Seçenek A",
+        optionB: "Seçenek B",
+        tryDifferent: "Başka bir yol dene",
+        reconsider: "Durup başka bir yol düşün",
         proceed: "Planla devam et",
-        faceDirectly: "Dogrudan yuzles",
+        faceDirectly: "Doğrudan yüzleş",
       };
     case "de":
       return {
@@ -226,12 +226,12 @@ function getLocalizedChoiceFallbacks(language?: string) {
       };
     case "es":
       return {
-        optionA: "Opcion A",
-        optionB: "Opcion B",
+        optionA: "Opción A",
+        optionB: "Opción B",
         tryDifferent: "Prueba otro camino",
-        reconsider: "Replantealo e intenta otro camino",
+        reconsider: "Replantéalo e intenta otro camino",
         proceed: "Sigue el plan",
-        faceDirectly: "Enfrentalo directamente",
+        faceDirectly: "Enfréntalo directamente",
       };
     default:
       return {
@@ -1324,16 +1324,16 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         : canonicalCharacterProfiles.map(profile => profile.name);
       const refs: Array<{ url: string; mimeType: string }> = [];
       for (const name of names) {
-        const illustrated = illustratedPortraitsMap.get(name);
-        if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
         const raw = photoRefByName.get(name);
         if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
+        const illustrated = illustratedPortraitsMap.get(name);
+        if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
       }
       if (refs.length === 0) {
         refs.push(
+          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
           ...Array.from(illustratedPortraitsMap.values())
             .filter((img): img is { url: string; mimeType: string } => !!img?.url),
-          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
         );
       }
       return refs.filter((img, idx, arr) => arr.findIndex(candidate => candidate.url === img.url) === idx);
@@ -1360,6 +1360,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
             photo?.headwear && photo.headwear.toLowerCase() !== "none"
               ? `Exact headwear/hair accessory: ${photo.headwear}`
               : "",
+            "RAW PHOTO PRIORITY: face shape, haircut, eyebrows, skin tone, outfit, accessories, and age impression must match the uploaded photo exactly; style-bridge portraits only transfer illustration style.",
             "Do not replace this character with a generic cartoon version.",
           ].filter(Boolean).join(" | ");
         })
@@ -2456,8 +2457,8 @@ Rules:
 
       const similarity = branchSimilarityScore(nextA.content, nextB.content);
       if (similarity > 0.6) {
-        page.choiceA = page.choiceA || "Take the first distinct route";
-        page.choiceB = page.choiceB || "Take the second distinct route";
+        page.choiceA = page.choiceA || localizedChoiceFallbacks.optionA;
+        page.choiceB = page.choiceB || localizedChoiceFallbacks.optionB;
         const spec = sceneSpecsByPageNumber.get(page.pageNumber);
         if (spec) {
           spec.branchDelta = `Show a visibly different outcome for "${page.choiceA}" versus "${page.choiceB}". The two branches currently risk looking too similar and must diverge in action, environment, and mood.`;
@@ -2849,7 +2850,12 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             const dialogueResp = await invokeLLM({
               messages: [
                 { role: "system" as const, content: "You are a comic book writer. Always respond with valid JSON only. UNICODE RULE: NEVER strip or replace special characters. Preserve all Unicode exactly as written (Turkish, German, French, Spanish, Cyrillic, Chinese, Japanese, Arabic)." },
-                { role: "user" as const, content: `Split this comic page content into exactly 3 panels. Characters: ${charNames || "none"}.\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description","dialogue":"spoken words only, no character name prefix, max 6 words, or null","speaker":"character name or null"}]}\n\nCRITICAL: dialogue must be raw spoken words only. NEVER prefix with character name (e.g. never write "Alex: Let's go" — write only "Let's go").` },
+                {
+                  role: "system" as const,
+                  content:
+                    `LANGUAGE LOCK (MANDATORY): narration and dialogue for every comic panel must be written entirely in ${language}. Never switch to English unless ${language} is English.`,
+                },
+                { role: "user" as const, content: `Split this comic page content into exactly 3 panels. Characters: ${charNames || "none"}.\n\nTARGET LANGUAGE: ${language}\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description","dialogue":"spoken words only, no character name prefix, max 6 words, or null","speaker":"character name or null"}]}\n\nCRITICAL RULES:\n- narration and dialogue MUST stay entirely in ${language}; never switch to English unless ${language} is English.\n- dialogue must be raw spoken words only. NEVER prefix with character name (e.g. never write "Alex: Let's go" — write only "Let's go").\n- preserve the same story facts, tone, and continuity from the source page.` },
               ],
               response_format: { type: "json_object" },
             });
@@ -2957,6 +2963,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             p2CharAnchor,
             p3CharAnchor,
             "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
+            "NO SPONTANEOUS WARDROBE CHANGES: keep each named character in the exact same canonical outfit, accessories, tie, watch, hairstyle, and silhouette unless the narrative explicitly states a transformation.",
             CHARACTER_COLOUR_LOCK,
             STRUCTURED_IDENTITY_BLOCK || undefined,
             CHARACTER_LOCK_INSTRUCTION,
@@ -4369,3 +4376,4 @@ export const booksRouter = router({
       return { success: true };
     }),
 });
+
