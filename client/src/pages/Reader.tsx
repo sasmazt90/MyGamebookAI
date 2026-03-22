@@ -7,15 +7,29 @@ import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
-  Loader2, ChevronLeft, BookOpen, RotateCcw, Home,
-  Volume2, VolumeX, Music, Music2, Trophy, GitBranch,
-  Maximize, Minimize, Users, X, Columns2
+  Loader2,
+  ChevronLeft,
+  BookOpen,
+  RotateCcw,
+  Home,
+  Volume2,
+  VolumeX,
+  Music,
+  Music2,
+  Trophy,
+  GitBranch,
+  Maximize,
+  Minimize,
+  Users,
+  X,
+  Columns2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReaderAudio } from "@/hooks/useReaderAudio";
 import type { BookCategory } from "@/hooks/useReaderAudio";
 import { ComicPageLayout } from "@/components/ComicPageLayout";
 import { ComicSpreadLayout } from "@/components/ComicSpreadLayout";
+import { getComicTextFontStack } from "@/lib/comicTypography";
 import { useFlipbook } from "@/hooks/useFlipbook";
 import type { FlipbookPage } from "@/hooks/useFlipbook";
 import { useFlipbookDragCurl } from "@/hooks/useFlipbookDragCurl";
@@ -75,7 +89,7 @@ function useFullscreen() {
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!containerRef.current) {
-        console.warn('Container ref not available for fullscreen');
+        console.warn("Container ref not available for fullscreen");
         return;
       }
 
@@ -102,7 +116,7 @@ function useFullscreen() {
         }
       }
     } catch (error) {
-      console.error('Fullscreen toggle failed:', error);
+      console.error("Fullscreen toggle failed:", error);
     }
   }, []);
 
@@ -116,15 +130,31 @@ function useFullscreen() {
 // ---------------------------------------------------------------------------
 // CharacterCard type
 // ---------------------------------------------------------------------------
-type CharacterCard = { name: string; appearance: string; voice: string; role: string; photoUrl?: string; portraitUrl?: string };
+type CharacterCard = {
+  name: string;
+  appearance: string;
+  voice: string;
+  role: string;
+  photoUrl?: string;
+  portraitUrl?: string;
+};
 
 // ---------------------------------------------------------------------------
 // CharactersPanel overlay
 // ---------------------------------------------------------------------------
-function CharactersPanel({ cards, onClose }: { cards: CharacterCard[]; onClose: () => void }) {
+function CharactersPanel({
+  cards,
+  onClose,
+}: {
+  cards: CharacterCard[];
+  onClose: () => void;
+}) {
   const { t } = useLanguage();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="relative bg-[#1A1033] border border-purple-700/50 rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
@@ -133,9 +163,14 @@ function CharactersPanel({ cards, onClose }: { cards: CharacterCard[]; onClose: 
         <div className="sticky top-0 bg-[#1A1033] border-b border-purple-900/30 px-5 py-4 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-purple-400" />
-            <h2 className="text-base font-semibold text-white">{t("reader.characters")}</h2>
+            <h2 className="text-base font-semibold text-white">
+              {t("reader.characters")}
+            </h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -143,31 +178,60 @@ function CharactersPanel({ cards, onClose }: { cards: CharacterCard[]; onClose: 
         {/* Character list */}
         <div className="p-5 space-y-4">
           {cards.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-4">{t("reader.noCharacters")}</p>
+            <p className="text-gray-400 text-sm text-center py-4">
+              {t("reader.noCharacters")}
+            </p>
           ) : (
             cards.map((card, i) => (
-              <div key={i} className="flex gap-4 p-4 bg-[#0F0A1E] rounded-xl border border-purple-900/20">
+              <div
+                key={i}
+                className="flex gap-4 p-4 bg-[#0F0A1E] rounded-xl border border-purple-900/20"
+              >
                 {/* Avatar - prefer the original uploaded photo when available */}
                 {card.photoUrl && card.photoUrl.trim() ? (
-                  <img src={card.photoUrl} alt={card.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40" />
+                  <img
+                    src={card.photoUrl}
+                    alt={card.name}
+                    className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40"
+                  />
                 ) : card.portraitUrl && card.portraitUrl.trim() ? (
-                  <img src={card.portraitUrl} alt={card.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40" />
+                  <img
+                    src={card.portraitUrl}
+                    alt={card.name}
+                    className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-purple-600/40"
+                  />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-purple-900/40 flex items-center justify-center flex-shrink-0 border-2 border-purple-600/40">
-                    <span className="text-2xl">{card.role === "protagonist" ? "★" : card.role === "antagonist" ? "✖" : "◆"}</span>
+                    <span className="text-2xl">
+                      {card.role === "protagonist"
+                        ? "★"
+                        : card.role === "antagonist"
+                          ? "✖"
+                          : "◆"}
+                    </span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-white text-sm">{card.name}</h3>
-                    <span className={cn(
-                      "text-xs px-2 py-0.5 rounded-full capitalize",
-                      card.role === "protagonist" ? "bg-purple-900/60 text-purple-300" :
-                      card.role === "antagonist" ? "bg-red-900/60 text-red-300" :
-                      "bg-gray-800 text-gray-400"
-                    )}>{card.role}</span>
+                    <h3 className="font-semibold text-white text-sm">
+                      {card.name}
+                    </h3>
+                    <span
+                      className={cn(
+                        "text-xs px-2 py-0.5 rounded-full capitalize",
+                        card.role === "protagonist"
+                          ? "bg-purple-900/60 text-purple-300"
+                          : card.role === "antagonist"
+                            ? "bg-red-900/60 text-red-300"
+                            : "bg-gray-800 text-gray-400"
+                      )}
+                    >
+                      {card.role}
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-300 leading-relaxed mb-1.5">{card.appearance}</p>
+                  <p className="text-xs text-gray-300 leading-relaxed mb-1.5">
+                    {card.appearance}
+                  </p>
                   <p className="text-xs text-gray-500 italic">{card.voice}</p>
                 </div>
               </div>
@@ -203,14 +267,25 @@ interface AudioToolbarProps {
 }
 
 function AudioToolbar({
-  muted, setMuted,
-  musicEnabled, setMusicEnabled,
-  volume, setVolume,
-  isPlaying, startAmbience, stopAmbience,
-  showTreeMap, onToggleTreeMap,
-  isFullscreen, onToggleFullscreen,
-  showCharacters, onToggleCharacters, hasCharacters,
-  isComic, useSpreadMode, onToggleSpreadMode,
+  muted,
+  setMuted,
+  musicEnabled,
+  setMusicEnabled,
+  volume,
+  setVolume,
+  isPlaying,
+  startAmbience,
+  stopAmbience,
+  showTreeMap,
+  onToggleTreeMap,
+  isFullscreen,
+  onToggleFullscreen,
+  showCharacters,
+  onToggleCharacters,
+  hasCharacters,
+  isComic,
+  useSpreadMode,
+  onToggleSpreadMode,
 }: AudioToolbarProps) {
   const { t } = useLanguage();
   const handleMuteToggle = () => setMuted(!muted);
@@ -231,11 +306,17 @@ function AudioToolbar({
         onClick={onToggleFullscreen}
         className={cn(
           "text-xs px-2 py-1 h-8 transition-colors",
-          isFullscreen ? "text-[#7C3AED] hover:text-purple-300" : "text-gray-500 hover:text-gray-300"
+          isFullscreen
+            ? "text-[#7C3AED] hover:text-purple-300"
+            : "text-gray-500 hover:text-gray-300"
         )}
         title={isFullscreen ? "Exit fullscreen (ESC)" : "Enter fullscreen"}
       >
-        {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+        {isFullscreen ? (
+          <Minimize className="w-4 h-4" />
+        ) : (
+          <Maximize className="w-4 h-4" />
+        )}
       </Button>
 
       {/* Characters panel toggle */}
@@ -246,7 +327,9 @@ function AudioToolbar({
           onClick={onToggleCharacters}
           className={cn(
             "text-xs px-2 py-1 h-8 transition-colors",
-            showCharacters ? "text-[#7C3AED] hover:text-purple-300" : "text-gray-500 hover:text-gray-300"
+            showCharacters
+              ? "text-[#7C3AED] hover:text-purple-300"
+              : "text-gray-500 hover:text-gray-300"
           )}
           title="Characters"
         >
@@ -262,7 +345,9 @@ function AudioToolbar({
           onClick={onToggleSpreadMode}
           className={cn(
             "text-xs px-2 py-1 h-8 transition-colors",
-            useSpreadMode ? "text-[#7C3AED] hover:text-purple-300" : "text-gray-500 hover:text-gray-300"
+            useSpreadMode
+              ? "text-[#7C3AED] hover:text-purple-300"
+              : "text-gray-500 hover:text-gray-300"
           )}
           title={useSpreadMode ? "Single page" : "Two-page spread"}
         >
@@ -292,9 +377,18 @@ function AudioToolbar({
         )}
         {isPlaying && !muted && musicEnabled && (
           <span className="ml-1 flex gap-0.5 items-end h-3">
-            <span className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar1_0.8s_ease-in-out_infinite]" style={{ height: "40%" }} />
-            <span className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar2_0.8s_ease-in-out_infinite_0.15s]" style={{ height: "70%" }} />
-            <span className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar3_0.8s_ease-in-out_infinite_0.3s]" style={{ height: "55%" }} />
+            <span
+              className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar1_0.8s_ease-in-out_infinite]"
+              style={{ height: "40%" }}
+            />
+            <span
+              className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar2_0.8s_ease-in-out_infinite_0.15s]"
+              style={{ height: "70%" }}
+            />
+            <span
+              className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar3_0.8s_ease-in-out_infinite_0.3s]"
+              style={{ height: "55%" }}
+            />
           </span>
         )}
       </Button>
@@ -306,11 +400,17 @@ function AudioToolbar({
         onClick={handleMuteToggle}
         className={cn(
           "text-xs px-2 py-1 h-8 transition-colors",
-          muted ? "text-gray-500 hover:text-gray-300" : "text-gray-300 hover:text-white"
+          muted
+            ? "text-gray-500 hover:text-gray-300"
+            : "text-gray-300 hover:text-white"
         )}
         title={muted ? "Unmute" : "Mute"}
       >
-        {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        {muted ? (
+          <VolumeX className="w-4 h-4" />
+        ) : (
+          <Volume2 className="w-4 h-4" />
+        )}
       </Button>
 
       {/* Volume slider -- always visible */}
@@ -324,7 +424,9 @@ function AudioToolbar({
           className="w-full"
           disabled={muted}
         />
-        <span className="text-xs text-gray-500 w-7 text-right">{Math.round(volume * 100)}%</span>
+        <span className="text-xs text-gray-500 w-7 text-right">
+          {Math.round(volume * 100)}%
+        </span>
       </div>
     </div>
   );
@@ -348,7 +450,11 @@ export default function Reader() {
   const [showTreeMap, setShowTreeMap] = useState(false);
   const [showCharacters, setShowCharacters] = useState(false);
   const [useSpreadMode, setUseSpreadMode] = useState(false);
-  const { containerRef: fullscreenRef, isFullscreen, toggleFullscreen } = useFullscreen();
+  const {
+    containerRef: fullscreenRef,
+    isFullscreen,
+    toggleFullscreen,
+  } = useFullscreen();
 
   const bookId = parseInt(id || "0");
 
@@ -357,10 +463,11 @@ export default function Reader() {
     { enabled: !!bookId }
   );
 
-  const { data: pagesData, isLoading: pagesLoading } = trpc.books.getPages.useQuery(
-    { bookId },
-    { enabled: !!bookId && isAuthenticated }
-  );
+  const { data: pagesData, isLoading: pagesLoading } =
+    trpc.books.getPages.useQuery(
+      { bookId },
+      { enabled: !!bookId && isAuthenticated }
+    );
 
   const saveProgress = trpc.books.saveProgress.useMutation();
 
@@ -369,7 +476,8 @@ export default function Reader() {
   const characterCards = (pagesData?.characterCards || []) as CharacterCard[];
   const currentPage = pages[currentPageIndex];
   const nextPage = pages[currentPageIndex + 1];
-  const bookCategory = (book?.book?.category ?? "fantasy_scifi") as BookCategory;
+  const bookCategory = (book?.book?.category ??
+    "fantasy_scifi") as BookCategory;
   const presentationRule = getBookPresentationRule(bookCategory);
   const isComic = bookCategory === "comic";
   const isFairyTale = bookCategory === "fairy_tale";
@@ -381,20 +489,48 @@ export default function Reader() {
     const flatNextId = pages[index + 1]?.id;
     return flatNextId != null && page.nextPageIdA !== flatNextId;
   });
-  const effectiveSpreadMode = hasNonLinearGraph ? false : forceSpreadMode ? true : useSpreadMode;
-  const step = hasNonLinearGraph ? 1 : isComic ? (effectiveSpreadMode ? 2 : 1) : isFairyTale ? 1 : 2;
-  const parseRoutePageNumber = useCallback((page?: FlipbookPage | null, fallback = 1) => {
-    if (page?.routePageNumber && Number.isFinite(page.routePageNumber)) {
-      return Math.max(1, Number(page.routePageNumber));
-    }
-    const match = page?.branchPath?.match(/\|r(\d+)/);
-    return match ? parseInt(match[1], 10) : fallback;
-  }, []);
-  const targetReadablePageCount = pages.reduce((max, page, index) => Math.max(max, parseRoutePageNumber(page, index + 1)), 0);
-  const currentRoutePageNumber = parseRoutePageNumber(currentPage, Math.max(1, currentPageIndex + 1));
-  const nextRoutePageNumber = parseRoutePageNumber(nextPage, currentRoutePageNumber + 1);
-  const currentPageHasChoices = !!(currentPage?.choiceA != null || currentPage?.choiceB != null);
-  const nextPageHasChoices = !!(nextPage?.choiceA != null || nextPage?.choiceB != null);
+  const effectiveSpreadMode = hasNonLinearGraph
+    ? false
+    : forceSpreadMode
+      ? true
+      : useSpreadMode;
+  const step = hasNonLinearGraph
+    ? 1
+    : isComic
+      ? effectiveSpreadMode
+        ? 2
+        : 1
+      : isFairyTale
+        ? 1
+        : 2;
+  const parseRoutePageNumber = useCallback(
+    (page?: FlipbookPage | null, fallback = 1) => {
+      if (page?.routePageNumber && Number.isFinite(page.routePageNumber)) {
+        return Math.max(1, Number(page.routePageNumber));
+      }
+      const match = page?.branchPath?.match(/\|r(\d+)/);
+      return match ? parseInt(match[1], 10) : fallback;
+    },
+    []
+  );
+  const targetReadablePageCount = pages.reduce(
+    (max, page, index) => Math.max(max, parseRoutePageNumber(page, index + 1)),
+    0
+  );
+  const currentRoutePageNumber = parseRoutePageNumber(
+    currentPage,
+    Math.max(1, currentPageIndex + 1)
+  );
+  const nextRoutePageNumber = parseRoutePageNumber(
+    nextPage,
+    currentRoutePageNumber + 1
+  );
+  const currentPageHasChoices = !!(
+    currentPage?.choiceA != null || currentPage?.choiceB != null
+  );
+  const nextPageHasChoices = !!(
+    nextPage?.choiceA != null || nextPage?.choiceB != null
+  );
   const visibleChoicePage =
     effectiveSpreadMode && nextPageHasChoices && !currentPageHasChoices
       ? nextPage
@@ -404,46 +540,85 @@ export default function Reader() {
           ? nextPage
           : null;
   const visibleChoicePageIndex =
-    visibleChoicePage === nextPage
-      ? currentPageIndex + 1
-      : currentPageIndex;
+    visibleChoicePage === nextPage ? currentPageIndex + 1 : currentPageIndex;
+  const visibleChoiceSide = visibleChoicePage === nextPage ? "right" : "left";
   const visibleChoiceOptions = visibleChoicePage
     ? [
-        { text: visibleChoicePage.choiceA, nextId: visibleChoicePage.nextPageIdA },
-        { text: visibleChoicePage.choiceB, nextId: visibleChoicePage.nextPageIdB },
-      ].filter((choice) => choice.text != null)
+        {
+          text: visibleChoicePage.choiceA,
+          nextId: visibleChoicePage.nextPageIdA,
+        },
+        {
+          text: visibleChoicePage.choiceB,
+          nextId: visibleChoicePage.nextPageIdB,
+        },
+      ].filter(choice => choice.text != null)
     : [];
+  const comicChoiceFontFamily = getComicTextFontStack(
+    ...visibleChoiceOptions.map(choice => choice.text ?? "")
+  );
   const pageNavigationIndices = hasNonLinearGraph
     ? []
     : effectiveSpreadMode
-      ? Array.from({ length: Math.ceil(pages.length / Math.max(1, step)) }, (_, i) => i * step).slice(0, 15)
+      ? Array.from(
+          { length: Math.ceil(pages.length / Math.max(1, step)) },
+          (_, i) => i * step
+        ).slice(0, 15)
       : pages.slice(0, 15).map((_, i) => i);
   const routeDotCount = Math.min(targetReadablePageCount || pages.length, 15);
-  const activeRouteDotIndex = routeDotCount <= 1
-    ? 0
-    : Math.min(
-        routeDotCount - 1,
-        Math.round(((currentRoutePageNumber - 1) / Math.max(1, (targetReadablePageCount || pages.length) - 1)) * (routeDotCount - 1))
-      );
+  const activeRouteDotIndex =
+    routeDotCount <= 1
+      ? 0
+      : Math.min(
+          routeDotCount - 1,
+          Math.round(
+            ((currentRoutePageNumber - 1) /
+              Math.max(1, (targetReadablePageCount || pages.length) - 1)) *
+              (routeDotCount - 1)
+          )
+        );
 
   // ---------------------------------------------------------------------------
   // Audio
   // ---------------------------------------------------------------------------
   const {
-    muted, setMuted,
-    musicEnabled, setMusicEnabled,
-    volume, setVolume,
-    isPlaying, playPageTurn, startAmbience, stopAmbience,
-    startPageSfx, stopPageSfx,
+    muted,
+    setMuted,
+    musicEnabled,
+    setMusicEnabled,
+    volume,
+    setVolume,
+    isPlaying,
+    playPageTurn,
+    startAmbience,
+    stopAmbience,
+    startPageSfx,
+    stopPageSfx,
   } = useReaderAudio(bookCategory);
 
   useEffect(() => {
     // Only start ambience from page 3 onwards (skip pages 0, 1, 2).
     // startAmbience has an isPlaying guard so page-turn re-runs are no-ops.
     // No cleanup return here — stopping on every dep change would kill music mid-page.
-    if (!showCover && !showBackCover && !muted && musicEnabled && currentPageIndex >= 3) startAmbience();
-    else if (showCover || showBackCover || muted || !musicEnabled) stopAmbience();
-  }, [showCover, showBackCover, currentPageIndex, muted, musicEnabled, startAmbience, stopAmbience]);
+    if (
+      !showCover &&
+      !showBackCover &&
+      !muted &&
+      musicEnabled &&
+      currentPageIndex >= 3
+    )
+      startAmbience();
+    else if (showCover || showBackCover || muted || !musicEnabled)
+      stopAmbience();
+  }, [
+    showCover,
+    showBackCover,
+    currentPageIndex,
+    muted,
+    musicEnabled,
+    startAmbience,
+    stopAmbience,
+  ]);
 
   // Per-page looping SFX: starts/restarts when page changes, stops on cover/back cover
   useEffect(() => {
@@ -457,53 +632,73 @@ export default function Reader() {
     } else {
       stopPageSfx();
     }
-  }, [currentPageIndex, currentPage?.content, currentPage?.sfxTags, showCover, showBackCover, startPageSfx, stopPageSfx]);
+  }, [
+    currentPageIndex,
+    currentPage?.content,
+    currentPage?.sfxTags,
+    showCover,
+    showBackCover,
+    startPageSfx,
+    stopPageSfx,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Navigation helpers
   // ---------------------------------------------------------------------------
 
-  const findPageIndexById = useCallback((dbId: number): number => {
-    const idx = pages.findIndex(p => p.id === dbId);
-    return idx >= 0 ? idx : currentPageIndex + step;
-  }, [pages, currentPageIndex, step]);
+  const findPageIndexById = useCallback(
+    (dbId: number): number => {
+      const idx = pages.findIndex(p => p.id === dbId);
+      return idx >= 0 ? idx : currentPageIndex + step;
+    },
+    [pages, currentPageIndex, step]
+  );
 
-  const isEndingPage = useCallback((pageIndex: number) => {
-    const page = pages[pageIndex];
-    if (!page) return false;
-    return !page.choiceA && !page.choiceB && !page.nextPageIdA && !page.nextPageIdB;
-  }, [pages]);
+  const isEndingPage = useCallback(
+    (pageIndex: number) => {
+      const page = pages[pageIndex];
+      if (!page) return false;
+      return (
+        !page.choiceA && !page.choiceB && !page.nextPageIdA && !page.nextPageIdB
+      );
+    },
+    [pages]
+  );
 
-  const handleChoice = useCallback((
-    sourcePageIndex: number,
-    _choiceIndex: number,
-    nextPageDbId: number | null | undefined
-  ) => {
-    const targetIndex = nextPageDbId != null
-      ? findPageIndexById(nextPageDbId)
-      : sourcePageIndex + 1;
+  const handleChoice = useCallback(
+    (
+      sourcePageIndex: number,
+      _choiceIndex: number,
+      nextPageDbId: number | null | undefined
+    ) => {
+      const targetIndex =
+        nextPageDbId != null
+          ? findPageIndexById(nextPageDbId)
+          : sourcePageIndex + 1;
 
-    const targetPage = pages[targetIndex];
-    // Only play sound from page 3 onwards (skip pages 0, 1, 2)
-    if (targetIndex >= 2) {
-      const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
-      playPageTurn(sfxTags, targetPage?.content ?? "");
-    }
+      const targetPage = pages[targetIndex];
+      // Only play sound from page 3 onwards (skip pages 0, 1, 2)
+      if (targetIndex >= 2) {
+        const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
+        playPageTurn(sfxTags, targetPage?.content ?? "");
+      }
 
-    setChoiceHistory(prev => [...prev, sourcePageIndex]);
-    setCurrentPageIndex(targetIndex);
-    setMadeChoice(true);
-    setCameFromBranch(true);
-    const isEnding = isEndingPage(targetIndex);
-    if (isEnding) setJustCompleted(true);
-    const targetPageId = targetPage?.id ?? nextPageDbId ?? 0;
-    saveProgress.mutate({
-      bookId,
-      currentPageId: targetPageId,
-      branchPath: targetPage?.branchPath ?? "root",
-      isEndingNode: isEnding,
-    });
-  }, [bookId, playPageTurn, saveProgress, isEndingPage, findPageIndexById, pages]);
+      setChoiceHistory(prev => [...prev, sourcePageIndex]);
+      setCurrentPageIndex(targetIndex);
+      setMadeChoice(true);
+      setCameFromBranch(true);
+      const isEnding = isEndingPage(targetIndex);
+      if (isEnding) setJustCompleted(true);
+      const targetPageId = targetPage?.id ?? nextPageDbId ?? 0;
+      saveProgress.mutate({
+        bookId,
+        currentPageId: targetPageId,
+        branchPath: targetPage?.branchPath ?? "root",
+        isEndingNode: isEnding,
+      });
+    },
+    [bookId, playPageTurn, saveProgress, isEndingPage, findPageIndexById, pages]
+  );
 
   const handleEndReached = useCallback(() => {
     setShowBackCover(true);
@@ -520,7 +715,11 @@ export default function Reader() {
     setCameFromBranch(false);
     stopAmbience();
     stopPageSfx();
-    saveProgress.mutate({ bookId, currentPageId: pages[0]?.id ?? 0, branchPath: pages[0]?.branchPath ?? "root" });
+    saveProgress.mutate({
+      bookId,
+      currentPageId: pages[0]?.id ?? 0,
+      branchPath: pages[0]?.branchPath ?? "root",
+    });
   }, [bookId, pages, saveProgress, stopAmbience, stopPageSfx]);
 
   const handleBeginReading = useCallback(() => {
@@ -535,19 +734,27 @@ export default function Reader() {
 
   const hasChoices = visibleChoiceOptions.length > 0;
 
-  const handleGoTo = useCallback((index: number) => {
-    const targetPage = pages[index];
-    // Only play sound from page 3 onwards (skip pages 0, 1, 2)
-    if (index >= 2) {
-      const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
-      playPageTurn(sfxTags, targetPage?.content ?? "");
-    }
-    setCameFromBranch(false);
-    setCurrentPageIndex(index);
-    const isEnding = isEndingPage(index);
-    if (isEnding) setJustCompleted(true);
-    saveProgress.mutate({ bookId, currentPageId: targetPage?.id ?? 0, branchPath: targetPage?.branchPath ?? "root", isEndingNode: isEnding });
-  }, [pages, playPageTurn, isEndingPage, saveProgress, bookId]);
+  const handleGoTo = useCallback(
+    (index: number) => {
+      const targetPage = pages[index];
+      // Only play sound from page 3 onwards (skip pages 0, 1, 2)
+      if (index >= 2) {
+        const sfxTags = (targetPage?.sfxTags as string[] | null) ?? undefined;
+        playPageTurn(sfxTags, targetPage?.content ?? "");
+      }
+      setCameFromBranch(false);
+      setCurrentPageIndex(index);
+      const isEnding = isEndingPage(index);
+      if (isEnding) setJustCompleted(true);
+      saveProgress.mutate({
+        bookId,
+        currentPageId: targetPage?.id ?? 0,
+        branchPath: targetPage?.branchPath ?? "root",
+        isEndingNode: isEnding,
+      });
+    },
+    [pages, playPageTurn, isEndingPage, saveProgress, bookId]
+  );
 
   const handleReturnToCover = useCallback(() => {
     // Don't play sound when returning to cover
@@ -576,7 +783,13 @@ export default function Reader() {
   });
 
   // Drag-to-turn corner interaction
-  const { dragProgress, isDraggingCorner, curlStyle, cornerIndicatorStyle, cornerCursorStyle } = useFlipbookDragCurl({
+  const {
+    dragProgress,
+    isDraggingCorner,
+    curlStyle,
+    cornerIndicatorStyle,
+    cornerCursorStyle,
+  } = useFlipbookDragCurl({
     containerRef: fullscreenRef,
     onFlipForward: flipForward,
     onFlipBackward: flipBackward,
@@ -605,8 +818,13 @@ export default function Reader() {
       <AppLayout>
         <div className="max-w-2xl mx-auto px-4 py-20 text-center">
           <BookOpen className="w-16 h-16 text-purple-700 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-3">Sign in to read</h2>
-          <Button onClick={() => (window.location.href = "/login")} className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white">
+          <h2 className="text-2xl font-bold text-white mb-3">
+            Sign in to read
+          </h2>
+          <Button
+            onClick={() => (window.location.href = "/login")}
+            className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white"
+          >
             Sign In
           </Button>
         </div>
@@ -630,9 +848,13 @@ export default function Reader() {
         <div className="max-w-2xl mx-auto px-4 py-20 text-center">
           <BookOpen className="w-16 h-16 text-purple-700 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-3">Book not found</h2>
-          <p className="text-gray-400 mb-4">This book doesn't exist or you don't have access to it.</p>
+          <p className="text-gray-400 mb-4">
+            This book doesn't exist or you don't have access to it.
+          </p>
           <Link href="/library">
-            <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white">Back to Library</Button>
+            <Button className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white">
+              Back to Library
+            </Button>
           </Link>
         </div>
       </AppLayout>
@@ -641,7 +863,11 @@ export default function Reader() {
 
   const isLastPage =
     currentPageIndex >= pages.length - 1 ||
-    (!!currentPage && !currentPage.choiceA && !currentPage.choiceB && !currentPage.nextPageIdA && !currentPage.nextPageIdB);
+    (!!currentPage &&
+      !currentPage.choiceA &&
+      !currentPage.choiceB &&
+      !currentPage.nextPageIdA &&
+      !currentPage.nextPageIdB);
   const coverUrl = book?.book?.coverImageUrl;
   const bookTitle = book?.book?.title;
   const authorName = book?.authorName;
@@ -651,39 +877,55 @@ export default function Reader() {
     .replace(/\b\w/g, c => c.toUpperCase());
 
   // Animation class for the spread container -- fairy tale rotateX, others rotateY
-  const flipAnimClass = !prefersReducedMotion && flipDirection
-    ? presentationRule.flipAnimation === "storybook"
-      ? flipDirection === "forward"
-        ? "animate-[flipForwardFairyTale_0.38s_cubic-bezier(0.4,0,0.2,1)]"
-        : "animate-[flipBackwardFairyTale_0.38s_cubic-bezier(0.4,0,0.2,1)]"
-      : presentationRule.flipAnimation === "comic"
+  const flipAnimClass =
+    !prefersReducedMotion && flipDirection
+      ? presentationRule.flipAnimation === "storybook"
         ? flipDirection === "forward"
-          ? "animate-[flipForwardComic_0.3s_cubic-bezier(0.2,0.8,0.2,1)]"
-          : "animate-[flipBackwardComic_0.3s_cubic-bezier(0.2,0.8,0.2,1)]"
-        : flipDirection === "forward"
-          ? "animate-[flipForwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
-          : "animate-[flipBackwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
-    : "";
+          ? "animate-[flipForwardFairyTale_0.38s_cubic-bezier(0.4,0,0.2,1)]"
+          : "animate-[flipBackwardFairyTale_0.38s_cubic-bezier(0.4,0,0.2,1)]"
+        : presentationRule.flipAnimation === "comic"
+          ? flipDirection === "forward"
+            ? "animate-[flipForwardComic_0.3s_cubic-bezier(0.2,0.8,0.2,1)]"
+            : "animate-[flipBackwardComic_0.3s_cubic-bezier(0.2,0.8,0.2,1)]"
+          : flipDirection === "forward"
+            ? "animate-[flipForwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
+            : "animate-[flipBackwardRealistic_0.38s_cubic-bezier(0.4,0,0.2,1)]"
+      : "";
 
   return (
-    <div ref={fullscreenRef} className="min-h-screen bg-[#0A0818] text-white flex flex-col">
+    <div
+      ref={fullscreenRef}
+      className="min-h-screen bg-[#0A0818] text-white flex flex-col"
+    >
       {/* Inject CSS keyframes */}
       <style>{FLIP_STYLES}</style>
 
       {/* Reader Header -- hidden in fullscreen */}
-      <div className={cn(
-        "bg-[#1A1033] border-b border-purple-900/30 px-4 py-3 flex items-center justify-between transition-all duration-300 pointer-events-auto",
-        isFullscreen && "opacity-0 hover:opacity-100 absolute top-0 left-0 right-0 z-50"
-      )}>
-        <Link href="/library" className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors">
+      <div
+        className={cn(
+          "bg-[#1A1033] border-b border-purple-900/30 px-4 py-3 flex items-center justify-between transition-all duration-300 pointer-events-auto",
+          isFullscreen &&
+            "opacity-0 hover:opacity-100 absolute top-0 left-0 right-0 z-50"
+        )}
+      >
+        <Link
+          href="/library"
+          className="flex items-center gap-2 text-gray-400 hover:text-white text-sm transition-colors"
+        >
           <ChevronLeft className="w-4 h-4" />
           {t("reader.backToLibrary")}
         </Link>
 
         <div className="text-center">
-          <h1 className="text-sm font-semibold text-white line-clamp-1">{bookTitle}</h1>
+          <h1 className="text-sm font-semibold text-white line-clamp-1">
+            {bookTitle}
+          </h1>
           <p className="text-xs text-gray-400">
-            {showCover ? "Cover" : showBackCover ? "Back Cover" : `Page ${currentRoutePageNumber} of ${targetReadablePageCount || pages.length}`}
+            {showCover
+              ? "Cover"
+              : showBackCover
+                ? "Back Cover"
+                : `Page ${currentRoutePageNumber} of ${targetReadablePageCount || pages.length}`}
           </p>
         </div>
 
@@ -713,7 +955,10 @@ export default function Reader() {
 
       {/* Characters Panel */}
       {showCharacters && characterCards.length > 0 && (
-        <CharactersPanel cards={characterCards} onClose={() => setShowCharacters(false)} />
+        <CharactersPanel
+          cards={characterCards}
+          onClose={() => setShowCharacters(false)}
+        />
       )}
 
       {/* Story Tree Overlay */}
@@ -723,7 +968,7 @@ export default function Reader() {
           currentPageIndex={currentPageIndex}
           choiceHistory={choiceHistory}
           onClose={() => setShowTreeMap(false)}
-          onNavigate={(idx) => {
+          onNavigate={idx => {
             setShowTreeMap(false);
             handleGoTo(idx);
           }}
@@ -766,12 +1011,16 @@ export default function Reader() {
           {...containerProps}
           className={cn(
             "w-full relative",
-            isComic && !showCover && !effectiveSpreadMode ? "max-w-xl" : "max-w-5xl",
-            isFairyTale ? flipAnimClass : "",
+            isComic && !showCover && !effectiveSpreadMode
+              ? "max-w-xl"
+              : "max-w-5xl",
+            isFairyTale ? flipAnimClass : ""
           )}
           style={{
             ...curlStyle,
-            ...(isDraggingCorner ? {} : { transformOrigin: isFairyTale ? "top center" : undefined }),
+            ...(isDraggingCorner
+              ? {}
+              : { transformOrigin: isFairyTale ? "top center" : undefined }),
             perspective: "1200px",
             cursor: cornerCursorStyle,
           }}
@@ -786,11 +1035,17 @@ export default function Reader() {
               <div className="bg-[#F5F0E8] text-[#1A1033] p-10 min-h-[500px] flex flex-col justify-center items-center text-center">
                 <div className="w-full max-w-xs">
                   <div className="w-16 h-1 bg-[#F59E0B] mx-auto mb-8" />
-                  <p className="text-4xl font-serif italic text-[#2D1B69] mb-6">{t("reader.theEnd")}</p>
+                  <p className="text-4xl font-serif italic text-[#2D1B69] mb-6">
+                    {t("reader.theEnd")}
+                  </p>
                   <p className="text-sm text-gray-600 mb-10">{bookTitle}</p>
                   <div className="w-16 h-1 bg-[#7C3AED] mx-auto mb-10" />
                   <div className="flex flex-col gap-3">
-                    <Button onClick={handleRestart} variant="outline" className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm">
+                    <Button
+                      onClick={handleRestart}
+                      variant="outline"
+                      className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
+                    >
                       <RotateCcw className="w-4 h-4 mr-2" />
                       {t("reader.restart")}
                     </Button>
@@ -817,7 +1072,9 @@ export default function Reader() {
                   </div>
                 )}
                 <div className="absolute inset-0 flex items-end justify-center pb-10">
-                  <p className="text-xs uppercase tracking-widest text-white/60">{genreLabel}</p>
+                  <p className="text-xs uppercase tracking-widest text-white/60">
+                    {genreLabel}
+                  </p>
                 </div>
               </div>
             </div>
@@ -837,7 +1094,9 @@ export default function Reader() {
                     <div className="w-full h-full flex items-center justify-center min-h-[500px]">
                       <div className="text-center">
                         <BookOpen className="w-20 h-20 text-purple-700 mx-auto mb-4" />
-                        <p className="text-gray-500 text-sm">{t("reader.noCoverImage")}</p>
+                        <p className="text-gray-500 text-sm">
+                          {t("reader.noCoverImage")}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -851,7 +1110,9 @@ export default function Reader() {
                       {bookTitle}
                     </h1>
                     {authorName && (
-                      <p className="text-base text-gray-600 italic mb-3">{t("reader.by")} {authorName}</p>
+                      <p className="text-base text-gray-600 italic mb-3">
+                        {t("reader.by")} {authorName}
+                      </p>
                     )}
                     <p className="text-xs uppercase tracking-widest text-[#7C3AED] mb-8">
                       {genreLabel}
@@ -877,70 +1138,204 @@ export default function Reader() {
                 /* -- Comic Spread: Two pages side-by-side -- */
                 <ComicSpreadLayout
                   leftPanels={(() => {
-                    const raw = Array.isArray(currentPage?.panels) ? currentPage.panels as unknown[] : [];
-                    const fallback = typeof currentPage?.imageUrl === "string" ? currentPage.imageUrl : "";
-                    const normalised = raw.slice(0, 3).map((item) => {
+                    const raw = Array.isArray(currentPage?.panels)
+                      ? (currentPage.panels as unknown[])
+                      : [];
+                    const fallback =
+                      typeof currentPage?.imageUrl === "string"
+                        ? currentPage.imageUrl
+                        : "";
+                    const normalised = raw.slice(0, 3).map(item => {
                       if (typeof item === "string") {
-                        return { imageUrl: item, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null };
-                      } else if (item && typeof item === "object" && "imageUrl" in item && typeof (item as Record<string, unknown>).imageUrl === "string") {
+                        return {
+                          imageUrl: item,
+                          narration: "",
+                          dialogue: null,
+                          speaker: null,
+                          bubbleType: null,
+                          position: null,
+                        };
+                      } else if (
+                        item &&
+                        typeof item === "object" &&
+                        "imageUrl" in item &&
+                        typeof (item as Record<string, unknown>).imageUrl ===
+                          "string"
+                      ) {
                         const p = item as Record<string, unknown>;
                         return {
                           imageUrl: p.imageUrl as string,
-                          narration: typeof p.narration === "string" ? p.narration : "",
-                          dialogue: typeof p.dialogue === "string" ? p.dialogue : null,
-                          speaker: typeof p.speaker === "string" ? p.speaker : null,
-                          bubbleType: typeof p.bubbleType === "string" ? p.bubbleType as "speech" | "thought" | "shout" : null,
-                          position: typeof p.position === "string" ? p.position as "top-left" | "top-right" | "bottom-left" | "bottom-right" : null,
+                          narration:
+                            typeof p.narration === "string" ? p.narration : "",
+                          dialogue:
+                            typeof p.dialogue === "string" ? p.dialogue : null,
+                          speaker:
+                            typeof p.speaker === "string" ? p.speaker : null,
+                          bubbleType:
+                            typeof p.bubbleType === "string"
+                              ? (p.bubbleType as "speech" | "thought" | "shout")
+                              : null,
+                          position:
+                            typeof p.position === "string"
+                              ? (p.position as
+                                  | "top-left"
+                                  | "top-right"
+                                  | "bottom-left"
+                                  | "bottom-right")
+                              : null,
                         };
                       } else {
-                        return { imageUrl: fallback, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null };
+                        return {
+                          imageUrl: fallback,
+                          narration: "",
+                          dialogue: null,
+                          speaker: null,
+                          bubbleType: null,
+                          position: null,
+                        };
                       }
                     });
                     while (normalised.length < 3) {
-                      normalised.push({ imageUrl: fallback, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null });
+                      normalised.push({
+                        imageUrl: fallback,
+                        narration: "",
+                        dialogue: null,
+                        speaker: null,
+                        bubbleType: null,
+                        position: null,
+                      });
                     }
                     return normalised;
                   })()}
                   rightPanels={(() => {
-                    const raw = Array.isArray(nextPage?.panels) ? nextPage.panels as unknown[] : [];
-                    const fallback = typeof nextPage?.imageUrl === "string" ? nextPage.imageUrl : "";
-                    const normalised = raw.slice(0, 3).map((item) => {
+                    const raw = Array.isArray(nextPage?.panels)
+                      ? (nextPage.panels as unknown[])
+                      : [];
+                    const fallback =
+                      typeof nextPage?.imageUrl === "string"
+                        ? nextPage.imageUrl
+                        : "";
+                    const normalised = raw.slice(0, 3).map(item => {
                       if (typeof item === "string") {
-                        return { imageUrl: item, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null };
-                      } else if (item && typeof item === "object" && "imageUrl" in item && typeof (item as Record<string, unknown>).imageUrl === "string") {
+                        return {
+                          imageUrl: item,
+                          narration: "",
+                          dialogue: null,
+                          speaker: null,
+                          bubbleType: null,
+                          position: null,
+                        };
+                      } else if (
+                        item &&
+                        typeof item === "object" &&
+                        "imageUrl" in item &&
+                        typeof (item as Record<string, unknown>).imageUrl ===
+                          "string"
+                      ) {
                         const p = item as Record<string, unknown>;
                         return {
                           imageUrl: p.imageUrl as string,
-                          narration: typeof p.narration === "string" ? p.narration : "",
-                          dialogue: typeof p.dialogue === "string" ? p.dialogue : null,
-                          speaker: typeof p.speaker === "string" ? p.speaker : null,
-                          bubbleType: typeof p.bubbleType === "string" ? p.bubbleType as "speech" | "thought" | "shout" : null,
-                          position: typeof p.position === "string" ? p.position as "top-left" | "top-right" | "bottom-left" | "bottom-right" : null,
+                          narration:
+                            typeof p.narration === "string" ? p.narration : "",
+                          dialogue:
+                            typeof p.dialogue === "string" ? p.dialogue : null,
+                          speaker:
+                            typeof p.speaker === "string" ? p.speaker : null,
+                          bubbleType:
+                            typeof p.bubbleType === "string"
+                              ? (p.bubbleType as "speech" | "thought" | "shout")
+                              : null,
+                          position:
+                            typeof p.position === "string"
+                              ? (p.position as
+                                  | "top-left"
+                                  | "top-right"
+                                  | "bottom-left"
+                                  | "bottom-right")
+                              : null,
                         };
                       } else {
-                        return { imageUrl: fallback, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null };
+                        return {
+                          imageUrl: fallback,
+                          narration: "",
+                          dialogue: null,
+                          speaker: null,
+                          bubbleType: null,
+                          position: null,
+                        };
                       }
                     });
                     while (normalised.length < 3) {
-                      normalised.push({ imageUrl: fallback, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null });
+                      normalised.push({
+                        imageUrl: fallback,
+                        narration: "",
+                        dialogue: null,
+                        speaker: null,
+                        bubbleType: null,
+                        position: null,
+                      });
                     }
                     return normalised;
                   })()}
                   leftPageNumber={currentRoutePageNumber}
-                  rightChoiceSlot={
-                    hasChoices ? (
+                  rightPageNumber={nextRoutePageNumber}
+                  leftChoiceSlot={
+                    hasChoices && visibleChoiceSide === "left" ? (
                       <div className="space-y-3">
                         {visibleChoiceOptions.map((choice, idx: number) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
-                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
-                              style={{ fontFamily: "'Bangers', 'Impact', sans-serif", letterSpacing: "0.05em" }}
-                            >
-                              <span className="font-bold text-yellow-400 flex-shrink-0">{String.fromCharCode(65 + idx)}.</span>
-                              <span className="flex-1 break-words">{choice.text}</span>
-                            </button>
-                          ))}
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleChoice(
+                                visibleChoicePageIndex,
+                                idx,
+                                choice.nextId
+                              )
+                            }
+                            className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                            style={{
+                              fontFamily: comicChoiceFontFamily,
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            <span className="font-bold text-yellow-400 flex-shrink-0">
+                              {String.fromCharCode(65 + idx)}.
+                            </span>
+                            <span className="flex-1 break-words">
+                              {choice.text}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : undefined
+                  }
+                  rightChoiceSlot={
+                    hasChoices && visibleChoiceSide === "right" ? (
+                      <div className="space-y-3">
+                        {visibleChoiceOptions.map((choice, idx: number) => (
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleChoice(
+                                visibleChoicePageIndex,
+                                idx,
+                                choice.nextId
+                              )
+                            }
+                            className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                            style={{
+                              fontFamily: comicChoiceFontFamily,
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            <span className="font-bold text-yellow-400 flex-shrink-0">
+                              {String.fromCharCode(65 + idx)}.
+                            </span>
+                            <span className="flex-1 break-words">
+                              {choice.text}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     ) : undefined
                   }
@@ -951,31 +1346,76 @@ export default function Reader() {
                   panels={(() => {
                     // Runtime panels shape validation:
                     // DB JSON can be: string[] (old format), ComicPanel[] (new format), or unknown
-                    const raw = Array.isArray(currentPage?.panels) ? currentPage.panels as unknown[] : [];
-                    const fallback = typeof currentPage?.imageUrl === "string" ? currentPage.imageUrl : "";
-                    const normalised = raw.slice(0, 3).map((item) => {
+                    const raw = Array.isArray(currentPage?.panels)
+                      ? (currentPage.panels as unknown[])
+                      : [];
+                    const fallback =
+                      typeof currentPage?.imageUrl === "string"
+                        ? currentPage.imageUrl
+                        : "";
+                    const normalised = raw.slice(0, 3).map(item => {
                       if (typeof item === "string") {
                         // Old format: plain string URL
-                        return { imageUrl: item, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null };
-                      } else if (item && typeof item === "object" && "imageUrl" in item && typeof (item as Record<string, unknown>).imageUrl === "string") {
+                        return {
+                          imageUrl: item,
+                          narration: "",
+                          dialogue: null,
+                          speaker: null,
+                          bubbleType: null,
+                          position: null,
+                        };
+                      } else if (
+                        item &&
+                        typeof item === "object" &&
+                        "imageUrl" in item &&
+                        typeof (item as Record<string, unknown>).imageUrl ===
+                          "string"
+                      ) {
                         // New format: ComicPanel object
                         const p = item as Record<string, unknown>;
                         return {
                           imageUrl: p.imageUrl as string,
-                          narration: typeof p.narration === "string" ? p.narration : "",
-                          dialogue: typeof p.dialogue === "string" ? p.dialogue : null,
-                          speaker: typeof p.speaker === "string" ? p.speaker : null,
-                          bubbleType: typeof p.bubbleType === "string" ? p.bubbleType as "speech" | "thought" | "shout" : null,
-                          position: typeof p.position === "string" ? p.position as "top-left" | "top-right" | "bottom-left" | "bottom-right" : null,
+                          narration:
+                            typeof p.narration === "string" ? p.narration : "",
+                          dialogue:
+                            typeof p.dialogue === "string" ? p.dialogue : null,
+                          speaker:
+                            typeof p.speaker === "string" ? p.speaker : null,
+                          bubbleType:
+                            typeof p.bubbleType === "string"
+                              ? (p.bubbleType as "speech" | "thought" | "shout")
+                              : null,
+                          position:
+                            typeof p.position === "string"
+                              ? (p.position as
+                                  | "top-left"
+                                  | "top-right"
+                                  | "bottom-left"
+                                  | "bottom-right")
+                              : null,
                         };
                       } else {
                         // Unknown shape: fallback gracefully
-                        return { imageUrl: fallback, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null };
+                        return {
+                          imageUrl: fallback,
+                          narration: "",
+                          dialogue: null,
+                          speaker: null,
+                          bubbleType: null,
+                          position: null,
+                        };
                       }
                     });
                     // Ensure exactly 3 panels (pad with fallback if needed)
                     while (normalised.length < 3) {
-                      normalised.push({ imageUrl: fallback, narration: "", dialogue: null, speaker: null, bubbleType: null, position: null });
+                      normalised.push({
+                        imageUrl: fallback,
+                        narration: "",
+                        dialogue: null,
+                        speaker: null,
+                        bubbleType: null,
+                        position: null,
+                      });
                     }
                     return normalised;
                   })()}
@@ -984,16 +1424,29 @@ export default function Reader() {
                     hasChoices && !madeChoice ? (
                       <div className="space-y-3">
                         {visibleChoiceOptions.map((choice, idx: number) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
-                              className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
-                              style={{ fontFamily: "'Bangers', 'Impact', sans-serif", letterSpacing: "0.05em" }}
-                            >
-                              <span className="font-bold text-yellow-400 flex-shrink-0">{String.fromCharCode(65 + idx)}.</span>
-                              <span className="flex-1 break-words">{choice.text}</span>
-                            </button>
-                          ))}
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleChoice(
+                                visibleChoicePageIndex,
+                                idx,
+                                choice.nextId
+                              )
+                            }
+                            className="w-full text-left px-4 py-3 bg-[#1A1033] text-white rounded text-sm hover:bg-[#2A1A43] transition-colors border-2 border-yellow-400 flex items-start gap-2"
+                            style={{
+                              fontFamily: comicChoiceFontFamily,
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            <span className="font-bold text-yellow-400 flex-shrink-0">
+                              {String.fromCharCode(65 + idx)}.
+                            </span>
+                            <span className="flex-1 break-words">
+                              {choice.text}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     ) : undefined
                   }
@@ -1002,19 +1455,45 @@ export default function Reader() {
                       <div className="text-center space-y-3">
                         <div className="bg-yellow-900/40 border-2 border-yellow-400 rounded-xl p-4 flex flex-col items-center gap-2">
                           <Trophy className="w-8 h-8 text-yellow-400" />
-                          <p className="text-base font-bold text-yellow-400 uppercase tracking-wide" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>Adventure Complete!</p>
-                          {justCompleted && <span className="text-green-400 font-bold text-sm">Completed</span>}
+                          <p
+                            className="text-base font-bold text-yellow-400 uppercase tracking-wide"
+                            style={{
+                              fontFamily: "'Bangers', 'Impact', sans-serif",
+                            }}
+                          >
+                            Adventure Complete!
+                          </p>
+                          {justCompleted && (
+                            <span className="text-green-400 font-bold text-sm">
+                              Completed
+                            </span>
+                          )}
                         </div>
-                        <p className="text-lg font-bold text-white" style={{ fontFamily: "'Bangers', 'Impact', sans-serif" }}>~ {t("reader.theEnd")} ~</p>
+                        <p
+                          className="text-lg font-bold text-white"
+                          style={{
+                            fontFamily: "'Bangers', 'Impact', sans-serif",
+                          }}
+                        >
+                          ~ {t("reader.theEnd")} ~
+                        </p>
                         <div className="space-y-3">
-                          <p className="text-xs font-semibold text-gray-300">Close this book and return to your library</p>
+                          <p className="text-xs font-semibold text-gray-300">
+                            Close this book and return to your library
+                          </p>
                           <div className="flex gap-3 justify-center">
-                            <Button onClick={handleRestart} variant="outline" className="border-2 border-yellow-400 text-yellow-400 text-sm">
-                              <RotateCcw className="w-4 h-4 mr-2" />{t("reader.restart")}
+                            <Button
+                              onClick={handleRestart}
+                              variant="outline"
+                              className="border-2 border-yellow-400 text-yellow-400 text-sm"
+                            >
+                              <RotateCcw className="w-4 h-4 mr-2" />
+                              {t("reader.restart")}
                             </Button>
                             <Link href="/library">
                               <Button className="close-book-button bg-yellow-400 text-black text-sm hover:bg-yellow-300 font-bold">
-                                <Home className="w-4 h-4 mr-2" />Close Book
+                                <Home className="w-4 h-4 mr-2" />
+                                Close Book
                               </Button>
                             </Link>
                           </div>
@@ -1026,14 +1505,27 @@ export default function Reader() {
                 />
               ) : isFairyTale ? (
                 /* -- Fairy Tale: full-viewport landscape -- matches reference screenshot -- */
-                <div className="shadow-2xl rounded-xl overflow-hidden w-full" style={{ background: "#0D0B1A" }}>
+                <div
+                  className="shadow-2xl rounded-xl overflow-hidden w-full"
+                  style={{ background: "#0D0B1A" }}
+                >
                   {/* Full-width illustration with overlays */}
-                  <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+                  <div
+                    className="relative w-full"
+                    style={{ aspectRatio: "16/9" }}
+                  >
                     {currentPage?.imageUrl ? (
                       <img
                         src={currentPage.imageUrl}
                         alt="Page illustration"
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
                       />
                     ) : (
                       <div className="absolute inset-0 bg-[#1A1033] flex items-center justify-center">
@@ -1041,11 +1533,17 @@ export default function Reader() {
                       </div>
                     )}
                     {/* Page number -- top left overlay */}
-                    <div className="absolute top-3 left-4 text-white text-sm font-semibold drop-shadow-lg" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
-                        {currentRoutePageNumber}
+                    <div
+                      className="absolute top-3 left-4 text-white text-sm font-semibold drop-shadow-lg"
+                      style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                    >
+                      {currentRoutePageNumber}
                     </div>
                     {/* Book title -- top right overlay */}
-                    <div className="absolute top-3 right-4 text-white text-sm font-semibold drop-shadow-lg max-w-[50%] text-right line-clamp-1" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                    <div
+                      className="absolute top-3 right-4 text-white text-sm font-semibold drop-shadow-lg max-w-[50%] text-right line-clamp-1"
+                      style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}
+                    >
                       {bookTitle}
                     </div>
                   </div>
@@ -1062,17 +1560,23 @@ export default function Reader() {
                     {hasChoices && (
                       <div className="mt-5 space-y-3 max-w-xl mx-auto">
                         {visibleChoiceOptions.map((choice, idx: number) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
-                              className="w-full text-left px-5 py-4 bg-[#2D1B69] text-white rounded-xl text-base hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
-                            >
-                              <span className="font-semibold text-[#F59E0B] mr-2">
-                                {String.fromCharCode(65 + idx)}.
-                              </span>
-                              {choice.text}
-                            </button>
-                          ))}
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleChoice(
+                                visibleChoicePageIndex,
+                                idx,
+                                choice.nextId
+                              )
+                            }
+                            className="w-full text-left px-5 py-4 bg-[#2D1B69] text-white rounded-xl text-base hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
+                          >
+                            <span className="font-semibold text-[#F59E0B] mr-2">
+                              {String.fromCharCode(65 + idx)}.
+                            </span>
+                            {choice.text}
+                          </button>
+                        ))}
                       </div>
                     )}
 
@@ -1081,19 +1585,35 @@ export default function Reader() {
                       <div className="mt-8 text-center space-y-4">
                         <div className="bg-gradient-to-r from-purple-900/60 to-amber-900/40 border border-amber-500/40 rounded-xl p-4 flex flex-col items-center gap-2">
                           <Trophy className="w-8 h-8 text-[#F59E0B]" />
-                          <p className="text-base font-bold text-white">Adventure Complete!</p>
-                          {justCompleted && <span className="text-green-400 font-semibold text-sm">Completed</span>}
+                          <p className="text-base font-bold text-white">
+                            Adventure Complete!
+                          </p>
+                          {justCompleted && (
+                            <span className="text-green-400 font-semibold text-sm">
+                              Completed
+                            </span>
+                          )}
                         </div>
-                        <p className="text-lg font-bold text-[#2D1B69]">~ {t("reader.theEnd")} ~</p>
+                        <p className="text-lg font-bold text-[#2D1B69]">
+                          ~ {t("reader.theEnd")} ~
+                        </p>
                         <div className="space-y-3">
-                          <p className="text-xs font-semibold text-[#2D1B69]">Close this book and return to your library</p>
+                          <p className="text-xs font-semibold text-[#2D1B69]">
+                            Close this book and return to your library
+                          </p>
                           <div className="flex gap-3 justify-center">
-                            <Button onClick={handleRestart} variant="outline" className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm">
-                              <RotateCcw className="w-4 h-4 mr-2" />{t("reader.restart")}
+                            <Button
+                              onClick={handleRestart}
+                              variant="outline"
+                              className="border-[#2D1B69] text-[#2D1B69] hover:bg-[#2D1B69]/10 text-sm"
+                            >
+                              <RotateCcw className="w-4 h-4 mr-2" />
+                              {t("reader.restart")}
                             </Button>
                             <Link href="/library">
                               <Button className="close-book-button bg-[#2D1B69] text-white hover:bg-[#3D2B79] text-sm font-bold">
-                                <Home className="w-4 h-4 mr-2" />Close Book
+                                <Home className="w-4 h-4 mr-2" />
+                                Close Book
                               </Button>
                             </Link>
                           </div>
@@ -1111,11 +1631,19 @@ export default function Reader() {
                       {currentRoutePageNumber}
                     </div>
                     {currentPage?.imageUrl && (
-                      <div className="mb-6 rounded-lg overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                      <div
+                        className="mb-6 rounded-lg overflow-hidden"
+                        style={{ aspectRatio: "4/3" }}
+                      >
                         <img
                           src={currentPage.imageUrl}
                           alt="Page illustration"
-                          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            display: "block",
+                          }}
                         />
                       </div>
                     )}
@@ -1124,24 +1652,62 @@ export default function Reader() {
                         {currentPage?.content || ""}
                       </p>
                     </div>
+
+                    {hasChoices && visibleChoiceSide === "left" && (
+                      <div className="mt-6 space-y-3">
+                        {visibleChoiceOptions.map((choice, idx: number) => (
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleChoice(
+                                visibleChoicePageIndex,
+                                idx,
+                                choice.nextId
+                              )
+                            }
+                            className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
+                          >
+                            <span className="font-semibold text-[#F59E0B] mr-2">
+                              {String.fromCharCode(65 + idx)}.
+                            </span>
+                            {choice.text}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Right page */}
                   <div
-                    className={cn("bg-[#EDE8DC] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative", flipAnimClass)}
-                    style={flipAnimClass ? { transformOrigin: "left center" } : undefined}
+                    className={cn(
+                      "bg-[#EDE8DC] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative",
+                      flipAnimClass
+                    )}
+                    style={
+                      flipAnimClass
+                        ? { transformOrigin: "left center" }
+                        : undefined
+                    }
                   >
                     <div className="absolute bottom-4 right-6 text-xs text-gray-500">
-                        {nextRoutePageNumber}
+                      {nextRoutePageNumber}
                     </div>
                     {nextPage ? (
                       <>
                         {nextPage.imageUrl && (
-                          <div className="mb-6 rounded-lg overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                          <div
+                            className="mb-6 rounded-lg overflow-hidden"
+                            style={{ aspectRatio: "4/3" }}
+                          >
                             <img
                               src={nextPage.imageUrl}
                               alt="Page illustration"
-                              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "contain",
+                                display: "block",
+                              }}
                             />
                           </div>
                         )}
@@ -1161,20 +1727,26 @@ export default function Reader() {
                     )}
 
                     {/* A/B Choices */}
-                    {hasChoices && (
+                    {hasChoices && visibleChoiceSide === "right" && (
                       <div className="mt-6 space-y-3">
                         {visibleChoiceOptions.map((choice, idx: number) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleChoice(visibleChoicePageIndex, idx, choice.nextId)}
-                              className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
-                            >
-                              <span className="font-semibold text-[#F59E0B] mr-2">
-                                {String.fromCharCode(65 + idx)}.
-                              </span>
-                              {choice.text}
-                            </button>
-                          ))}
+                          <button
+                            key={idx}
+                            onClick={() =>
+                              handleChoice(
+                                visibleChoicePageIndex,
+                                idx,
+                                choice.nextId
+                              )
+                            }
+                            className="w-full text-left px-4 py-3 bg-[#2D1B69] text-white rounded-lg text-sm hover:bg-[#3D2B79] transition-colors border border-purple-700/30"
+                          >
+                            <span className="font-semibold text-[#F59E0B] mr-2">
+                              {String.fromCharCode(65 + idx)}.
+                            </span>
+                            {choice.text}
+                          </button>
+                        ))}
                       </div>
                     )}
 
@@ -1183,15 +1755,25 @@ export default function Reader() {
                       <div className="mt-6 text-center space-y-4">
                         <div className="bg-gradient-to-r from-purple-900/60 to-amber-900/40 border border-amber-500/40 rounded-xl p-4 flex flex-col items-center gap-2">
                           <Trophy className="w-8 h-8 text-[#F59E0B]" />
-                          <p className="text-base font-bold text-white">Adventure Complete!</p>
+                          <p className="text-base font-bold text-white">
+                            Adventure Complete!
+                          </p>
                           <p className="text-xs text-gray-300">
                             You've reached the end of this story.{" "}
-                            {justCompleted && <span className="text-green-400 font-semibold">Completed</span>}
+                            {justCompleted && (
+                              <span className="text-green-400 font-semibold">
+                                Completed
+                              </span>
+                            )}
                           </p>
                         </div>
-                        <p className="text-lg font-bold text-[#2D1B69]">~ {t("reader.theEnd")} ~</p>
+                        <p className="text-lg font-bold text-[#2D1B69]">
+                          ~ {t("reader.theEnd")} ~
+                        </p>
                         <div className="space-y-3">
-                          <p className="text-xs font-semibold text-[#2D1B69]">Close this book and return to your library</p>
+                          <p className="text-xs font-semibold text-[#2D1B69]">
+                            Close this book and return to your library
+                          </p>
                           <div className="flex gap-3 justify-center">
                             <Button
                               onClick={handleRestart}
@@ -1220,10 +1802,12 @@ export default function Reader() {
                 {/* Prev button */}
                 <button
                   onClick={flipBackward}
-                  disabled={isAnimating || currentPageIndex === 0 || cameFromBranch}
+                  disabled={
+                    isAnimating || currentPageIndex === 0 || cameFromBranch
+                  }
                   className={cn(
                     "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
-                    (currentPageIndex === 0 || cameFromBranch)
+                    currentPageIndex === 0 || cameFromBranch
                       ? "text-gray-600 cursor-not-allowed opacity-40"
                       : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
                   )}
@@ -1246,7 +1830,7 @@ export default function Reader() {
                           )}
                         />
                       ))
-                    : pageNavigationIndices.map((pageIndex) => (
+                    : pageNavigationIndices.map(pageIndex => (
                         <button
                           key={pageIndex}
                           onClick={() => handleGoTo(pageIndex)}
@@ -1259,7 +1843,10 @@ export default function Reader() {
                         />
                       ))}
                   {(hasNonLinearGraph || pages.length > 15) && (
-                    <span className="text-xs text-gray-500 ml-1">{currentRoutePageNumber}/{targetReadablePageCount || pages.length}</span>
+                    <span className="text-xs text-gray-500 ml-1">
+                      {currentRoutePageNumber}/
+                      {targetReadablePageCount || pages.length}
+                    </span>
                   )}
                 </div>
 
@@ -1269,7 +1856,7 @@ export default function Reader() {
                   disabled={isAnimating || (isLastPage && !hasChoices)}
                   className={cn(
                     "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
-                    (isLastPage && !hasChoices)
+                    isLastPage && !hasChoices
                       ? "text-gray-600 cursor-not-allowed opacity-40"
                       : "text-white bg-[#7C3AED] hover:bg-[#6D28D9] shadow-md"
                   )}

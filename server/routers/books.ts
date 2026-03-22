@@ -1,5 +1,18 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, like, not, or, sql, sum, count, avg } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  like,
+  not,
+  or,
+  sql,
+  sum,
+  count,
+  avg,
+} from "drizzle-orm";
 import { z } from "zod";
 import {
   bookCharacters,
@@ -16,7 +29,10 @@ import { getDb } from "../db";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { adjustCredits } from "./credits";
 import { createNotification } from "./notifications";
-import { dispatchLeaderboardNotifications, notifySalesMilestone } from "../notificationEvents";
+import {
+  dispatchLeaderboardNotifications,
+  notifySalesMilestone,
+} from "../notificationEvents";
 import { invokeLLM } from "../_core/llm";
 import { generateImage } from "../_core/imageGeneration";
 import { storageDelete, storagePut } from "../storage";
@@ -44,7 +60,8 @@ import {
 
 async function imageUrlToBase64DataUrl(url: string): Promise<string> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
+  if (!res.ok)
+    throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`);
   const mime = res.headers.get("content-type") || "image/jpeg";
   const buf = Buffer.from(await res.arrayBuffer());
   return `data:${mime};base64,${buf.toString("base64")}`;
@@ -52,8 +69,11 @@ async function imageUrlToBase64DataUrl(url: string): Promise<string> {
 
 import { validateUpload } from "../uploadValidation";
 import { claimAndRunJob } from "../generationWorker";
-import { getBaseCost, photoExtraPerPhoto, computeTotalCost } from "../../shared/pricing";
-
+import {
+  getBaseCost,
+  photoExtraPerPhoto,
+  computeTotalCost,
+} from "../../shared/pricing";
 
 /**
  * Attempts to repair malformed JSON from LLM output.
@@ -65,7 +85,10 @@ function repairJSON(raw: string): string {
 
   // Remove markdown code fences if present
   if (s.startsWith("```")) {
-    s = s.replace(/^\`\`\`(?:json)?\n?/, "").replace(/\n?\`\`\`$/, "").trim();
+    s = s
+      .replace(/^\`\`\`(?:json)?\n?/, "")
+      .replace(/\n?\`\`\`$/, "")
+      .trim();
   }
 
   // Try parsing as-is first before mutating valid JSON
@@ -182,11 +205,7 @@ function extractLikelyJsonObject(raw: string): string {
 function compactList(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   return Array.from(
-    new Set(
-      values
-        .map((value) => String(value ?? "").trim())
-        .filter(Boolean)
-    )
+    new Set(values.map(value => String(value ?? "").trim()).filter(Boolean))
   );
 }
 
@@ -291,12 +310,16 @@ function isLengthAllowedForCategory(category: string, length: string): boolean {
 function stripInlineChoiceLabels(content: string): string {
   const cleanedLines = content
     .split(/\r?\n/)
-    .map((line) => line
-      .replace(/\s+Choice\s*A\s*:.*/i, "")
-      .replace(/\s+Choice\s*B\s*:.*/i, "")
-      .trimEnd())
-    .filter((line) => !/^\s*make\s+your\s+choice\s*:?\s*$/i.test(line))
-    .filter((line) => !/^\s*(?:choice\s*[ab]|[ab])\s*[:\)]\s*(?:null\s*)?$/i.test(line));
+    .map(line =>
+      line
+        .replace(/\s+Choice\s*A\s*:.*/i, "")
+        .replace(/\s+Choice\s*B\s*:.*/i, "")
+        .trimEnd()
+    )
+    .filter(line => !/^\s*make\s+your\s+choice\s*:?\s*$/i.test(line))
+    .filter(
+      line => !/^\s*(?:choice\s*[ab]|[ab])\s*[:\)]\s*(?:null\s*)?$/i.test(line)
+    );
 
   return cleanedLines
     .join("\n")
@@ -321,7 +344,9 @@ export function normaliseCharacterPhotoUrl(rawUrl: string): string {
   return url.toString();
 }
 
-async function fetchCharacterPhotoFromUrl(rawUrl: string): Promise<{ base64Data: string; mimeType: string }> {
+async function fetchCharacterPhotoFromUrl(
+  rawUrl: string
+): Promise<{ base64Data: string; mimeType: string }> {
   const safeUrl = normaliseCharacterPhotoUrl(rawUrl);
   const response = await fetch(safeUrl, {
     headers: {
@@ -331,12 +356,19 @@ async function fetchCharacterPhotoFromUrl(rawUrl: string): Promise<{ base64Data:
   });
 
   if (!response.ok) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: `Character photo URL could not be downloaded (${response.status})` });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Character photo URL could not be downloaded (${response.status})`,
+    });
   }
 
-  const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || "";
+  const mimeType =
+    response.headers.get("content-type")?.split(";")[0]?.trim() || "";
   if (!mimeType.startsWith("image/")) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Character photo URL must point to a valid image" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Character photo URL must point to a valid image",
+    });
   }
 
   const bytes = Buffer.from(await response.arrayBuffer());
@@ -349,26 +381,34 @@ async function fetchCharacterPhotoFromUrl(rawUrl: string): Promise<{ base64Data:
   return { base64Data: asBase64, mimeType };
 }
 
-
-export async function generateBookContent(bookId: number, bookData: {
-  title: string;
-  category: string;
-  length: string;
-  description: string;
-  language: string;
-  characters: Array<{ name: string; photoUrl?: string }>;
-  uploadedKeys?: string[];
-}) {
+export async function generateBookContent(
+  bookId: number,
+  bookData: {
+    title: string;
+    category: string;
+    length: string;
+    description: string;
+    language: string;
+    characters: Array<{ name: string; photoUrl?: string }>;
+    uploadedKeys?: string[];
+  }
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable during book generation");
 
   try {
-    const { category, length, title, description, language, characters } = bookData;
+    const { category, length, title, description, language, characters } =
+      bookData;
     const isLandscape = category === "comic"; // Comic is landscape; fairy tale and others are portrait
     const isComic = category === "comic";
-    const isOtherGenre = ["crime_mystery", "fantasy_scifi", "romance", "horror_thriller"].includes(category);
+    const isOtherGenre = [
+      "crime_mystery",
+      "fantasy_scifi",
+      "romance",
+      "horror_thriller",
+    ].includes(category);
 
-    //  Spec-compliant page and image counts 
+    //  Spec-compliant page and image counts
     // fairy_tale:        10 pages, 10 page illustrations + 1 cover = 11 total images
     // comic thin:        10 pages x 3 panels = 30 panel images + 1 cover = 31 total
     // comic normal:      18 pages x 3 panels = 54 panel images + 1 cover = 55 total
@@ -389,10 +429,13 @@ export async function generateBookContent(bookId: number, bookData: {
     const photoRefByName = new Map(
       characters
         .filter(c => c.photoUrl)
-        .map(c => [c.name, { url: c.photoUrl!, mimeType: "image/jpeg" as const }])
+        .map(c => [
+          c.name,
+          { url: c.photoUrl!, mimeType: "image/jpeg" as const },
+        ])
     );
 
-    //  Global Style Lock 
+    //  Global Style Lock
     // Each genre gets a rich, multi-axis style descriptor assembled ONCE and
     // injected verbatim into every image prompt (cover, per-page, comic panels).
     // Axes: art medium · lighting direction · colour temperature · palette ·
@@ -448,7 +491,9 @@ export async function generateBookContent(bookId: number, bookData: {
         "no text, no letters, no words",
       ].join(", "),
     };
-    const stylePreset = STYLE_PRESETS[category] || "cinematic digital illustration, consistent character design, no text, no letters";
+    const stylePreset =
+      STYLE_PRESETS[category] ||
+      "cinematic digital illustration, consistent character design, no text, no letters";
     type GlobalStyleProfile = {
       medium: string;
       lighting: string;
@@ -465,7 +510,8 @@ export async function generateBookContent(bookId: number, bookData: {
           lighting: "warm natural storybook lighting with cozy gentle glow",
           palette: "rich but gentle child-friendly palette with clean contrast",
           linework: "crisp storybook outlines with soft painted texture",
-          composition: "readable full-page storybook composition with expressive silhouettes",
+          composition:
+            "readable full-page storybook composition with expressive silhouettes",
           renderingRules: [
             "preserve one stable illustrated storybook finish from cover through final page",
             "favour clarity of action over abstract magical atmosphere",
@@ -480,8 +526,10 @@ export async function generateBookContent(bookId: number, bookData: {
           medium: "classic American comic illustration",
           lighting: "strong directional side-lighting with graphic contrast",
           palette: "vibrant saturated comic palette with controlled primaries",
-          linework: "bold black ink outlines with flat cel shading and halftone accents",
-          composition: "dynamic action-forward framing with readable character staging",
+          linework:
+            "bold black ink outlines with flat cel shading and halftone accents",
+          composition:
+            "dynamic action-forward framing with readable character staging",
           renderingRules: [
             "keep comic rendering uniform across all panels and pages",
             "prioritise readable action beats and panel clarity",
@@ -494,8 +542,10 @@ export async function generateBookContent(bookId: number, bookData: {
         },
         crime_mystery: {
           medium: "dark cinematic graphic-novel illustration",
-          lighting: "dramatic chiaroscuro with cool shadows and warm highlights",
-          palette: "desaturated noir palette with charcoal, slate, amber, and teal accents",
+          lighting:
+            "dramatic chiaroscuro with cool shadows and warm highlights",
+          palette:
+            "desaturated noir palette with charcoal, slate, amber, and teal accents",
           linework: "precise ink-wash detailing with fine cross-hatching",
           composition: "tight atmospheric framing with strong focal character",
           renderingRules: [
@@ -511,7 +561,8 @@ export async function generateBookContent(bookId: number, bookData: {
           lighting: "dramatic rim-lighting with cool key light and warm fill",
           palette: "jewel-tone palette with luminous accents",
           linework: "detailed painterly rendering with sharp focal forms",
-          composition: "heroic wide or three-quarter framing with clear action read",
+          composition:
+            "heroic wide or three-quarter framing with clear action read",
           renderingRules: [
             "keep one stable cinematic illustrated finish through the whole book",
             "show the exact story action, not just generic wonder imagery",
@@ -525,7 +576,8 @@ export async function generateBookContent(bookId: number, bookData: {
           lighting: "soft golden-hour back-lighting with gentle glow",
           palette: "warm honey, rose, peach, and ivory palette",
           linework: "soft painterly edges with visible paint texture",
-          composition: "intimate medium-close framing with emotional readability",
+          composition:
+            "intimate medium-close framing with emotional readability",
           renderingRules: [
             "keep emotional clarity and stable painterly finish on every page",
           ],
@@ -536,7 +588,8 @@ export async function generateBookContent(bookId: number, bookData: {
         horror_thriller: {
           medium: "dark atmospheric illustration",
           lighting: "harsh directional light with deep shadow contrast",
-          palette: "desaturated near-black palette with sickly green and blood-red accents",
+          palette:
+            "desaturated near-black palette with sickly green and blood-red accents",
           linework: "scratchy textured brushwork with heavy vignette",
           composition: "tight ominous framing with clear threat focus",
           renderingRules: [
@@ -548,33 +601,40 @@ export async function generateBookContent(bookId: number, bookData: {
           ],
         },
       };
-      return byCategory[category] ?? {
-        medium: "cinematic illustrated storybook rendering",
-        lighting: "consistent directed illustration lighting",
-        palette: "controlled cohesive colour palette",
-        linework: "consistent clean illustrative line and texture handling",
-        composition: "readable action-first composition",
-        renderingRules: ["preserve a single stable illustration finish across the full book"],
-        continuityRules: ["do not drift styles or redesign characters"],
-      };
+      return (
+        byCategory[category] ?? {
+          medium: "cinematic illustrated storybook rendering",
+          lighting: "consistent directed illustration lighting",
+          palette: "controlled cohesive colour palette",
+          linework: "consistent clean illustrative line and texture handling",
+          composition: "readable action-first composition",
+          renderingRules: [
+            "preserve a single stable illustration finish across the full book",
+          ],
+          continuityRules: ["do not drift styles or redesign characters"],
+        }
+      );
     })();
 
-    //  Step 1: Generate rich character cards 
+    //  Step 1: Generate rich character cards
     // Each character gets a detailed visual + personality anchor used in every
     // subsequent LLM call to maintain consistency.
-    await db.update(books).set({ generationStep: "Building character profiles…" }).where(eq(books.id, bookId));
+    await db
+      .update(books)
+      .set({ generationStep: "Building character profiles…" })
+      .where(eq(books.id, bookId));
     type CharacterCard = {
       name: string;
-      appearance: string;  // physical description for image prompts
-      voice: string;       // speech style / personality for narrative
-      role: string;        // protagonist / antagonist / supporting
+      appearance: string; // physical description for image prompts
+      voice: string; // speech style / personality for narrative
+      role: string; // protagonist / antagonist / supporting
       photoUrl?: string;
       canonicalProfile?: VisualCanonicalCharacterProfile;
     };
 
     let characterCards: CharacterCard[] = [];
 
-    //  Step 1a: Photo analysis pass 
+    //  Step 1a: Photo analysis pass
     // For every character that has an uploaded photo, use the multimodal LLM to
     // extract concrete visual descriptors across ALL 8 physical identity axes:
     //   1. skin_tone       complexion, undertone, texture
@@ -607,7 +667,7 @@ export async function generateBookContent(bookId: number, bookData: {
       headwear?: string;
       age_band?: string;
       age_detail?: string;
-      prose_summary: string;  // 2-3 sentence flowing description for the card
+      prose_summary: string; // 2-3 sentence flowing description for the card
     };
     const photoAnalyses: Record<string, PhotoAnalysis> = {};
     const photoDescriptions: Record<string, string> = {}; // kept for backward compat
@@ -618,14 +678,18 @@ export async function generateBookContent(bookId: number, bookData: {
         try {
           photoDataUrl = await imageUrlToBase64DataUrl(char.photoUrl);
         } catch (dlErr) {
-          console.warn(`[Books] Could not download photo for "${char.name}", skipping photo analysis:`, dlErr);
+          console.warn(
+            `[Books] Could not download photo for "${char.name}", skipping photo analysis:`,
+            dlErr
+          );
           continue;
         }
         const photoResp = await invokeLLM({
           messages: [
             {
               role: "system" as const,
-              content: "You are a forensic character artist. Analyse photos with clinical precision for use as illustration references. Always respond with valid JSON only.",
+              content:
+                "You are a forensic character artist. Analyse photos with clinical precision for use as illustration references. Always respond with valid JSON only.",
             },
             {
               role: "user" as const,
@@ -673,15 +737,22 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
             photoAnalyses[char.name] = parsed;
             // prose_summary is the backward-compat description used in card generation
             photoDescriptions[char.name] = parsed.prose_summary || raw.trim();
-            console.log(`[Books] Photo analysis for "${char.name}": ${photoDescriptions[char.name].substring(0, 120)}¦`);
+            console.log(
+              `[Books] Photo analysis for "${char.name}": ${photoDescriptions[char.name].substring(0, 120)}¦`
+            );
           } catch {
             // JSON parse failed  fall back to raw text
             photoDescriptions[char.name] = raw.trim();
-            console.warn(`[Books] Photo analysis JSON parse failed for "${char.name}", using raw text.`);
+            console.warn(
+              `[Books] Photo analysis JSON parse failed for "${char.name}", using raw text.`
+            );
           }
         }
       } catch (photoErr) {
-        console.warn(`[Books] Photo analysis failed for "${char.name}", falling back to text-only appearance:`, photoErr);
+        console.warn(
+          `[Books] Photo analysis failed for "${char.name}", falling back to text-only appearance:`,
+          photoErr
+        );
       }
     }
 
@@ -726,7 +797,8 @@ Be specific and concrete. Do NOT include the person's name, emotions, or story c
           messages: [
             {
               role: "system" as const,
-              content: "You are a character designer for interactive fiction. You produce detailed, axis-structured character cards for use as illustration references. Always respond with valid JSON only.",
+              content:
+                "You are a character designer for interactive fiction. You produce detailed, axis-structured character cards for use as illustration references. Always respond with valid JSON only.",
             },
             {
               role: "user" as const,
@@ -755,36 +827,44 @@ For each character provide:
 
 Respond with JSON: {"characters": [{"name": "", "appearance": "", "voice": "", "role": ""}]}
 
-IMPORTANT: The appearance field must be a single string containing all 13 axes above, each on its own sentence. This will be used verbatim in image generation prompts.` },
+IMPORTANT: The appearance field must be a single string containing all 13 axes above, each on its own sentence. This will be used verbatim in image generation prompts.`,
+            },
           ],
           response_format: { type: "json_object" },
           max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
         });
         const raw = cardResp.choices[0]?.message?.content || "{}";
-        const parsed = JSON.parse(repairJSON(typeof raw === "string" ? raw : JSON.stringify(raw)));
+        const parsed = JSON.parse(
+          repairJSON(typeof raw === "string" ? raw : JSON.stringify(raw))
+        );
         if (Array.isArray(parsed.characters)) {
-          characterCards = parsed.characters.map((c: CharacterCard, i: number) => ({
-            ...c,
-            // For characters with photo analyses, prepend the structured prose_summary
-            // as the very first sentence so the most precise visual anchor leads.
-            // The card LLM's axis-structured sentences follow immediately after.
-            appearance: photoAnalyses[c.name]?.prose_summary
-              ? `${photoAnalyses[c.name].prose_summary} ${c.appearance}`
-              : photoDescriptions[c.name]
-              ? `${photoDescriptions[c.name]} ${c.appearance}`
-              : c.appearance,
-            photoUrl: characters[i]?.photoUrl,
-          }));
+          characterCards = parsed.characters.map(
+            (c: CharacterCard, i: number) => ({
+              ...c,
+              // For characters with photo analyses, prepend the structured prose_summary
+              // as the very first sentence so the most precise visual anchor leads.
+              // The card LLM's axis-structured sentences follow immediately after.
+              appearance: photoAnalyses[c.name]?.prose_summary
+                ? `${photoAnalyses[c.name].prose_summary} ${c.appearance}`
+                : photoDescriptions[c.name]
+                  ? `${photoDescriptions[c.name]} ${c.appearance}`
+                  : c.appearance,
+              photoUrl: characters[i]?.photoUrl,
+            })
+          );
         }
       } catch (e) {
-        console.error("[Books] Character card generation failed, using names only:", e);
+        console.error(
+          "[Books] Character card generation failed, using names only:",
+          e
+        );
         characterCards = characters.map(c => ({
           name: c.name,
           appearance: photoAnalyses[c.name]?.prose_summary
             ? photoAnalyses[c.name].prose_summary
             : photoDescriptions[c.name]
-            ? photoDescriptions[c.name]
-            : `${c.name} is a key character in this story.`,
+              ? photoDescriptions[c.name]
+              : `${c.name} is a key character in this story.`,
           voice: "Speaks clearly and consistently throughout the story.",
           role: "protagonist",
           photoUrl: c.photoUrl,
@@ -798,13 +878,17 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     );
 
     // Build character card block for injection into every LLM call
-    const characterCardBlock = characterCards.length > 0
-      ? `\n\nCHARACTER CARDS (maintain these descriptions exactly throughout the story):\n${characterCards.map(c =>
-          `- ${c.name} (${c.role}): ${c.appearance} Voice/personality: ${c.voice}`
-        ).join("\n")}`
-      : "";
+    const characterCardBlock =
+      characterCards.length > 0
+        ? `\n\nCHARACTER CARDS (maintain these descriptions exactly throughout the story):\n${characterCards
+            .map(
+              c =>
+                `- ${c.name} (${c.role}): ${c.appearance} Voice/personality: ${c.voice}`
+            )
+            .join("\n")}`
+        : "";
 
-    //  Character Anchor Block for image prompts 
+    //  Character Anchor Block for image prompts
     // Uses the FULL appearance description (not just the first sentence) so the
     // image model receives every visual detail: hair, eyes, build, clothing,
     // distinguishing features. Assembled ONCE and injected into every image prompt.
@@ -849,7 +933,9 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     const photoAnchorInstruction = STRUCTURED_IDENTITY_BLOCK
       ? `PHOTO-BASED CHARACTER REFERENCE:\n${STRUCTURED_IDENTITY_BLOCK}`
       : "";
-    const formatCanonicalProfile = (profile: VisualCanonicalCharacterProfile): string =>
+    const formatCanonicalProfile = (
+      profile: VisualCanonicalCharacterProfile
+    ): string =>
       [
         `${profile.name} (${profile.role})`,
         `Appearance: ${profile.appearance}`,
@@ -869,24 +955,30 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         profile.identityLock,
       ].join(", ") + distinctMarker;
 
-    const canonicalCharacterLayer = canonicalCharacterProfiles.length > 0
-      ? [
-          "CANONICAL CHARACTER PROFILES (reuse these unchanged on every illustrated page):",
-          ...canonicalCharacterProfiles.map(formatCanonicalProfile),
-          photoAnchorInstruction,
-        ].filter(Boolean).join("\n")
-      : (characters.length > 0
+    const canonicalCharacterLayer =
+      canonicalCharacterProfiles.length > 0
+        ? [
+            "CANONICAL CHARACTER PROFILES (reuse these unchanged on every illustrated page):",
+            ...canonicalCharacterProfiles.map(formatCanonicalProfile),
+            photoAnchorInstruction,
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : characters.length > 0
           ? `CHARACTERS (use reference photos for consistent appearance): ${charNames}`
-          : "");
+          : "";
 
     const charAnchorBlock = canonicalCharacterLayer;
 
     // Fix 1: charVisualAnchor previously truncated appearance to the first sentence only
     // via .split(".")[0]  silently dropping hair colour, eye colour, and clothing from
     // comic panel prompts. Now uses the FULL appearance string, same as charAnchorBlock.
-    const charVisualAnchor = canonicalCharacterProfiles.length > 0
-      ? `CHARACTERS (exact appearance, every panel): ${canonicalCharacterProfiles.map(c => formatCompactCanonicalProfile(c)).join(" | ")}. Maintain exact character appearance in every panel.`
-      : (characters.length > 0 ? `Characters: ${charNames}. Maintain exact character appearance.` : "");
+    const charVisualAnchor =
+      canonicalCharacterProfiles.length > 0
+        ? `CHARACTERS (exact appearance, every panel): ${canonicalCharacterProfiles.map(c => formatCompactCanonicalProfile(c)).join(" | ")}. Maintain exact character appearance in every panel.`
+        : characters.length > 0
+          ? `Characters: ${charNames}. Maintain exact character appearance.`
+          : "";
 
     // Fix 3 + Regex Expansion: Build a CHARACTER_COLOUR_LOCK by extracting explicit hair
     // and eye colour keywords from each character's appearance field. The regex vocabulary
@@ -937,210 +1029,219 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       "dark-brown|light-brown" +
       ")[\\s-]+)?";
 
-    const colourKeywords = canonicalCharacterProfiles.map(c => {
-      const app = [
-        c.appearance,
-        c.ageLock,
-        c.clothingLock,
-        c.identityLock,
-      ].join(". ");
+    const colourKeywords = canonicalCharacterProfiles
+      .map(c => {
+        const app = [
+          c.appearance,
+          c.ageLock,
+          c.clothingLock,
+          c.identityLock,
+        ].join(". ");
 
-      //  Hair colour 
-      // Pattern: <optional multi-word colour prefix> + <core colour word> + optional
-      // filler words + "hair" + optional trailing descriptor (e.g. "hair styled in waves")
-      // We allow up to ~40 chars of filler between the colour word and "hair" to catch
-      // constructions like "dark espresso-brown, slightly wavy hair".
-      const HAIR_CORE =
-        "(?:black|brown|blonde|blond|brunette|red|orange|yellow|white|grey|gray|" +
-        "espresso|coffee|chocolate|mocha|mahogany|walnut|chestnut|toffee|caramel|" +
-        "cinnamon|honey|amber|tawny|sandy|wheat|flaxen|golden|auburn|copper|rust|" +
-        "ginger|flame|fiery|raven|ebony|charcoal|sable|silver|platinum|lavender|" +
-        "blue|green|purple|pink|teal|violet|indigo|turquoise|burgundy|crimson)";
-      const hairRe = new RegExp(
-        `(${COLOUR_PREFIX}${HAIR_CORE}[\\w\\s,'-]{0,40}hair(?:[\\w\\s,'-]{0,30})?)`,
-        "i",
-      );
-      const hairMatch = app.match(hairRe);
+        //  Hair colour
+        // Pattern: <optional multi-word colour prefix> + <core colour word> + optional
+        // filler words + "hair" + optional trailing descriptor (e.g. "hair styled in waves")
+        // We allow up to ~40 chars of filler between the colour word and "hair" to catch
+        // constructions like "dark espresso-brown, slightly wavy hair".
+        const HAIR_CORE =
+          "(?:black|brown|blonde|blond|brunette|red|orange|yellow|white|grey|gray|" +
+          "espresso|coffee|chocolate|mocha|mahogany|walnut|chestnut|toffee|caramel|" +
+          "cinnamon|honey|amber|tawny|sandy|wheat|flaxen|golden|auburn|copper|rust|" +
+          "ginger|flame|fiery|raven|ebony|charcoal|sable|silver|platinum|lavender|" +
+          "blue|green|purple|pink|teal|violet|indigo|turquoise|burgundy|crimson)";
+        const hairRe = new RegExp(
+          `(${COLOUR_PREFIX}${HAIR_CORE}[\\w\\s,'-]{0,40}hair(?:[\\w\\s,'-]{0,30})?)`,
+          "i"
+        );
+        const hairMatch = app.match(hairRe);
 
-      //  Eye colour 
-      // Pattern: <optional multi-word colour prefix> + <core colour word> +
-      //          optional single bridging colour word + "eyes"
-      // The bridging word handles compound descriptors like "forest green eyes"
-      // where "forest" is the evocative modifier and "green" is the base colour.
-      // We allow one optional [\w-]+ word between the core colour and "eyes" so
-      // both "emerald eyes" and "forest green eyes" are captured in full.
-      const EYE_CORE =
-        "(?:brown|blue|green|grey|gray|hazel|amber|black|violet|teal|" +
-        "chocolate|espresso|coffee|honey|steel|slate|silver|ash|stormy|" +
-        "ice|sky|ocean|sapphire|cobalt|navy|cornflower|emerald|jade|forest|" +
-        "olive|sage|moss|golden|topaz|whiskey|cognac|blue-grey|grey-green|" +
-        "grey-blue|green-hazel)";
-      const eyeRe = new RegExp(
-        `(${COLOUR_PREFIX}${EYE_CORE}(?:[\\s-]+[\\w-]+)?[\\s-]*eyes)`,
-        "i",
-      );
-      const eyeMatch = app.match(eyeRe);
+        //  Eye colour
+        // Pattern: <optional multi-word colour prefix> + <core colour word> +
+        //          optional single bridging colour word + "eyes"
+        // The bridging word handles compound descriptors like "forest green eyes"
+        // where "forest" is the evocative modifier and "green" is the base colour.
+        // We allow one optional [\w-]+ word between the core colour and "eyes" so
+        // both "emerald eyes" and "forest green eyes" are captured in full.
+        const EYE_CORE =
+          "(?:brown|blue|green|grey|gray|hazel|amber|black|violet|teal|" +
+          "chocolate|espresso|coffee|honey|steel|slate|silver|ash|stormy|" +
+          "ice|sky|ocean|sapphire|cobalt|navy|cornflower|emerald|jade|forest|" +
+          "olive|sage|moss|golden|topaz|whiskey|cognac|blue-grey|grey-green|" +
+          "grey-blue|green-hazel)";
+        const eyeRe = new RegExp(
+          `(${COLOUR_PREFIX}${EYE_CORE}(?:[\\s-]+[\\w-]+)?[\\s-]*eyes)`,
+          "i"
+        );
+        const eyeMatch = app.match(eyeRe);
 
-      //  3. SKIN TONE 
-      // Captures: "warm olive skin", "fair porcelain complexion", "deep ebony skin",
-      // "medium tan skin with warm undertone", "rich brown skin", etc.
-      const SKIN_TONE_WORDS =
-        "(?:fair|pale|light|medium|tan|warm|cool|neutral|olive|golden|honey|caramel|" +
-        "tawny|bronze|copper|brown|dark|deep|rich|ebony|mahogany|chocolate|mocha|" +
-        "porcelain|ivory|peach|rose|ruddy|sallow|ashen|freckled)";
-      const skinRe = new RegExp(
-        `(${SKIN_TONE_WORDS}(?:[\\s-]+[\\w-]+){0,3}\\s+(?:skin|complexion|tone))`,
-        "i",
-      );
-      const skinMatch = app.match(skinRe);
-      const fallbackSkin = !skinMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+(?:skin|complexion))/i)
-        : null;
+        //  3. SKIN TONE
+        // Captures: "warm olive skin", "fair porcelain complexion", "deep ebony skin",
+        // "medium tan skin with warm undertone", "rich brown skin", etc.
+        const SKIN_TONE_WORDS =
+          "(?:fair|pale|light|medium|tan|warm|cool|neutral|olive|golden|honey|caramel|" +
+          "tawny|bronze|copper|brown|dark|deep|rich|ebony|mahogany|chocolate|mocha|" +
+          "porcelain|ivory|peach|rose|ruddy|sallow|ashen|freckled)";
+        const skinRe = new RegExp(
+          `(${SKIN_TONE_WORDS}(?:[\\s-]+[\\w-]+){0,3}\\s+(?:skin|complexion|tone))`,
+          "i"
+        );
+        const skinMatch = app.match(skinRe);
+        const fallbackSkin = !skinMatch
+          ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+(?:skin|complexion))/i)
+          : null;
 
-      //  4. FACE SHAPE 
-      // Captures: "oval face", "square jaw", "heart-shaped face", "strong angular jaw",
-      // "round face with full cheeks", "diamond-shaped face", etc.
-      const FACE_SHAPE_WORDS =
-        "(?:oval|round|square|rectangular|heart|heart-shaped|diamond|oblong|long|" +
-        "triangular|inverted-triangle|angular|soft|strong|defined|wide|narrow|" +
-        "prominent|high|sharp|gentle|delicate|chiselled|chiseled)";
-      const faceRe = new RegExp(
-        `(${FACE_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+(?:face|jaw|chin|cheekbones?|forehead))`,
-        "i",
-      );
-      const faceMatch = app.match(faceRe);
-      const fallbackFace = !faceMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:face|jaw|chin|cheekbones?))/i)
-        : null;
+        //  4. FACE SHAPE
+        // Captures: "oval face", "square jaw", "heart-shaped face", "strong angular jaw",
+        // "round face with full cheeks", "diamond-shaped face", etc.
+        const FACE_SHAPE_WORDS =
+          "(?:oval|round|square|rectangular|heart|heart-shaped|diamond|oblong|long|" +
+          "triangular|inverted-triangle|angular|soft|strong|defined|wide|narrow|" +
+          "prominent|high|sharp|gentle|delicate|chiselled|chiseled)";
+        const faceRe = new RegExp(
+          `(${FACE_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+(?:face|jaw|chin|cheekbones?|forehead))`,
+          "i"
+        );
+        const faceMatch = app.match(faceRe);
+        const fallbackFace = !faceMatch
+          ? app.match(
+              /([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:face|jaw|chin|cheekbones?))/i
+            )
+          : null;
 
-      //  5. HAIR STYLE 
-      // Captures the cut/length/texture AFTER the colour word.
-      // e.g. "short side-parted undercut", "long wavy hair", "shoulder-length bob",
-      // "tight coily afro", "straight blunt fringe", "messy textured crop".
-      const HAIR_STYLE_WORDS =
-        "(?:short|medium|long|shoulder-length|chin-length|ear-length|cropped|buzzed|shaved|" +
-        "straight|wavy|curly|coily|kinky|frizzy|sleek|smooth|textured|layered|voluminous|" +
-        "side-parted|centre-parted|center-parted|slicked|pompadour|undercut|fade|taper|" +
-        "bob|lob|pixie|afro|dreadlocks?|braided|cornrows?|bun|ponytail|updo|fringe|bangs)";
-      const hairStyleRe = new RegExp(
-        `(${HAIR_STYLE_WORDS}(?:[\\s-]+[\\w-]+){0,5}\\s+hair(?:[\\w\\s,'-]{0,30})?)`,
-        "i",
-      );
-      const hairStyleMatch = app.match(hairStyleRe);
-      const fallbackHairStyle = !hairStyleMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,5}\s+hair(?:[\w\s,'-]{0,30})?)/i)
-        : null;
+        //  5. HAIR STYLE
+        // Captures the cut/length/texture AFTER the colour word.
+        // e.g. "short side-parted undercut", "long wavy hair", "shoulder-length bob",
+        // "tight coily afro", "straight blunt fringe", "messy textured crop".
+        const HAIR_STYLE_WORDS =
+          "(?:short|medium|long|shoulder-length|chin-length|ear-length|cropped|buzzed|shaved|" +
+          "straight|wavy|curly|coily|kinky|frizzy|sleek|smooth|textured|layered|voluminous|" +
+          "side-parted|centre-parted|center-parted|slicked|pompadour|undercut|fade|taper|" +
+          "bob|lob|pixie|afro|dreadlocks?|braided|cornrows?|bun|ponytail|updo|fringe|bangs)";
+        const hairStyleRe = new RegExp(
+          `(${HAIR_STYLE_WORDS}(?:[\\s-]+[\\w-]+){0,5}\\s+hair(?:[\\w\\s,'-]{0,30})?)`,
+          "i"
+        );
+        const hairStyleMatch = app.match(hairStyleRe);
+        const fallbackHairStyle = !hairStyleMatch
+          ? app.match(
+              /([\w-]+(?:[\s-][\w-]+){0,5}\s+hair(?:[\w\s,'-]{0,30})?)/i
+            )
+          : null;
 
-      //  6. EYE SHAPE 
-      // Captures: "almond-shaped eyes", "round wide-set eyes", "hooded deep-set eyes",
-      // "monolid eyes", "upturned eyes", "heavy-lidded eyes", "large expressive eyes".
-      const EYE_SHAPE_WORDS =
-        "(?:almond|almond-shaped|round|wide|wide-set|close-set|deep-set|hooded|monolid|" +
-        "upturned|downturned|heavy-lidded|heavy|large|small|narrow|slanted|angular|" +
-        "expressive|bright|piercing|intense|soft|gentle|sleepy|bedroom)";
-      const eyeShapeRe = new RegExp(
-        `(${EYE_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+eyes)`,
-        "i",
-      );
-      const eyeShapeMatch = app.match(eyeShapeRe);
-      const fallbackEyeShape = !eyeShapeMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+eyes)/i)
-        : null;
+        //  6. EYE SHAPE
+        // Captures: "almond-shaped eyes", "round wide-set eyes", "hooded deep-set eyes",
+        // "monolid eyes", "upturned eyes", "heavy-lidded eyes", "large expressive eyes".
+        const EYE_SHAPE_WORDS =
+          "(?:almond|almond-shaped|round|wide|wide-set|close-set|deep-set|hooded|monolid|" +
+          "upturned|downturned|heavy-lidded|heavy|large|small|narrow|slanted|angular|" +
+          "expressive|bright|piercing|intense|soft|gentle|sleepy|bedroom)";
+        const eyeShapeRe = new RegExp(
+          `(${EYE_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+eyes)`,
+          "i"
+        );
+        const eyeShapeMatch = app.match(eyeShapeRe);
+        const fallbackEyeShape = !eyeShapeMatch
+          ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+eyes)/i)
+          : null;
 
-      //  7. NOSE SHAPE 
-      // Captures: "straight nose", "button nose", "aquiline nose", "broad flat nose",
-      // "narrow pointed nose", "upturned snub nose", "prominent Roman nose".
-      const NOSE_SHAPE_WORDS =
-        "(?:straight|button|snub|upturned|aquiline|roman|hawk|hooked|broad|flat|wide|" +
-        "narrow|pointed|rounded|bulbous|prominent|small|large|petite|refined|defined|" +
-        "high-bridged|low-bridged|flared|thin|thick)";
-      const noseRe = new RegExp(
-        `(${NOSE_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+nose(?:[\\w\\s,'-]{0,20})?)`,
-        "i",
-      );
-      const noseMatch = app.match(noseRe);
-      const fallbackNose = !noseMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+nose)/i)
-        : null;
+        //  7. NOSE SHAPE
+        // Captures: "straight nose", "button nose", "aquiline nose", "broad flat nose",
+        // "narrow pointed nose", "upturned snub nose", "prominent Roman nose".
+        const NOSE_SHAPE_WORDS =
+          "(?:straight|button|snub|upturned|aquiline|roman|hawk|hooked|broad|flat|wide|" +
+          "narrow|pointed|rounded|bulbous|prominent|small|large|petite|refined|defined|" +
+          "high-bridged|low-bridged|flared|thin|thick)";
+        const noseRe = new RegExp(
+          `(${NOSE_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+nose(?:[\\w\\s,'-]{0,20})?)`,
+          "i"
+        );
+        const noseMatch = app.match(noseRe);
+        const fallbackNose = !noseMatch
+          ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+nose)/i)
+          : null;
 
-      //  8. EYEBROWS 
-      // Captures: "thick straight dark-brown brows", "thin arched brows",
-      // "bushy natural eyebrows", "sparse light brows", "bold defined brows".
-      const EYEBROW_WORDS =
-        "(?:thick|thin|bushy|sparse|full|arched|straight|curved|flat|angular|tapered|" +
-        "bold|defined|groomed|natural|unruly|feathered|pencil-thin|heavy|light|" +
-        "dark|medium|fair|blonde|blond|brown|black|grey|gray|auburn|red)";
-      const browRe = new RegExp(
-        `(${EYEBROW_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+(?:eyebrows?|brows?))`,
-        "i",
-      );
-      const browMatch = app.match(browRe);
-      const fallbackBrow = !browMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:eyebrows?|brows?))/i)
-        : null;
+        //  8. EYEBROWS
+        // Captures: "thick straight dark-brown brows", "thin arched brows",
+        // "bushy natural eyebrows", "sparse light brows", "bold defined brows".
+        const EYEBROW_WORDS =
+          "(?:thick|thin|bushy|sparse|full|arched|straight|curved|flat|angular|tapered|" +
+          "bold|defined|groomed|natural|unruly|feathered|pencil-thin|heavy|light|" +
+          "dark|medium|fair|blonde|blond|brown|black|grey|gray|auburn|red)";
+        const browRe = new RegExp(
+          `(${EYEBROW_WORDS}(?:[\\s-]+[\\w-]+){0,4}\\s+(?:eyebrows?|brows?))`,
+          "i"
+        );
+        const browMatch = app.match(browRe);
+        const fallbackBrow = !browMatch
+          ? app.match(/([\w-]+(?:[\s-][\w-]+){0,4}\s+(?:eyebrows?|brows?))/i)
+          : null;
 
-      //  9. BODY SHAPE 
-      // Captures: "tall athletic build", "petite slim frame", "stocky muscular build",
-      // "medium height heavyset frame", "lean wiry physique", "broad-shouldered build".
-      const BODY_SHAPE_WORDS =
-        "(?:tall|short|medium|average|petite|towering|statuesque|" +
-        "slim|slender|lean|wiry|lithe|athletic|fit|toned|muscular|stocky|" +
-        "heavyset|heavy-set|broad|broad-shouldered|wide|narrow|slight|" +
-        "chubby|plump|rotund|portly|overweight|plus-size|curvy|voluptuous)";
-      const bodyRe = new RegExp(
-        `(${BODY_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,5}\\s+(?:build|frame|figure|physique|stature|body|height))`,
-        "i",
-      );
-      const bodyMatch = app.match(bodyRe);
-      const fallbackBody = !bodyMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,5}\s+(?:build|frame|figure|physique|stature))/i)
-        : null;
+        //  9. BODY SHAPE
+        // Captures: "tall athletic build", "petite slim frame", "stocky muscular build",
+        // "medium height heavyset frame", "lean wiry physique", "broad-shouldered build".
+        const BODY_SHAPE_WORDS =
+          "(?:tall|short|medium|average|petite|towering|statuesque|" +
+          "slim|slender|lean|wiry|lithe|athletic|fit|toned|muscular|stocky|" +
+          "heavyset|heavy-set|broad|broad-shouldered|wide|narrow|slight|" +
+          "chubby|plump|rotund|portly|overweight|plus-size|curvy|voluptuous)";
+        const bodyRe = new RegExp(
+          `(${BODY_SHAPE_WORDS}(?:[\\s-]+[\\w-]+){0,5}\\s+(?:build|frame|figure|physique|stature|body|height))`,
+          "i"
+        );
+        const bodyMatch = app.match(bodyRe);
+        const fallbackBody = !bodyMatch
+          ? app.match(
+              /([\w-]+(?:[\s-][\w-]+){0,5}\s+(?:build|frame|figure|physique|stature))/i
+            )
+          : null;
 
-      //  10. FACIAL HAIR 
-      // Captures: "clean-shaven", "short dark stubble", "full neatly-trimmed brown beard",
-      // "thin moustache", "goatee", "mutton chops", "five o'clock shadow".
-      //
-      // DESIGN: The pattern MUST be anchored to a facial-hair NOUN so that colour/modifier
-      // words like "dark", "light", "brown" (which also appear in hair/eye descriptions)
-      // do not produce false positives. Two sub-patterns are used:
-      //   1. Noun-first: bare nouns that are unambiguously facial hair (stubble, goatee, etc.)
-      //   2. Adjective + noun: optional colour/style modifiers followed by a facial-hair noun
-      const FACIAL_HAIR_NOUNS =
-        "(?:stubble|five-o'clock-shadow|five o'clock shadow|" +
-        "beard|bearded|goatee|moustache|mustache|sideburns|mutton-chops|mutton chops)";
-      const FACIAL_HAIR_MODIFIERS =
-        "(?:clean-shaven|clean shaven|full|short|long|thick|thin|heavy|patchy|sparse|" +
-        "neatly-trimmed|neatly trimmed|trimmed|groomed|dark|light|grey|gray|white|black|" +
-        "brown|blonde|blond|red|auburn)";
-      const facialHairRe = new RegExp(
-        // Either a bare noun-first match OR modifier(s) followed by a facial-hair noun
-        `(clean-shaven|clean shaven|${FACIAL_HAIR_MODIFIERS}(?:[\\s-]+[\\w-]+){0,3}[\\s-]+${FACIAL_HAIR_NOUNS}|${FACIAL_HAIR_NOUNS}(?:[\\s-]+[\\w-]+){0,3})`,
-        "i",
-      );
-      const facialHairMatch = app.match(facialHairRe);      //  Fallback: capture any "<colour> hair" or "<colour> eyes" not caught above 
-      // This handles unusual descriptors the primary patterns might miss.
-      const fallbackHair = !hairMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+hair)/i)
-        : null;
-      const fallbackEye = !eyeMatch
-        ? app.match(/([\w-]+(?:[\s-][\w-]+){0,2}\s+eyes)/i)
-        : null;
+        //  10. FACIAL HAIR
+        // Captures: "clean-shaven", "short dark stubble", "full neatly-trimmed brown beard",
+        // "thin moustache", "goatee", "mutton chops", "five o'clock shadow".
+        //
+        // DESIGN: The pattern MUST be anchored to a facial-hair NOUN so that colour/modifier
+        // words like "dark", "light", "brown" (which also appear in hair/eye descriptions)
+        // do not produce false positives. Two sub-patterns are used:
+        //   1. Noun-first: bare nouns that are unambiguously facial hair (stubble, goatee, etc.)
+        //   2. Adjective + noun: optional colour/style modifiers followed by a facial-hair noun
+        const FACIAL_HAIR_NOUNS =
+          "(?:stubble|five-o'clock-shadow|five o'clock shadow|" +
+          "beard|bearded|goatee|moustache|mustache|sideburns|mutton-chops|mutton chops)";
+        const FACIAL_HAIR_MODIFIERS =
+          "(?:clean-shaven|clean shaven|full|short|long|thick|thin|heavy|patchy|sparse|" +
+          "neatly-trimmed|neatly trimmed|trimmed|groomed|dark|light|grey|gray|white|black|" +
+          "brown|blonde|blond|red|auburn)";
+        const facialHairRe = new RegExp(
+          // Either a bare noun-first match OR modifier(s) followed by a facial-hair noun
+          `(clean-shaven|clean shaven|${FACIAL_HAIR_MODIFIERS}(?:[\\s-]+[\\w-]+){0,3}[\\s-]+${FACIAL_HAIR_NOUNS}|${FACIAL_HAIR_NOUNS}(?:[\\s-]+[\\w-]+){0,3})`,
+          "i"
+        );
+        const facialHairMatch = app.match(facialHairRe); //  Fallback: capture any "<colour> hair" or "<colour> eyes" not caught above
+        // This handles unusual descriptors the primary patterns might miss.
+        const fallbackHair = !hairMatch
+          ? app.match(/([\w-]+(?:[\s-][\w-]+){0,3}\s+hair)/i)
+          : null;
+        const fallbackEye = !eyeMatch
+          ? app.match(/([\w-]+(?:[\s-][\w-]+){0,2}\s+eyes)/i)
+          : null;
 
-      // Assemble all matched axes into an ordered array
-      const parts = [
-        (hairMatch?.[1]           ?? fallbackHair?.[1])?.trim(),
-        (eyeMatch?.[1]            ?? fallbackEye?.[1])?.trim(),
-        (skinMatch?.[1]           ?? fallbackSkin?.[1])?.trim(),
-        (faceMatch?.[1]           ?? fallbackFace?.[1])?.trim(),
-        (hairStyleMatch?.[1]      ?? fallbackHairStyle?.[1])?.trim(),
-        (eyeShapeMatch?.[1]       ?? fallbackEyeShape?.[1])?.trim(),
-        (noseMatch?.[1]           ?? fallbackNose?.[1])?.trim(),
-        (browMatch?.[1]           ?? fallbackBrow?.[1])?.trim(),
-        (bodyMatch?.[1]           ?? fallbackBody?.[1])?.trim(),
-        facialHairMatch?.[1]?.trim(),
-      ].filter(Boolean);
-      return parts.length > 0 ? `${c.name}: ${parts.join(", ")}` : null;
-    }).filter(Boolean).join(" | ");
+        // Assemble all matched axes into an ordered array
+        const parts = [
+          (hairMatch?.[1] ?? fallbackHair?.[1])?.trim(),
+          (eyeMatch?.[1] ?? fallbackEye?.[1])?.trim(),
+          (skinMatch?.[1] ?? fallbackSkin?.[1])?.trim(),
+          (faceMatch?.[1] ?? fallbackFace?.[1])?.trim(),
+          (hairStyleMatch?.[1] ?? fallbackHairStyle?.[1])?.trim(),
+          (eyeShapeMatch?.[1] ?? fallbackEyeShape?.[1])?.trim(),
+          (noseMatch?.[1] ?? fallbackNose?.[1])?.trim(),
+          (browMatch?.[1] ?? fallbackBrow?.[1])?.trim(),
+          (bodyMatch?.[1] ?? fallbackBody?.[1])?.trim(),
+          facialHairMatch?.[1]?.trim(),
+        ].filter(Boolean);
+        return parts.length > 0 ? `${c.name}: ${parts.join(", ")}` : null;
+      })
+      .filter(Boolean)
+      .join(" | ");
 
     // PHYSICAL_IDENTITY_LOCK: combines all 10 visual axes extracted above.
     // This replaces the old CHARACTER_COLOUR_LOCK (which only covered hair/eye colour)
@@ -1150,7 +1251,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       ? `PHYSICAL IDENTITY LOCK  do NOT change ANY of these physical traits in any illustration: ${colourKeywords}`
       : "";
 
-    //  Guardrail 2B: Centralised no-text constraint 
+    //  Guardrail 2B: Centralised no-text constraint
     // This constant is injected into EVERY image prompt to prevent the model from
     // rendering any text, typography, or title/author text inside the image.
     // Title and author metadata are rendered by the product UI, not baked into the generated cover image.
@@ -1175,7 +1276,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       "   - Clothing: Each character wears distinctly different clothing colors and styles.\n" +
       "8. PHOTO REFERENCE PRIORITY: If character photos are provided, render faces EXACTLY as photographed. Do not alter facial structure, features, or appearance.\n" +
       "9. QUALITY ASSURANCE: Before finalizing, verify that every character is visually distinct and cannot be confused with any other character in the image.";
-    //  Assemble the global STYLE_LOCK string 
+    //  Assemble the global STYLE_LOCK string
     // This string is prepended to EVERY generateImage prompt in this book so that
     // all illustrations share the same art style, lighting, palette, and framing.
     // It is also stored in books.illustrationStyleLock for admin/debug inspection.
@@ -1188,17 +1289,19 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       crime_mystery: "gerçekçi ama sinematif çizim",
       fantasy_scifi: "fantastik sanat stili",
     };
-    const categoryAwareIdentityInstruction =
-      `Fotoğraftaki kişinin yüz hatlarını ve oranlarını birebir koruyarak, yüz kimliğini bozmadan onun ${CATEGORY_IDENTITY_STYLE_WORDING[category] || "gerçekçi ama sinematif çizim"} karakterini oluştur.`;
-    const strictCategoryAwareIdentityInstruction =
-      `Render the referenced person as ${({
-        fairy_tale: "storybook illustration with a gentle painterly finish",
-        comic: "classic comic-book illustration",
-        horror_thriller: "cinematic illustrated realism",
-        romance: "cinematic illustrated realism",
-        crime_mystery: "cinematic illustrated realism",
-        fantasy_scifi: "epic fantasy illustration",
-      } as Record<string, string>)[category] || "cinematic illustrated realism"} while preserving the exact same face identity, age impression, body proportions, hairstyle, signature features, and clothing silhouette.`;
+    const categoryAwareIdentityInstruction = `Fotoğraftaki kişinin yüz hatlarını ve oranlarını birebir koruyarak, yüz kimliğini bozmadan onun ${CATEGORY_IDENTITY_STYLE_WORDING[category] || "gerçekçi ama sinematif çizim"} karakterini oluştur.`;
+    const strictCategoryAwareIdentityInstruction = `Render the referenced person as ${
+      (
+        {
+          fairy_tale: "storybook illustration with a gentle painterly finish",
+          comic: "classic comic-book illustration",
+          horror_thriller: "cinematic illustrated realism",
+          romance: "cinematic illustrated realism",
+          crime_mystery: "cinematic illustrated realism",
+          fantasy_scifi: "epic fantasy illustration",
+        } as Record<string, string>
+      )[category] || "cinematic illustrated realism"
+    } while preserving the exact same face identity, age impression, body proportions, hairstyle, signature features, and clothing silhouette.`;
     const IDENTITY_LOCK =
       "CRITICAL IDENTITY PRESERVATION: Every character in this image MUST be the EXACT SAME PERSON as the uploaded reference photo. " +
       "Do NOT redesign, beautify, genericise, or replace any face. " +
@@ -1211,7 +1314,8 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     const STYLE_BRIDGE_RULE =
       "STYLE CONVERSION ONLY: This is NOT a new or redesigned character. " +
       "Convert the rendering style only. The person MUST look like the EXACT SAME real individual from the reference photo. " +
-      "Change only the artistic rendering style. Preserve all facial features, identity markers, and personal likeness without exception.";
+      "Change only the artistic rendering style. Preserve all facial features, identity markers, and personal likeness without exception. " +
+      "Do NOT beautify, heroize, glamorize, age-shift, slim down, sharpen the jaw, enlarge the eyes, refine the nose, smooth the skin, or idealize facial proportions.";
 
     const STYLE_LOCK = [
       `GLOBAL STYLE PROFILE: medium=${globalStyleProfile.medium}; lighting=${globalStyleProfile.lighting}; palette=${globalStyleProfile.palette}; linework=${globalStyleProfile.linework}; composition=${globalStyleProfile.composition}`,
@@ -1224,9 +1328,11 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
       // axis-by-axis facial/body descriptors for every character with a reference photo.
       STRUCTURED_IDENTITY_BLOCK || undefined,
       "STYLE CONSISTENCY: This illustration must match the exact same art style, lighting, colour palette, and character appearance as all other illustrations in this book.",
-    ].filter(Boolean).join(" | ");
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
-    //  Step 1b: Style-bridge portrait generation 
+    //  Step 1b: Style-bridge portrait generation
     // For every character with an uploaded photo, generate ONE illustrated portrait
     // in the book's art style by passing the raw photo as originalImages.
     //
@@ -1246,23 +1352,36 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     //
     // This is a non-fatal step  if portrait generation fails for any character,
     // we fall back to text-only anchoring (the existing PHYSICAL_IDENTITY_LOCK).
-    const illustratedPortraitsMap = new Map<string, { url: string; mimeType: string }>();
+    const illustratedPortraitsMap = new Map<
+      string,
+      { url: string; mimeType: string }
+    >();
 
-    await db.update(books).set({ generationStep: "Creating character illustrations…" }).where(eq(books.id, bookId));
+    await db
+      .update(books)
+      .set({ generationStep: "Creating character illustrations…" })
+      .where(eq(books.id, bookId));
 
     for (const char of characters) {
       if (!char.photoUrl) continue;
       try {
-        console.log(`[Books] Step 1b: Generating style-bridge portrait for "${char.name}" (bookId=${bookId})`);
+        console.log(
+          `[Books] Step 1b: Generating style-bridge portrait for "${char.name}" (bookId=${bookId})`
+        );
         let portraitPhotoB64: string;
         let portraitPhotoMime: string;
         try {
           const pRes = await fetch(char.photoUrl);
           if (!pRes.ok) throw new Error(`${pRes.status} ${pRes.statusText}`);
           portraitPhotoMime = pRes.headers.get("content-type") || "image/jpeg";
-          portraitPhotoB64 = Buffer.from(await pRes.arrayBuffer()).toString("base64");
+          portraitPhotoB64 = Buffer.from(await pRes.arrayBuffer()).toString(
+            "base64"
+          );
         } catch (fetchErr) {
-          console.warn(`[Books] Step 1b: Could not download photo for "${char.name}", skipping portrait:`, fetchErr);
+          console.warn(
+            `[Books] Step 1b: Could not download photo for "${char.name}", skipping portrait:`,
+            fetchErr
+          );
           continue;
         }
         const a = photoAnalyses[char.name];
@@ -1279,72 +1398,104 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
               a.headwear && a.headwear !== "none" ? a.headwear : "",
               a.facial_hair !== "none" ? a.facial_hair : "",
               a.distinctive !== "none" ? a.distinctive : "",
-            ].filter(Boolean).join(", ")
+            ]
+              .filter(Boolean)
+              .join(", ")
           : char.name;
         // Three-tier style mapping: fairy_tale → cartoon/storybook,
         // comic → American comic, all others → cinematic/realistic.
-        const genreStyleLabel = category === "comic"
-          ? "classic American comic book illustration"
-          : category === "fairy_tale"
-          ? "classic children's storybook cartoon illustration"
-          : "cinematic realistic illustrated";
-      const portraitPrompt = [
+        const genreStyleLabel =
+          category === "comic"
+            ? "classic American comic book illustration"
+            : category === "fairy_tale"
+              ? "classic children's storybook cartoon illustration"
+              : "cinematic realistic illustrated";
+        const portraitPrompt = [
           IDENTITY_LOCK,
           STYLE_BRIDGE_RULE,
           strictCategoryAwareIdentityInstruction,
           stylePreset,
           `Preserve the EXACT facial features and identity of the person in this photograph. Transform them into a ${genreStyleLabel} style character while keeping face identity 100% recognizable`,
+          "Likeness lock: preserve the same craniofacial proportions, jaw width, eye spacing, nose length, lip shape, cheek volume, and age impression as the source photo.",
           `Preserve EXACTLY: the person's face shape, facial features, ${appearanceHint}`,
           `The illustrated character must be immediately recognisable as the same person from the photo`,
           `Full-body or bust portrait, neutral background, character centred`,
           `Illustration style only  no photographic elements, no photo-realistic rendering`,
           NO_TEXT_CONSTRAINT,
-        ].filter(Boolean).join(". ");
+        ]
+          .filter(Boolean)
+          .join(". ");
 
         const portraitResult = await generateImage({
           prompt: portraitPrompt,
-          originalImages: [{ b64Json: portraitPhotoB64, mimeType: portraitPhotoMime }],
+          originalImages: [
+            { b64Json: portraitPhotoB64, mimeType: portraitPhotoMime },
+          ],
           hardIdentity: true,
           noText: true,
         });
 
         if (portraitResult.url) {
-          illustratedPortraitsMap.set(char.name, { url: portraitResult.url, mimeType: "image/png" });
-          console.log(`[Books] Step 1b: Style-bridge portrait for "${char.name}" stored at ${portraitResult.url}`);
+          illustratedPortraitsMap.set(char.name, {
+            url: portraitResult.url,
+            mimeType: portraitResult.mimeType || "image/webp",
+          });
+          console.log(
+            `[Books] Step 1b: Style-bridge portrait for "${char.name}" stored at ${portraitResult.url}`
+          );
         }
       } catch (portraitErr) {
-        console.warn(`[Books] Step 1b: Portrait generation failed for "${char.name}", falling back to text-only anchoring:`, portraitErr);
+        console.warn(
+          `[Books] Step 1b: Portrait generation failed for "${char.name}", falling back to text-only anchoring:`,
+          portraitErr
+        );
       }
     }
 
-    const getCharacterReferenceImages = (characterNames?: string[]): Array<{ url: string; mimeType: string }> => {
-      const names = characterNames && characterNames.length > 0
-        ? Array.from(new Set(characterNames))
-        : canonicalCharacterProfiles.map(profile => profile.name);
+    const getCharacterReferenceImages = (
+      characterNames?: string[]
+    ): Array<{ url: string; mimeType: string }> => {
+      const names =
+        characterNames && characterNames.length > 0
+          ? Array.from(new Set(characterNames))
+          : canonicalCharacterProfiles.map(profile => profile.name);
       const refs: Array<{ url: string; mimeType: string }> = [];
       for (const name of names) {
         const raw = photoRefByName.get(name);
         if (raw?.url) refs.push({ url: raw.url, mimeType: raw.mimeType });
         const illustrated = illustratedPortraitsMap.get(name);
-        if (illustrated?.url) refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
+        if (illustrated?.url)
+          refs.push({ url: illustrated.url, mimeType: illustrated.mimeType });
       }
       if (refs.length === 0) {
         refs.push(
-          ...charPhotos.map(img => ({ url: img.url, mimeType: img.mimeType as string })),
-          ...Array.from(illustratedPortraitsMap.values())
-            .filter((img): img is { url: string; mimeType: string } => !!img?.url),
+          ...charPhotos.map(img => ({
+            url: img.url,
+            mimeType: img.mimeType as string,
+          })),
+          ...Array.from(illustratedPortraitsMap.values()).filter(
+            (img): img is { url: string; mimeType: string } => !!img?.url
+          )
         );
       }
-      return refs.filter((img, idx, arr) => arr.findIndex(candidate => candidate.url === img.url) === idx);
+      return refs.filter(
+        (img, idx, arr) =>
+          arr.findIndex(candidate => candidate.url === img.url) === idx
+      );
     };
 
-    const buildSceneIdentityPriorityBlock = (characterNames?: string[]): string => {
-      const names = characterNames && characterNames.length > 0
-        ? Array.from(new Set(characterNames))
-        : canonicalCharacterProfiles.map((profile) => profile.name);
+    const buildSceneIdentityPriorityBlock = (
+      characterNames?: string[]
+    ): string => {
+      const names =
+        characterNames && characterNames.length > 0
+          ? Array.from(new Set(characterNames))
+          : canonicalCharacterProfiles.map(profile => profile.name);
       const blocks = names
-        .map((name) => {
-          const canonical = canonicalCharacterProfiles.find((profile) => profile.name === name);
+        .map(name => {
+          const canonical = canonicalCharacterProfiles.find(
+            profile => profile.name === name
+          );
           if (!canonical) return "";
           const photo = photoAnalyses[name];
           return [
@@ -1352,7 +1503,9 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
             `Face lock: ${canonical.identityLock}`,
             `Age lock: ${canonical.ageLock}`,
             `Outfit lock: ${canonical.clothingLock}`,
-            photo?.outfit_summary ? `Exact photographed outfit: ${photo.outfit_summary}` : "",
+            photo?.outfit_summary
+              ? `Exact photographed outfit: ${photo.outfit_summary}`
+              : "",
             photo?.accessories && photo.accessories.toLowerCase() !== "none"
               ? `Exact accessories: ${photo.accessories}`
               : "",
@@ -1361,7 +1514,9 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
               : "",
             "RAW PHOTO PRIORITY: face shape, haircut, eyebrows, skin tone, outfit, accessories, and age impression must match the uploaded photo exactly; style-bridge portraits only transfer illustration style.",
             "Do not replace this character with a generic cartoon version.",
-          ].filter(Boolean).join(" | ");
+          ]
+            .filter(Boolean)
+            .join(" | ");
         })
         .filter(Boolean);
 
@@ -1370,7 +1525,7 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         : "";
     };
 
-    //  Image generation wrapper 
+    //  Image generation wrapper
     // Uses illustrated portraits (Step 1b) as originalImages when available.
     // Illustrated portraits are already in the book's art style so they serve
     // as a proper style/identity reference without causing the photo-collage effect
@@ -1379,52 +1534,69 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
     const generateImageWithRefCheck = async (
       stage: string,
       prompt: string,
-      refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>,
+      refImages?: Array<{ url?: string; b64Json?: string; mimeType?: string }>
     ) => {
-      type ReferenceCandidate = { url?: string; b64Json?: string; mimeType?: string };
+      type ReferenceCandidate = {
+        url?: string;
+        b64Json?: string;
+        mimeType?: string;
+      };
 
-      const fallbackPortraitRefs: ReferenceCandidate[] = Array.from(illustratedPortraitsMap.values())
-        .filter((img) => !!img?.url)
-        .map((img) => ({ url: img.url, mimeType: img.mimeType }));
+      const fallbackPortraitRefs: ReferenceCandidate[] = Array.from(
+        illustratedPortraitsMap.values()
+      )
+        .filter(img => !!img?.url)
+        .map(img => ({ url: img.url, mimeType: img.mimeType }));
       const explicitRefs: ReferenceCandidate[] = (refImages ?? []).filter(
-        (img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json
+        (img): img is { url?: string; mimeType?: string; b64Json?: string } =>
+          !!img?.url || !!img?.b64Json
       );
       const rawPhotoRefs: ReferenceCandidate[] = charPhotos
-        .filter((img) => !!img?.url)
-        .map((img) => ({ url: img.url, mimeType: img.mimeType }));
+        .filter(img => !!img?.url)
+        .map(img => ({ url: img.url, mimeType: img.mimeType }));
       const candidateRefs = [
         ...explicitRefs,
         ...rawPhotoRefs,
         ...fallbackPortraitRefs,
       ];
       const mergedRefs = candidateRefs
-        .filter((img, idx, arr) =>
-          arr.findIndex((candidate) =>
-            (candidate.url ?? "") === (img.url ?? "") &&
-            (candidate.b64Json ?? "") === (img.b64Json ?? "")
-          ) === idx
+        .filter(
+          (img, idx, arr) =>
+            arr.findIndex(
+              candidate =>
+                (candidate.url ?? "") === (img.url ?? "") &&
+                (candidate.b64Json ?? "") === (img.b64Json ?? "")
+            ) === idx
         )
         .slice(0, 6);
 
-      const identityAuthorityLayer = rawPhotoRefs.length > 0
-        ? "RAW PHOTO AUTHORITY (MANDATORY): when raw photos and illustrated portraits are both provided, the raw photos are the ground-truth for exact facial likeness, age impression, haircut, eyebrow shape, nose, jawline, skin tone, and distinctive features. Use illustrated portraits only to transfer the book's art style. Never beautify, genericise, or replace the photographed identity."
-        : "";
+      const identityAuthorityLayer =
+        rawPhotoRefs.length > 0
+          ? "RAW PHOTO AUTHORITY (MANDATORY): when raw photos and illustrated portraits are both provided, the raw photos are the ground-truth for exact facial likeness, age impression, haircut, eyebrow shape, nose, jawline, skin tone, and distinctive features. Use illustrated portraits only to transfer the book's art style. Never beautify, genericise, or replace the photographed identity."
+          : "";
       const effectivePrompt = [
         prompt.includes(IDENTITY_LOCK) ? "" : IDENTITY_LOCK,
         identityAuthorityLayer,
         prompt,
-      ].filter(Boolean).join("\n\n");
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
       const maxImageAttempts = 3;
       let lastErr: string | null = null;
       for (let attempt = 1; attempt <= maxImageAttempts; attempt++) {
         try {
           if (mergedRefs.length > 0) {
-            const rawRefCount = mergedRefs.filter((ref) =>
-              !!ref.url && charPhotos.some((photo) => photo.url === ref.url)
+            const rawRefCount = mergedRefs.filter(
+              ref =>
+                !!ref.url && charPhotos.some(photo => photo.url === ref.url)
             ).length;
-            const portraitRefCount = mergedRefs.filter((ref) =>
-              !!ref.url && Array.from(illustratedPortraitsMap.values()).some((portrait) => portrait.url === ref.url)
+            const portraitRefCount = mergedRefs.filter(
+              ref =>
+                !!ref.url &&
+                Array.from(illustratedPortraitsMap.values()).some(
+                  portrait => portrait.url === ref.url
+                )
             ).length;
             console.log(
               `[Books] Generating image for bookId=${bookId} stage=${stage} (reference mode ${mergedRefs.length} image reference(s): ${portraitRefCount} portrait, ${rawRefCount} raw photo; attempt ${attempt}/${maxImageAttempts})`
@@ -1458,13 +1630,18 @@ IMPORTANT: The appearance field must be a single string containing all 13 axes a
         }
       }
 
-      throw new Error(`Image generation failed for ${stage} after ${maxImageAttempts} attempts: ${lastErr ?? "unknown error"}`);
+      throw new Error(
+        `Image generation failed for ${stage} after ${maxImageAttempts} attempts: ${lastErr ?? "unknown error"}`
+      );
     };
 
-    //  Step 2: Generate story structure (outline pass) 
+    //  Step 2: Generate story structure (outline pass)
     // This pass generates the full branching skeleton. Content is short (1-2
     // sentences per page)  the per-page expansion pass will enrich it.
-    await db.update(books).set({ generationStep: "Crafting story structure…" }).where(eq(books.id, bookId));
+    await db
+      .update(books)
+      .set({ generationStep: "Crafting story structure…" })
+      .where(eq(books.id, bookId));
     const structureSystemPrompt = `You are a creative gamebook author. Always respond with valid JSON only.${characterCardBlock}
 
 CONTINUITY RULES:
@@ -1492,15 +1669,28 @@ BRANCHING RULES (MANDATORY  violations will cause story rejection):
     // Pre-compute evenly distributed branch page numbers so the LLM cannot cluster them.
     // Reserve the first pages for setup and leave at least 2 pages at the end for endings.
     const branchStartPage = category === "fairy_tale" ? 3 : 4;
-    const branchEndPage   = Math.max(branchStartPage + branchCount, pageCount - 2);
-    const branchSpacing   = branchCount > 1
-      ? Math.floor((branchEndPage - branchStartPage) / (branchCount - 1))
-      : 0;
-    const precomputedBranchPages = Array.from({ length: branchCount }, (_, i) =>
-      branchCount === 1
-        ? Math.round((branchStartPage + branchEndPage) / 2)   // single branch: place in middle
-        : branchStartPage + i * branchSpacing
+    const branchEndPage = Math.max(
+      branchStartPage + branchCount,
+      pageCount - 2
     );
+    const branchSpacing =
+      branchCount > 1
+        ? Math.floor((branchEndPage - branchStartPage) / (branchCount - 1))
+        : 0;
+    const precomputedBranchPages = Array.from(
+      { length: branchCount },
+      (_, i) =>
+        branchCount === 1
+          ? Math.round((branchStartPage + branchEndPage) / 2) // single branch: place in middle
+          : branchStartPage + i * branchSpacing
+    );
+    const comicStructureRules = isComic
+      ? `- COMIC STORY RULES: every page outline must imply 3 distinct sequential panel beats (setup, confrontation, consequence), not one vague mood.
+- Avoid repetitive filler inner-monologue such as generic hurry/panic phrases unless the exact wording is uniquely motivated by the scene.
+- Most comic pages should include another person, creature, crowd, ally, victim, or opposing force. If the protagonist is alone, the page must still contain a strong external obstacle or environmental threat.
+- Dialogue should arise from conflict, collaboration, persuasion, warning, interrogation, or emotional exchange. Do not make the protagonist talk to themselves unless absolutely necessary.
+- Branch pages must present concrete tactical or emotional dilemmas that clearly change the next scene.`
+      : "";
 
     const structurePrompt = `Generate a ${category.replace(/_/g, " ")} interactive gamebook titled "${title}" in ${language} language.
 Description: ${description}
@@ -1538,23 +1728,27 @@ Rules:
 - STORY BEGINNING: Page 1 MUST be a proper story opening  introduce the main characters, set the scene and world, and establish the context. The reader should feel they are starting a brand-new adventure, NOT joining in the middle of one.
 - MANDATORY BRANCH POSITIONS (CRITICAL): Place your ${branchCount} A/B branch point(s) on EXACTLY these page numbers: [${precomputedBranchPages.join(", ")}]. Do NOT place branch points on any other pages. Do NOT cluster branch points on consecutive pages. Each branch point must be separated by at least ${Math.max(2, branchSpacing - 1)} pages of narrative.
 - sfxTags: 1-3 English keywords matching the scene sound. Be specific  use common audio library keywords like "wind", "rocket_launch", "spaceship", "forest_ambience", "ocean_waves", "thunder", "birds_chirping", "fire_crackling", "heartbeat", "rain", "footsteps", "door_creak", "horse_gallop", "sword_clash". NEVER leave sfxTags as an empty array  every page MUST have at least one relevant sound effect tag.
+- If new supporting characters appear, establish them clearly through action or role (guard, scientist, sibling, rival, crowd leader, etc.) so later pages can refer to them consistently.
 - For fairy tales: 2-3 sentences per page
 - For comics: 3-4 panel descriptions per page
-- For others: 3-5 sentence narrative paragraphs`;
+- For others: 3-5 sentence narrative paragraphs
+${comicStructureRules}`;
 
-    type StoryData = { pages: Array<{
-      pageNumber: number;
-      branchPath: string;
-      isBranchPage: boolean;
-      isEnding?: boolean;
-      content: string;
-      outlineContent?: string;
-      sfxTags: string[];
-      choiceA: string | null;
-      choiceB: string | null;
-      nextPageA: number | null;
-      nextPageB: number | null;
-    }> };
+    type StoryData = {
+      pages: Array<{
+        pageNumber: number;
+        branchPath: string;
+        isBranchPage: boolean;
+        isEnding?: boolean;
+        content: string;
+        outlineContent?: string;
+        sfxTags: string[];
+        choiceA: string | null;
+        choiceB: string | null;
+        nextPageA: number | null;
+        nextPageB: number | null;
+      }>;
+    };
 
     let storyData: StoryData | null = null;
     let structureErr: string | null = null;
@@ -1568,7 +1762,9 @@ Rules:
         return JSON.parse(repairJSON(extracted)) as StoryData;
       }
     };
-    const buildDeterministicScaffoldStory = async (invalidDraft?: StoryData | null): Promise<StoryData> => {
+    const buildDeterministicScaffoldStory = async (
+      invalidDraft?: StoryData | null
+    ): Promise<StoryData> => {
       const scaffoldPages = buildFallbackStoryGraph({
         title,
         description,
@@ -1579,7 +1775,7 @@ Rules:
       });
 
       const scaffoldStory: StoryData = {
-        pages: scaffoldPages.map((page) => ({
+        pages: scaffoldPages.map(page => ({
           ...page,
           outlineContent: page.content,
         })),
@@ -1588,7 +1784,7 @@ Rules:
       const invalidDraftSummary = invalidDraft?.pages?.length
         ? invalidDraft.pages
             .slice(0, Math.min(40, invalidDraft.pages.length))
-            .map((page) => {
+            .map(page => {
               const choiceBits = page.isBranchPage
                 ? ` choices=(${page.choiceA ?? "null"} | ${page.choiceB ?? "null"})`
                 : "";
@@ -1671,14 +1867,22 @@ All topology fields must remain identical to the scaffold.`,
         const repairRaw = repairResp.choices[0]?.message?.content || "{}";
         let repaired: StoryData;
         try {
-          repaired = parseStoryDataFromRaw(typeof repairRaw === "string" ? repairRaw : JSON.stringify(repairRaw));
+          repaired = parseStoryDataFromRaw(
+            typeof repairRaw === "string"
+              ? repairRaw
+              : JSON.stringify(repairRaw)
+          );
         } catch (primaryRepairParseErr) {
-          const repairContent = typeof repairRaw === "string" ? repairRaw : JSON.stringify(repairRaw);
+          const repairContent =
+            typeof repairRaw === "string"
+              ? repairRaw
+              : JSON.stringify(repairRaw);
           const fixerResp = await invokeLLM({
             messages: [
               {
                 role: "system" as const,
-                content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
+                content:
+                  'You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {"pages":[{...}]}. Preserve content, fix malformed syntax only.',
               },
               {
                 role: "user" as const,
@@ -1691,32 +1895,48 @@ All topology fields must remain identical to the scaffold.`,
             max_tokens: 12000,
           });
           const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
-          const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
+          const fixedContent =
+            typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
           repaired = parseStoryDataFromRaw(fixedContent);
-          console.log(`[Books] Scaffold hydration JSON repaired via normalization pass for book ${bookId}`);
+          console.log(
+            `[Books] Scaffold hydration JSON repaired via normalization pass for book ${bookId}`
+          );
         }
-        const repairedByPage = new Map(repaired.pages.map((page) => [page.pageNumber, page]));
+        const repairedByPage = new Map(
+          repaired.pages.map(page => [page.pageNumber, page])
+        );
 
         return {
-          pages: scaffoldStory.pages.map((page) => {
+          pages: scaffoldStory.pages.map(page => {
             const candidate = repairedByPage.get(page.pageNumber);
             const contentValue = candidate?.content?.trim() || page.content;
-            const outlineValue = candidate?.outlineContent?.trim() || contentValue;
+            const outlineValue =
+              candidate?.outlineContent?.trim() || contentValue;
             const sfxTagsValue = Array.isArray(candidate?.sfxTags)
-              ? candidate!.sfxTags.map((tag) => String(tag ?? "").trim()).filter(Boolean).slice(0, 3)
+              ? candidate!.sfxTags
+                  .map(tag => String(tag ?? "").trim())
+                  .filter(Boolean)
+                  .slice(0, 3)
               : page.sfxTags;
             return {
               ...page,
               content: contentValue,
               outlineContent: outlineValue,
               sfxTags: sfxTagsValue.length > 0 ? sfxTagsValue : page.sfxTags,
-              choiceA: page.isBranchPage ? (candidate?.choiceA?.trim() || page.choiceA) : null,
-              choiceB: page.isBranchPage ? (candidate?.choiceB?.trim() || page.choiceB) : null,
+              choiceA: page.isBranchPage
+                ? candidate?.choiceA?.trim() || page.choiceA
+                : null,
+              choiceB: page.isBranchPage
+                ? candidate?.choiceB?.trim() || page.choiceB
+                : null,
             };
           }),
         };
       } catch (repairErr) {
-        console.warn(`[Books] Deterministic scaffold hydration failed for book ${bookId}; using raw scaffold content instead.`, repairErr);
+        console.warn(
+          `[Books] Deterministic scaffold hydration failed for book ${bookId}; using raw scaffold content instead.`,
+          repairErr
+        );
         return scaffoldStory;
       }
     };
@@ -1733,25 +1953,35 @@ All topology fields must remain identical to the scaffold.`,
               { role: "user" as const, content: structurePrompt },
             ],
             response_format: { type: "json_object" },
-            max_tokens: pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
+            max_tokens:
+              pageCount >= 80 ? 32000 : pageCount >= 18 ? 14000 : 8000,
           });
 
-          const rawContent = structureResponse.choices[0]?.message?.content || "{}";
-          const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+          const rawContent =
+            structureResponse.choices[0]?.message?.content || "{}";
+          const content =
+            typeof rawContent === "string"
+              ? rawContent
+              : JSON.stringify(rawContent);
           let parsed: StoryData | null = null;
           try {
             parsed = parseStoryDataFromRaw(content);
           } catch (primaryParseErr) {
             const preview = content.slice(0, 240).replace(/\s+/g, " ");
-            console.warn(`[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`);
-            console.warn(`[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`);
+            console.warn(
+              `[Books] Primary structure parse error (book ${bookId}, attempt ${attempt}): ${primaryParseErr instanceof Error ? primaryParseErr.message : String(primaryParseErr)}`
+            );
+            console.warn(
+              `[Books] Raw structure preview (book ${bookId}, attempt ${attempt}): ${preview}`
+            );
 
             try {
               const fixerResp = await invokeLLM({
                 messages: [
                   {
                     role: "system" as const,
-                    content: "You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {\"pages\":[{...}]}. Preserve content, fix malformed syntax only.",
+                    content:
+                      'You are a strict JSON formatter. Output ONLY valid JSON object with this shape: {"pages":[{...}]}. Preserve content, fix malformed syntax only.',
                   },
                   {
                     role: "user" as const,
@@ -1764,15 +1994,26 @@ All topology fields must remain identical to the scaffold.`,
                 max_tokens: 12000,
               });
               const fixerRaw = fixerResp.choices[0]?.message?.content || "{}";
-              const fixedContent = typeof fixerRaw === "string" ? fixerRaw : JSON.stringify(fixerRaw);
+              const fixedContent =
+                typeof fixerRaw === "string"
+                  ? fixerRaw
+                  : JSON.stringify(fixerRaw);
               parsed = parseStoryDataFromRaw(fixedContent);
-              console.warn(`[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`);
+              console.warn(
+                `[Books] Structure JSON repaired via normalization pass for book ${bookId} (attempt ${attempt})`
+              );
             } catch (fixErr) {
-              console.warn(`[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`);
+              console.warn(
+                `[Books] Structure normalization pass failed for book ${bookId} (attempt ${attempt}): ${fixErr instanceof Error ? fixErr.message : String(fixErr)}`
+              );
             }
           }
 
-          if (parsed && Array.isArray(parsed.pages) && parsed.pages.length > 0) {
+          if (
+            parsed &&
+            Array.isArray(parsed.pages) &&
+            parsed.pages.length > 0
+          ) {
             storyData = parsed;
             structureErr = null;
             break;
@@ -1784,28 +2025,44 @@ All topology fields must remain identical to the scaffold.`,
         }
 
         if (attempt < maxStructureAttempts) {
-          console.warn(`[Books] Structure generation retry ${attempt}/${maxStructureAttempts} for book ${bookId}: ${structureErr}`);
+          console.warn(
+            `[Books] Structure generation retry ${attempt}/${maxStructureAttempts} for book ${bookId}: ${structureErr}`
+          );
         }
       }
     }
 
     if (!storyData?.pages?.length) {
-      throw new Error(`Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`);
+      throw new Error(
+        `Failed to generate story structure after ${maxStructureAttempts} attempts${structureErr ? ` (${structureErr})` : ""}`
+      );
     }
 
-    const structuralShapeErrors = validateStoryShape(storyData.pages, pageCount);
+    const structuralShapeErrors = validateStoryShape(
+      storyData.pages,
+      pageCount
+    );
     if (structuralShapeErrors.length > 0) {
-      console.warn("[Books] Structure shape validation failed; rebuilding onto deterministic scaffold.", {
-        bookId,
-        structuralShapeErrors,
-      });
-      storyData = await buildDeterministicScaffoldStory(storyData);
-      const scaffoldShapeErrors = validateStoryShape(storyData.pages, pageCount);
-      if (scaffoldShapeErrors.length > 0) {
-        console.warn("[Books] Deterministic scaffold hydration still invalid; using deterministic fallback graph.", {
+      console.warn(
+        "[Books] Structure shape validation failed; rebuilding onto deterministic scaffold.",
+        {
           bookId,
-          scaffoldShapeErrors,
-        });
+          structuralShapeErrors,
+        }
+      );
+      storyData = await buildDeterministicScaffoldStory(storyData);
+      const scaffoldShapeErrors = validateStoryShape(
+        storyData.pages,
+        pageCount
+      );
+      if (scaffoldShapeErrors.length > 0) {
+        console.warn(
+          "[Books] Deterministic scaffold hydration still invalid; using deterministic fallback graph.",
+          {
+            bookId,
+            scaffoldShapeErrors,
+          }
+        );
         storyData = {
           pages: buildFallbackStoryGraph({
             title,
@@ -1819,7 +2076,7 @@ All topology fields must remain identical to the scaffold.`,
       }
     }
 
-    // Step 3: Post-structure validation 
+    // Step 3: Post-structure validation
     // Verify all branch references resolve, all paths reach an ending, and
     // GUARDRAIL 1: no page node is reused across multiple branch paths (no-merge rule).
     const localizedChoiceFallbacks = getLocalizedChoiceFallbacks(language);
@@ -1868,7 +2125,11 @@ All topology fields must remain identical to the scaffold.`,
       }
     }
     // Check at least one ending exists
-    const endingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1));
+    const endingPages = storyData.pages.filter(
+      p =>
+        p.isEnding ||
+        (!p.isBranchPage && !p.nextPageA && !p.nextPageB && p.pageNumber > 1)
+    );
     if (endingPages.length === 0) {
       const msg = "No ending pages found  story has no conclusion";
       validationErrors.push(msg);
@@ -1883,10 +2144,13 @@ All topology fields must remain identical to the scaffold.`,
     }
 
     if (mergeViolations.length > 0) {
-      console.warn(`[Books][Post-structure validation] merge violations detected — routing to auto-repair`, {
-        bookId,
-        violations: mergeViolations,
-      });
+      console.warn(
+        `[Books][Post-structure validation] merge violations detected — routing to auto-repair`,
+        {
+          bookId,
+          violations: mergeViolations,
+        }
+      );
     }
 
     // Auto-repair common non-critical structure issues instead of hard-failing generation.
@@ -1895,72 +2159,102 @@ All topology fields must remain identical to the scaffold.`,
     for (const page of storyData.pages) {
       // Drop dangling references
       if (page.nextPageA && !pageNumbers.has(page.nextPageA)) {
-        repairActions.push(`Page ${page.pageNumber}: cleared dangling nextPageA=${page.nextPageA}`);
+        repairActions.push(
+          `Page ${page.pageNumber}: cleared dangling nextPageA=${page.nextPageA}`
+        );
         page.nextPageA = null;
       }
       if (page.nextPageB && !pageNumbers.has(page.nextPageB)) {
-        repairActions.push(`Page ${page.pageNumber}: cleared dangling nextPageB=${page.nextPageB}`);
+        repairActions.push(
+          `Page ${page.pageNumber}: cleared dangling nextPageB=${page.nextPageB}`
+        );
         page.nextPageB = null;
       }
 
       // Enforce no-merge by keeping the first reference to each target.
       if (page.nextPageA) {
         if (usedTargets.has(page.nextPageA)) {
-          repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageA target=${page.nextPageA}`);
+          repairActions.push(
+            `Page ${page.pageNumber}: cleared duplicate nextPageA target=${page.nextPageA}`
+          );
           page.nextPageA = null;
           page.choiceA = null;
-        }
-        else usedTargets.add(page.nextPageA);
+        } else usedTargets.add(page.nextPageA);
       }
       if (page.nextPageB) {
         if (usedTargets.has(page.nextPageB)) {
-          repairActions.push(`Page ${page.pageNumber}: cleared duplicate nextPageB target=${page.nextPageB}`);
+          repairActions.push(
+            `Page ${page.pageNumber}: cleared duplicate nextPageB target=${page.nextPageB}`
+          );
           page.nextPageB = null;
           page.choiceB = null;
-        }
-        else usedTargets.add(page.nextPageB);
+        } else usedTargets.add(page.nextPageB);
       }
 
-        const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
-        if (page.isBranchPage && hasBranchTargets) {
-          if (!page.choiceA && page.nextPageA) {
-            repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceA`);
-            page.choiceA = localizedChoiceFallbacks.optionA;
-          }
-          if (!page.choiceB && page.nextPageB) {
-            repairActions.push(`Page ${page.pageNumber}: backfilled missing choiceB`);
-            page.choiceB = localizedChoiceFallbacks.optionB;
-          }
+      const hasBranchTargets = !!(page.nextPageA || page.nextPageB);
+      if (page.isBranchPage && hasBranchTargets) {
+        if (!page.choiceA && page.nextPageA) {
+          repairActions.push(
+            `Page ${page.pageNumber}: backfilled missing choiceA`
+          );
+          page.choiceA = localizedChoiceFallbacks.optionA;
+        }
+        if (!page.choiceB && page.nextPageB) {
+          repairActions.push(
+            `Page ${page.pageNumber}: backfilled missing choiceB`
+          );
+          page.choiceB = localizedChoiceFallbacks.optionB;
+        }
 
-        if (page.choiceA && page.nextPageA && !page.choiceB && !page.nextPageB) {
+        if (
+          page.choiceA &&
+          page.nextPageA &&
+          !page.choiceB &&
+          !page.nextPageB
+        ) {
           const candidate = storyData.pages.find(
-            p => p.pageNumber > page.pageNumber && !usedTargets.has(p.pageNumber)
+            p =>
+              p.pageNumber > page.pageNumber && !usedTargets.has(p.pageNumber)
           );
           if (candidate) {
             page.nextPageB = candidate.pageNumber;
             page.choiceB = localizedChoiceFallbacks.tryDifferent;
             usedTargets.add(candidate.pageNumber);
-            repairActions.push(`Page ${page.pageNumber}: synthesised missing choiceB -> page ${candidate.pageNumber}`);
+            repairActions.push(
+              `Page ${page.pageNumber}: synthesised missing choiceB -> page ${candidate.pageNumber}`
+            );
           } else {
             page.choiceB = localizedChoiceFallbacks.reconsider;
             page.nextPageB = page.nextPageA;
-            repairActions.push(`Page ${page.pageNumber}: synthesised choiceB fallback (mirrors A target)`);
+            repairActions.push(
+              `Page ${page.pageNumber}: synthesised choiceB fallback (mirrors A target)`
+            );
           }
         }
 
-        if (page.choiceB && page.nextPageB && !page.choiceA && !page.nextPageA) {
+        if (
+          page.choiceB &&
+          page.nextPageB &&
+          !page.choiceA &&
+          !page.nextPageA
+        ) {
           const candidate = storyData.pages.find(
-            p => p.pageNumber > page.pageNumber && !usedTargets.has(p.pageNumber)
+            p =>
+              p.pageNumber > page.pageNumber && !usedTargets.has(p.pageNumber)
           );
           if (candidate) {
             page.nextPageA = candidate.pageNumber;
             page.choiceA = localizedChoiceFallbacks.proceed;
             usedTargets.add(candidate.pageNumber);
-            repairActions.push(`Page ${page.pageNumber}: synthesised missing choiceA -> page ${candidate.pageNumber}`);
+            repairActions.push(
+              `Page ${page.pageNumber}: synthesised missing choiceA -> page ${candidate.pageNumber}`
+            );
           } else {
             page.choiceA = localizedChoiceFallbacks.faceDirectly;
             page.nextPageA = page.nextPageB;
-            repairActions.push(`Page ${page.pageNumber}: synthesised choiceA fallback (mirrors B target)`);
+            repairActions.push(
+              `Page ${page.pageNumber}: synthesised choiceA fallback (mirrors B target)`
+            );
           }
         }
       }
@@ -1977,7 +2271,9 @@ All topology fields must remain identical to the scaffold.`,
           !page.isEnding;
 
         if (needsDowngradeMutation) {
-          repairActions.push(`Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`);
+          repairActions.push(
+            `Page ${page.pageNumber}: downgraded to ending page due to missing branch targets`
+          );
           page.isBranchPage = false;
           page.choiceA = null;
           page.choiceB = null;
@@ -1998,7 +2294,9 @@ All topology fields must remain identical to the scaffold.`,
           if (!targetNum) continue;
           const targetPage = pageByNum.get(targetNum);
           if (targetPage && targetPage.isBranchPage) {
-            repairActions.push(`Page ${targetPage.pageNumber}: demoted from branch to narrative (was direct target of branch page ${page.pageNumber})`);
+            repairActions.push(
+              `Page ${targetPage.pageNumber}: demoted from branch to narrative (was direct target of branch page ${page.pageNumber})`
+            );
             targetPage.isBranchPage = false;
             targetPage.choiceA = null;
             targetPage.choiceB = null;
@@ -2009,7 +2307,9 @@ All topology fields must remain identical to the scaffold.`,
       }
     }
 
-    const repairedEndingPages = storyData.pages.filter(p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB));
+    const repairedEndingPages = storyData.pages.filter(
+      p => p.isEnding || (!p.isBranchPage && !p.nextPageA && !p.nextPageB)
+    );
     if (repairedEndingPages.length === 0 && storyData.pages.length > 0) {
       const last = storyData.pages[storyData.pages.length - 1];
       last.isBranchPage = false;
@@ -2019,7 +2319,9 @@ All topology fields must remain identical to the scaffold.`,
       last.nextPageB = null;
       last.isEnding = true;
       validationErrors.push("Auto-repair: forced final page to ending.");
-      repairActions.push(`Page ${last.pageNumber}: forced final page to ending`);
+      repairActions.push(
+        `Page ${last.pageNumber}: forced final page to ending`
+      );
     }
 
     console.info(`[Books][Post-structure validation] applied repair actions`, {
@@ -2028,16 +2330,19 @@ All topology fields must remain identical to the scaffold.`,
     });
     console.info(`[Books][Post-structure validation] final structure status`, {
       bookId,
-      status: repairActions.length > 0 || validationErrors.length > 0 ? "repaired" : "clean",
+      status:
+        repairActions.length > 0 || validationErrors.length > 0
+          ? "repaired"
+          : "clean",
     });
 
-    storyData.pages = storyData.pages.map((page) => ({
+    storyData.pages = storyData.pages.map(page => ({
       ...page,
       choiceA: translateGenericChoiceFallback(page.choiceA, language, "A"),
       choiceB: translateGenericChoiceFallback(page.choiceB, language, "B"),
     }));
 
-     // Step 4: Per-page expansion pass
+    // Step 4: Per-page expansion pass
     // For non-comic categories, enrich each page's content with a dedicated
     // LLM call that injects: character cards + the last 3 pages of context.
     // GUARDRAIL 2: Rolling context is branch-safe  only pages from the same
@@ -2062,23 +2367,35 @@ All topology fields must remain identical to the scaffold.`,
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
-        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
+        await db
+          .update(books)
+          .set({
+            generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…`,
+          })
+          .where(eq(books.id, bookId));
         const ancestorNums = getFairyAncestors(page.pageNumber, 3);
         const branchSafeContext = ancestorNums
           .map(num => fairyExpandedByPageNum.get(num))
           .filter((c): c is string => !!c)
-          .join(". For ending pages use calm ambient sounds (gentle-wind, sunset, peaceful) - NO cheering, applause, celebration or fanfare\n\n---\n\n");
+          .join(
+            ". For ending pages use calm ambient sounds (gentle-wind, sunset, peaceful) - NO cheering, applause, celebration or fanfare\n\n---\n\n"
+          );
         const contextBlock = branchSafeContext
           ? `\n\nSTORY SO FAR (last ${ancestorNums.length} pages on this branch path):\n${branchSafeContext}`
           : "";
         const otherParentPageNum = fairyParentMap.get(page.pageNumber);
-        const otherParentPage = otherParentPageNum ? storyData.pages.find(p => p.pageNumber === otherParentPageNum) : null;
-        const otherChoiceTaken = otherParentPage
-          ? (otherParentPage.nextPageA === page.pageNumber ? otherParentPage.choiceA : otherParentPage.choiceB)
+        const otherParentPage = otherParentPageNum
+          ? storyData.pages.find(p => p.pageNumber === otherParentPageNum)
           : null;
-        const branchContext = page.branchPath && page.branchPath !== "root"
-          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader chose: "${otherChoiceTaken || page.branchPath}". The narrative must directly continue from and reflect that choice.`
-          : "";
+        const otherChoiceTaken = otherParentPage
+          ? otherParentPage.nextPageA === page.pageNumber
+            ? otherParentPage.choiceA
+            : otherParentPage.choiceB
+          : null;
+        const branchContext =
+          page.branchPath && page.branchPath !== "root"
+            ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader chose: "${otherChoiceTaken || page.branchPath}". The narrative must directly continue from and reflect that choice.`
+            : "";
         try {
           const expandResp = await invokeLLM({
             messages: [
@@ -2115,8 +2432,110 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
             fairyExpandedByPageNum.set(page.pageNumber, page.content);
           }
         } catch (expandErr) {
-          console.error(`[Books] Fairy tale page ${page.pageNumber} expansion failed, using outline:`, expandErr);
+          console.error(
+            `[Books] Fairy tale page ${page.pageNumber} expansion failed, using outline:`,
+            expandErr
+          );
           fairyExpandedByPageNum.set(page.pageNumber, page.content);
+        }
+      }
+    }
+
+    if (isComic) {
+      const comicExpandedByPageNum = new Map<number, string>();
+      const comicParentMap = new Map<number, number>();
+      for (const p of storyData.pages) {
+        if (p.nextPageA) comicParentMap.set(p.nextPageA, p.pageNumber);
+        if (p.nextPageB) comicParentMap.set(p.nextPageB, p.pageNumber);
+      }
+
+      const getComicAncestors = (pageNum: number, limit: number): number[] => {
+        const ancestors: number[] = [];
+        let current = comicParentMap.get(pageNum);
+        while (current !== undefined && ancestors.length < limit) {
+          ancestors.unshift(current);
+          current = comicParentMap.get(current);
+        }
+        return ancestors.slice(-limit);
+      };
+
+      for (let i = 0; i < storyData.pages.length; i++) {
+        const page = storyData.pages[i];
+        await db
+          .update(books)
+          .set({
+            generationStep: `Writing comic page ${i + 1} of ${storyData.pages.length}…`,
+          })
+          .where(eq(books.id, bookId));
+
+        const ancestorNums = getComicAncestors(page.pageNumber, 3);
+        const branchSafeContext = ancestorNums
+          .map(num => comicExpandedByPageNum.get(num))
+          .filter((content): content is string => !!content)
+          .join("\n\n---\n\n");
+        const contextBlock = branchSafeContext
+          ? `\n\nSTORY SO FAR (last ${ancestorNums.length} pages on this branch path):\n${branchSafeContext}`
+          : "";
+
+        const parentPageNum = comicParentMap.get(page.pageNumber);
+        const parentPage = parentPageNum
+          ? storyData.pages.find(
+              candidate => candidate.pageNumber === parentPageNum
+            )
+          : null;
+        const chosenBranchLabel = parentPage
+          ? parentPage.nextPageA === page.pageNumber
+            ? parentPage.choiceA
+            : parentPage.choiceB
+          : null;
+        const branchContext =
+          page.branchPath && page.branchPath !== "root"
+            ? `\n\nBRANCH CONTEXT: This page is on branch "${page.branchPath}". The reader chose "${chosenBranchLabel || page.branchPath}" to get here. The consequence of that choice must be visible in the action, stakes, and environment.`
+            : "";
+
+        try {
+          const expandResp = await invokeLLM({
+            messages: [
+              {
+                role: "system" as const,
+                content: `You are a veteran comic-book writer scripting a ${category.replace(/_/g, " ")} interactive comic in ${language}.${characterCardBlock}
+
+COMIC PAGE WRITING RULES:
+- Rewrite each page into a compact synopsis that can be split into EXACTLY 3 consecutive comic panels.
+- The page must contain a clear three-beat escalation: setup, confrontation, consequence.
+- Use concrete action, changing staging, and cause/effect progression. Avoid static mood-only description.
+- Avoid repetitive filler lines and empty urgency phrases. Every sentence must advance plot, reveal character, or sharpen conflict.
+- Spoken dialogue should only exist when a character is audibly addressing another character, a group, or an enemy. Internal thoughts, hesitation, and solo self-talk should stay in scene narration/status-box material instead.
+- Most pages should include interaction with another person, creature, crowd, or opposing force. If the protagonist is alone, the environment itself must actively pressure them.
+- If this is page 1, write a true opening scene. If this is not page 1, continue the existing action without restarting the premise.
+- If this is a branch page, end with a vivid unresolved dilemma and let the UI buttons carry the actual A/B options.${contextBlock}${branchContext}
+
+UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters. Preserve ALL Unicode exactly as written in ${language}.`,
+              },
+              {
+                role: "user" as const,
+                content: `Rewrite this comic page outline in ${language} as a compact 3-beat comic-page synopsis:
+
+Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. Keep the prose open-ended and DO NOT print "Choice A" or "Choice B" inside the story text.` : ""}${page.isEnding ? "\n\nThis is an ending page. The third beat must land as a satisfying final image or decisive outcome." : ""}
+
+Write ONLY prose in ${language}. Use either exactly 3 short sentences or 1 short paragraph that clearly implies 3 consecutive panels. Do not label panel numbers.`,
+              },
+            ],
+          });
+
+          const expanded = expandResp.choices[0]?.message?.content;
+          if (typeof expanded === "string" && expanded.trim().length > 40) {
+            storyData.pages[i].content = expanded.trim();
+            comicExpandedByPageNum.set(page.pageNumber, expanded.trim());
+          } else {
+            comicExpandedByPageNum.set(page.pageNumber, page.content);
+          }
+        } catch (expandErr) {
+          console.error(
+            `[Books] Comic page ${page.pageNumber} expansion failed, using outline:`,
+            expandErr
+          );
+          comicExpandedByPageNum.set(page.pageNumber, page.content);
         }
       }
     }
@@ -2146,7 +2565,12 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
 
       for (let i = 0; i < storyData.pages.length; i++) {
         const page = storyData.pages[i];
-        await db.update(books).set({ generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…` }).where(eq(books.id, bookId));
+        await db
+          .update(books)
+          .set({
+            generationStep: `Writing page ${i + 1} of ${storyData.pages.length}…`,
+          })
+          .where(eq(books.id, bookId));
 
         // GUARDRAIL 2: Build rolling context from the last 3 pages on THIS branch path only.
         // We walk up the parent chain to find ancestors, then look up their expanded content.
@@ -2158,7 +2582,7 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
 
         console.log(
           `[Books] GUARDRAIL 2  Branch-safe context for page ${page.pageNumber} (path: ${page.branchPath}): ` +
-          `using ancestors [${ancestorNums.join(", ")}] (${branchSafeContext ? branchSafeContext.length : 0} chars)`
+            `using ancestors [${ancestorNums.join(", ")}] (${branchSafeContext ? branchSafeContext.length : 0} chars)`
         );
 
         const contextBlock = branchSafeContext
@@ -2167,13 +2591,20 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
 
         // Build branch context if this page follows a choice
         const parentPageNum = parentMap.get(page.pageNumber);
-        const parentPage = parentPageNum ? storyData.pages.find((candidate) => candidate.pageNumber === parentPageNum) : null;
-        const chosenBranchLabel = parentPage
-          ? (parentPage.nextPageA === page.pageNumber ? parentPage.choiceA : parentPage.choiceB)
+        const parentPage = parentPageNum
+          ? storyData.pages.find(
+              candidate => candidate.pageNumber === parentPageNum
+            )
           : null;
-        const branchContext = page.branchPath && page.branchPath !== "root"
-          ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader chose "${chosenBranchLabel || page.branchPath}" to arrive here. The prose must show a materially different consequence from the unchosen branch.`
-          : "";
+        const chosenBranchLabel = parentPage
+          ? parentPage.nextPageA === page.pageNumber
+            ? parentPage.choiceA
+            : parentPage.choiceB
+          : null;
+        const branchContext =
+          page.branchPath && page.branchPath !== "root"
+            ? `\n\nBRANCH CONTEXT: This page is on the "${page.branchPath}" path. The reader chose "${chosenBranchLabel || page.branchPath}" to arrive here. The prose must show a materially different consequence from the unchosen branch.`
+            : "";
 
         try {
           const expandResp = await invokeLLM({
@@ -2211,14 +2642,17 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
             expandedByPageNum.set(page.pageNumber, page.content);
           }
         } catch (expandErr) {
-          console.error(`[Books] Page ${page.pageNumber} expansion failed, using outline:`, expandErr);
+          console.error(
+            `[Books] Page ${page.pageNumber} expansion failed, using outline:`,
+            expandErr
+          );
           expandedByPageNum.set(page.pageNumber, page.content);
         }
       }
     }
 
     // Final prose cleanup: strip duplicated in-text choice labels and UI-like markers.
-    storyData.pages = storyData.pages.map((page) => ({
+    storyData.pages = storyData.pages.map(page => ({
       ...page,
       content: stripInlineChoiceLabels(page.content ?? ""),
     }));
@@ -2226,10 +2660,10 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
     const plannedIllustratedPageNumbers = new Set<number>(
       isOtherGenre
         ? storyData.pages
-            .filter((page) => page.isBranchPage)
+            .filter(page => page.isBranchPage)
             .slice(0, branchImageCount)
-            .map((page) => page.pageNumber)
-        : storyData.pages.map((page) => page.pageNumber)
+            .map(page => page.pageNumber)
+        : storyData.pages.map(page => page.pageNumber)
     );
 
     let recurringObjects: RecurringObjectProfile[] = [];
@@ -2246,11 +2680,14 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
             content: `Analyse this gamebook and extract recurring visual objects that must keep the same design across pages.
 
 Characters:
-${canonicalCharacterProfiles.map((profile) => `- ${profile.name}: ${profile.appearance}`).join("\n")}
+${canonicalCharacterProfiles.map(profile => `- ${profile.name}: ${profile.appearance}`).join("\n")}
 
 Story pages:
 ${storyData.pages
-  .map((page) => `Page ${page.pageNumber} (${page.branchPath}): ${page.content.slice(0, 220)}`)
+  .map(
+    page =>
+      `Page ${page.pageNumber} (${page.branchPath}): ${page.content.slice(0, 220)}`
+  )
   .join("\n")}
 
 Return JSON:
@@ -2267,26 +2704,44 @@ Rules:
         max_tokens: 4000,
       });
 
-      const rawObjects = objectRegistryResponse.choices[0]?.message?.content || "{\"objects\":[]}";
-      const objectPayload = typeof rawObjects === "string" ? rawObjects.trim() : JSON.stringify(rawObjects);
+      const rawObjects =
+        objectRegistryResponse.choices[0]?.message?.content || '{"objects":[]}';
+      const objectPayload =
+        typeof rawObjects === "string"
+          ? rawObjects.trim()
+          : JSON.stringify(rawObjects);
       if (objectPayload.startsWith("{")) {
         const parsedObjects = JSON.parse(repairJSON(objectPayload));
         if (Array.isArray(parsedObjects.objects)) {
           recurringObjects = parsedObjects.objects
             .map((item: any) => ({
               name: String(item?.name ?? "").trim(),
-              canonicalAppearance: String(item?.canonicalAppearance ?? "").trim(),
+              canonicalAppearance: String(
+                item?.canonicalAppearance ?? ""
+              ).trim(),
               invariants: Array.isArray(item?.invariants)
-                ? item.invariants.map((value: unknown) => String(value).trim()).filter(Boolean)
+                ? item.invariants
+                    .map((value: unknown) => String(value).trim())
+                    .filter(Boolean)
                 : [],
-              continuityRole: item?.continuityRole ? String(item.continuityRole).trim() : undefined,
-              firstSeenPage: item?.firstSeenPage ? Number(item.firstSeenPage) : undefined,
+              continuityRole: item?.continuityRole
+                ? String(item.continuityRole).trim()
+                : undefined,
+              firstSeenPage: item?.firstSeenPage
+                ? Number(item.firstSeenPage)
+                : undefined,
             }))
-            .filter((item: RecurringObjectProfile) => item.name && item.canonicalAppearance);
+            .filter(
+              (item: RecurringObjectProfile) =>
+                item.name && item.canonicalAppearance
+            );
         }
       }
     } catch (objectErr) {
-      console.warn("[Books] Recurring object registry generation failed; continuing without locked object registry.", objectErr);
+      console.warn(
+        "[Books] Recurring object registry generation failed; continuing without locked object registry.",
+        objectErr
+      );
     }
 
     const visualBlueprint = createBookVisualBlueprint({
@@ -2297,18 +2752,31 @@ Rules:
       recurringObjects,
     });
     const portraitReferenceMap = new Map(
-      Array.from(illustratedPortraitsMap.entries()).map(([name, ref]) => [name, { url: ref.url, mimeType: ref.mimeType }])
+      Array.from(illustratedPortraitsMap.entries()).map(([name, ref]) => [
+        name,
+        { url: ref.url, mimeType: ref.mimeType },
+      ])
     );
 
     const findMentionedCharacters = (content: string) =>
       canonicalCharacterProfiles
-        .filter((profile) => new RegExp(`\\b${profile.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(content))
-        .map((profile) => profile.name);
+        .filter(profile =>
+          new RegExp(
+            `\\b${profile.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`,
+            "i"
+          ).test(content)
+        )
+        .map(profile => profile.name);
 
     const findMentionedObjects = (content: string) =>
       recurringObjects
-        .filter((object) => new RegExp(`\\b${object.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`, "i").test(content))
-        .map((object) => object.name);
+        .filter(object =>
+          new RegExp(
+            `\\b${object.name.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\b`,
+            "i"
+          ).test(content)
+        )
+        .map(object => object.name);
 
     const parentPageMap = new Map<number, number>();
     for (const page of storyData.pages) {
@@ -2321,7 +2789,9 @@ Rules:
       if (!plannedIllustratedPageNumbers.has(page.pageNumber)) continue;
 
       const parentPageNumber = parentPageMap.get(page.pageNumber);
-      const previousScene = parentPageNumber ? sceneSpecsByPageNumber.get(parentPageNumber) : undefined;
+      const previousScene = parentPageNumber
+        ? sceneSpecsByPageNumber.get(parentPageNumber)
+        : undefined;
       const fallbackScene = sceneSpecFallback({
         pageNumber: page.pageNumber,
         narrative: page.content,
@@ -2334,7 +2804,9 @@ Rules:
 
       try {
         const parentPage = parentPageNumber
-          ? storyData.pages.find((candidate) => candidate.pageNumber === parentPageNumber)
+          ? storyData.pages.find(
+              candidate => candidate.pageNumber === parentPageNumber
+            )
           : undefined;
         const branchChoice =
           parentPage && parentPage.isBranchPage
@@ -2358,10 +2830,10 @@ Page narrative:
 ${page.content}
 
 Canonical characters:
-${canonicalCharacterProfiles.map((profile) => `- ${profile.promptBlock}`).join("\n")}
+${canonicalCharacterProfiles.map(profile => `- ${profile.promptBlock}`).join("\n")}
 
 Recurring objects:
-${recurringObjects.map((object) => `- ${object.name}: ${object.canonicalAppearance}. Invariants: ${object.invariants.join(", ")}`).join("\n") || "- none"}
+${recurringObjects.map(object => `- ${object.name}: ${object.canonicalAppearance}. Invariants: ${object.invariants.join(", ")}`).join("\n") || "- none"}
 
 Previous illustrated scene:
 ${previousScene ? JSON.stringify(previousScene) : "none"}
@@ -2410,14 +2882,14 @@ Rules:
           typeof rawScene === "string" ? rawScene : JSON.stringify(rawScene),
           {
             ...fallbackScene,
-            characters: mentionedCharacters.map((name) => ({
+            characters: mentionedCharacters.map(name => ({
               name,
               action: "present in the scene",
               pose: "natural story pose",
               framing: "fully visible",
               visibility: "fully visible",
             })),
-            recurringObjects: mentionedObjects.map((name) => ({
+            recurringObjects: mentionedObjects.map(name => ({
               name,
               state: "present and unchanged",
               visibility: "visible",
@@ -2426,32 +2898,36 @@ Rules:
         );
         sceneSpecsByPageNumber.set(page.pageNumber, parsedScene);
       } catch (sceneErr) {
-        sceneSpecsByPageNumber.set(
-          page.pageNumber,
-          {
-            ...fallbackScene,
-            characters: mentionedCharacters.map((name) => ({
-              name,
-              action: "present in the scene",
-              pose: "natural story pose",
-              framing: "fully visible",
-              visibility: "fully visible",
-            })),
-            recurringObjects: mentionedObjects.map((name) => ({
-              name,
-              state: "present and unchanged",
-              visibility: "visible",
-            })),
-          }
+        sceneSpecsByPageNumber.set(page.pageNumber, {
+          ...fallbackScene,
+          characters: mentionedCharacters.map(name => ({
+            name,
+            action: "present in the scene",
+            pose: "natural story pose",
+            framing: "fully visible",
+            visibility: "fully visible",
+          })),
+          recurringObjects: mentionedObjects.map(name => ({
+            name,
+            state: "present and unchanged",
+            visibility: "visible",
+          })),
+        });
+        console.warn(
+          `[Books] Scene spec generation failed for page ${page.pageNumber}; using fallback continuity spec.`,
+          sceneErr
         );
-        console.warn(`[Books] Scene spec generation failed for page ${page.pageNumber}; using fallback continuity spec.`, sceneErr);
       }
     }
 
     for (const page of storyData.pages) {
       if (!page.isBranchPage || !page.nextPageA || !page.nextPageB) continue;
-      const nextA = storyData.pages.find((candidate) => candidate.pageNumber === page.nextPageA);
-      const nextB = storyData.pages.find((candidate) => candidate.pageNumber === page.nextPageB);
+      const nextA = storyData.pages.find(
+        candidate => candidate.pageNumber === page.nextPageA
+      );
+      const nextB = storyData.pages.find(
+        candidate => candidate.pageNumber === page.nextPageB
+      );
       if (!nextA || !nextB) continue;
 
       const similarity = branchSimilarityScore(nextA.content, nextB.content);
@@ -2466,7 +2942,10 @@ Rules:
       }
     }
 
-    await db.update(books).set({ generationStep: "Generating cover image…" }).where(eq(books.id, bookId));
+    await db
+      .update(books)
+      .set({ generationStep: "Generating cover image…" })
+      .where(eq(books.id, bookId));
 
     type IllustrationRecurringObjectProfile = {
       id: string;
@@ -2503,47 +2982,75 @@ Rules:
       return branchPageNumbers.has(pageNumber);
     };
 
-    const illustratedStoryPages = storyData.pages.filter(page => shouldIllustratePage(page.pageNumber));
+    const illustratedStoryPages = storyData.pages.filter(page =>
+      shouldIllustratePage(page.pageNumber)
+    );
     const extractMentionedCharactersFromText = (text: string): string[] => {
       const matches = canonicalCharacterProfiles
-        .filter(profile => new RegExp(`\\b${profile.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text))
+        .filter(profile =>
+          new RegExp(
+            `\\b${profile.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+            "i"
+          ).test(text)
+        )
         .map(profile => profile.name);
-      return matches.length > 0 ? matches : canonicalCharacterProfiles.map(profile => profile.name);
+      return matches.length > 0
+        ? matches
+        : canonicalCharacterProfiles.map(profile => profile.name);
     };
 
-    const keywordSeeds = ["rocket", "backpack", "map", "helmet", "lantern", "key", "book", "sword", "wand", "ship", "spaceship"];
-    const fallbackRecurringObjects = (): IllustrationRecurringObjectProfile[] => {
-      const detected: IllustrationRecurringObjectProfile[] = [];
-      for (const keyword of keywordSeeds) {
-        const relatedPages = storyData.pages.filter(page => {
-          const sourceText = `${page.outlineContent ?? ""} ${page.content ?? ""}`.toLowerCase();
-          return sourceText.includes(keyword.toLowerCase());
-        });
-        if (relatedPages.length >= 1) {
-          detected.push({
-            id: keyword.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
-            name: keyword,
-            canonicalAppearance: `the same ${keyword} design established earlier in the book`,
-            continuityRules: [
-              `if the ${keyword} appears again, keep its silhouette, colours, and material details consistent`,
-            ],
-            traitsToAvoidChanging: [`do not redesign or recolor the ${keyword}`, `do not omit the ${keyword} when the story references it`],
-            introducedOnPage: relatedPages[0]?.pageNumber ?? null,
-            requiredPageNumbers: relatedPages.map(page => page.pageNumber),
+    const keywordSeeds = [
+      "rocket",
+      "backpack",
+      "map",
+      "helmet",
+      "lantern",
+      "key",
+      "book",
+      "sword",
+      "wand",
+      "ship",
+      "spaceship",
+    ];
+    const fallbackRecurringObjects =
+      (): IllustrationRecurringObjectProfile[] => {
+        const detected: IllustrationRecurringObjectProfile[] = [];
+        for (const keyword of keywordSeeds) {
+          const relatedPages = storyData.pages.filter(page => {
+            const sourceText =
+              `${page.outlineContent ?? ""} ${page.content ?? ""}`.toLowerCase();
+            return sourceText.includes(keyword.toLowerCase());
           });
+          if (relatedPages.length >= 1) {
+            detected.push({
+              id: keyword.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+              name: keyword,
+              canonicalAppearance: `the same ${keyword} design established earlier in the book`,
+              continuityRules: [
+                `if the ${keyword} appears again, keep its silhouette, colours, and material details consistent`,
+              ],
+              traitsToAvoidChanging: [
+                `do not redesign or recolor the ${keyword}`,
+                `do not omit the ${keyword} when the story references it`,
+              ],
+              introducedOnPage: relatedPages[0]?.pageNumber ?? null,
+              requiredPageNumbers: relatedPages.map(page => page.pageNumber),
+            });
+          }
         }
-      }
-      return detected;
-    };
+        return detected;
+      };
 
-    let recurringObjectMemory: IllustrationRecurringObjectProfile[] = fallbackRecurringObjects();
+    let recurringObjectMemory: IllustrationRecurringObjectProfile[] =
+      fallbackRecurringObjects();
     if (illustratedStoryPages.length > 0) {
       try {
         const objectResp = await invokeLLM({
           messages: [
             {
               role: "system" as const,
-              content: "You extract recurring visual continuity objects for illustrated stories. Return valid JSON only.",
+              content:
+                "You extract recurring visual continuity objects for illustrated stories. Return valid JSON only.",
             },
             {
               role: "user" as const,
@@ -2566,25 +3073,47 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           max_tokens: 8000,
         });
         const objectRaw = objectResp.choices[0]?.message?.content || "{}";
-        const objectPayload = typeof objectRaw === "string" ? objectRaw.trim() : JSON.stringify(objectRaw);
+        const objectPayload =
+          typeof objectRaw === "string"
+            ? objectRaw.trim()
+            : JSON.stringify(objectRaw);
         if (objectPayload.startsWith("{")) {
           const objectParsed = JSON.parse(repairJSON(objectPayload));
-          if (Array.isArray(objectParsed.objects) && objectParsed.objects.length > 0) {
-            recurringObjectMemory = objectParsed.objects.map((obj: IllustrationRecurringObjectProfile) => ({
-              ...obj,
-              continuityRules: compactList(obj.continuityRules),
-              traitsToAvoidChanging: compactList(obj.traitsToAvoidChanging),
-              requiredPageNumbers: Array.from(new Set((obj.requiredPageNumbers ?? []).filter((num: number) => Number.isFinite(num)))),
-              introducedOnPage: Number.isFinite(obj.introducedOnPage) ? obj.introducedOnPage : null,
-            }));
+          if (
+            Array.isArray(objectParsed.objects) &&
+            objectParsed.objects.length > 0
+          ) {
+            recurringObjectMemory = objectParsed.objects.map(
+              (obj: IllustrationRecurringObjectProfile) => ({
+                ...obj,
+                continuityRules: compactList(obj.continuityRules),
+                traitsToAvoidChanging: compactList(obj.traitsToAvoidChanging),
+                requiredPageNumbers: Array.from(
+                  new Set(
+                    (obj.requiredPageNumbers ?? []).filter((num: number) =>
+                      Number.isFinite(num)
+                    )
+                  )
+                ),
+                introducedOnPage: Number.isFinite(obj.introducedOnPage)
+                  ? obj.introducedOnPage
+                  : null,
+              })
+            );
           }
         }
       } catch (objectErr) {
-        console.warn("[Books] Recurring object continuity extraction failed, using keyword-based fallback:", objectErr);
+        console.warn(
+          "[Books] Recurring object continuity extraction failed, using keyword-based fallback:",
+          objectErr
+        );
       }
     }
 
-    const recurringObjectsByPage = new Map<number, IllustrationRecurringObjectProfile[]>();
+    const recurringObjectsByPage = new Map<
+      number,
+      IllustrationRecurringObjectProfile[]
+    >();
     for (const objectProfile of recurringObjectMemory) {
       for (const pageNumber of objectProfile.requiredPageNumbers) {
         const existing = recurringObjectsByPage.get(pageNumber) ?? [];
@@ -2592,19 +3121,38 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       }
     }
 
-    const fallbackSceneSpec = (page: StoryData["pages"][number], previousPage?: StoryData["pages"][number]): IllustrationSceneSpec => {
-      const sourceText = `${page.outlineContent ?? page.content} ${page.content}`.trim();
-      const requiredObjects = (recurringObjectsByPage.get(page.pageNumber) ?? []).map(objectProfile => objectProfile.name);
+    const fallbackSceneSpec = (
+      page: StoryData["pages"][number],
+      previousPage?: StoryData["pages"][number]
+    ): IllustrationSceneSpec => {
+      const sourceText =
+        `${page.outlineContent ?? page.content} ${page.content}`.trim();
+      const requiredObjects = (
+        recurringObjectsByPage.get(page.pageNumber) ?? []
+      ).map(objectProfile => objectProfile.name);
       return {
         pageNumber: page.pageNumber,
-        location: page.isEnding ? "final story location from the text" : "location described in the page text",
+        location: page.isEnding
+          ? "final story location from the text"
+          : "location described in the page text",
         mainAction: sourceText.slice(0, 180),
-        emotionalTone: page.isEnding ? "resolved and emotionally complete" : page.isBranchPage ? "tense decision moment" : "story-specific emotional tone from the page text",
+        emotionalTone: page.isEnding
+          ? "resolved and emotionally complete"
+          : page.isBranchPage
+            ? "tense decision moment"
+            : "story-specific emotional tone from the page text",
         requiredObjects,
         forbiddenObjects: ["random text", "unexplained extra props"],
-        cameraFraming: isComic ? "dynamic comic composition matching the action" : page.isBranchPage ? "clear dramatic decision framing" : "storybook framing focused on the page action",
+        cameraFraming: isComic
+          ? "dynamic comic composition matching the action"
+          : page.isBranchPage
+            ? "clear dramatic decision framing"
+            : "storybook framing focused on the page action",
         continuityRequirementsFromPreviousPage: previousPage
-          ? [`continue visual continuity from page ${previousPage.pageNumber}`, `preserve the same character identities, outfits, and props seen previously when still present`]
+          ? [
+              `continue visual continuity from page ${previousPage.pageNumber}`,
+              `preserve the same character identities, outfits, and props seen previously when still present`,
+            ]
           : ["establish the canonical look cleanly on first appearance"],
         featuredCharacters: extractMentionedCharactersFromText(sourceText),
         actionMoments: [sourceText.slice(0, 140)],
@@ -2622,46 +3170,61 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       "no style drift, no switch in medium, line quality, palette, or rendering finish",
     ].join(" | ");
 
-    const buildGlobalStyleLayer = () => [
-      "GLOBAL STYLE PROFILE",
-      `medium: ${globalStyleProfile.medium}`,
-      `lighting: ${globalStyleProfile.lighting}`,
-      `palette: ${globalStyleProfile.palette}`,
-      `linework: ${globalStyleProfile.linework}`,
-      `composition: ${globalStyleProfile.composition}`,
-      ...globalStyleProfile.renderingRules.map(rule => `rendering rule: ${rule}`),
-      ...globalStyleProfile.continuityRules.map(rule => `style continuity rule: ${rule}`),
-    ].join(" | ");
+    const buildGlobalStyleLayer = () =>
+      [
+        "GLOBAL STYLE PROFILE",
+        `medium: ${globalStyleProfile.medium}`,
+        `lighting: ${globalStyleProfile.lighting}`,
+        `palette: ${globalStyleProfile.palette}`,
+        `linework: ${globalStyleProfile.linework}`,
+        `composition: ${globalStyleProfile.composition}`,
+        ...globalStyleProfile.renderingRules.map(
+          rule => `rendering rule: ${rule}`
+        ),
+        ...globalStyleProfile.continuityRules.map(
+          rule => `style continuity rule: ${rule}`
+        ),
+      ].join(" | ");
 
     const buildCanonicalCharacterLayer = (featuredNames?: string[]) => {
-      const relevantProfiles = featuredNames && featuredNames.length > 0
-        ? canonicalCharacterProfiles.filter(profile => featuredNames.includes(profile.name))
-        : canonicalCharacterProfiles;
+      const relevantProfiles =
+        featuredNames && featuredNames.length > 0
+          ? canonicalCharacterProfiles.filter(profile =>
+              featuredNames.includes(profile.name)
+            )
+          : canonicalCharacterProfiles;
       return relevantProfiles.length > 0
         ? [
             "CANONICAL CHARACTER LAYER",
             ...relevantProfiles.map(formatCanonicalProfile),
             STRUCTURED_IDENTITY_BLOCK || undefined,
-          ].filter(Boolean).join(" | ")
+          ]
+            .filter(Boolean)
+            .join(" | ")
         : "";
     };
 
     const buildRecurringObjectLayer = (requiredObjects: string[]) => {
       const relevantObjects = recurringObjectMemory.filter(objectProfile =>
-        requiredObjects.some(required =>
-          required.toLowerCase().includes(objectProfile.name.toLowerCase()) ||
-          objectProfile.name.toLowerCase().includes(required.toLowerCase())
+        requiredObjects.some(
+          required =>
+            required.toLowerCase().includes(objectProfile.name.toLowerCase()) ||
+            objectProfile.name.toLowerCase().includes(required.toLowerCase())
         )
       );
       return relevantObjects.length > 0
         ? [
             "RECURRING OBJECT CONTINUITY MEMORY",
-            ...relevantObjects.map(objectProfile => [
-              `${objectProfile.name}`,
-              `canonical appearance=${objectProfile.canonicalAppearance}`,
-              ...objectProfile.continuityRules.map(rule => `rule=${rule}`),
-              ...objectProfile.traitsToAvoidChanging.map(rule => `avoid=${rule}`),
-            ].join(" | ")),
+            ...relevantObjects.map(objectProfile =>
+              [
+                `${objectProfile.name}`,
+                `canonical appearance=${objectProfile.canonicalAppearance}`,
+                ...objectProfile.continuityRules.map(rule => `rule=${rule}`),
+                ...objectProfile.traitsToAvoidChanging.map(
+                  rule => `avoid=${rule}`
+                ),
+              ].join(" | ")
+            ),
           ].join(" | ")
         : "";
     };
@@ -2678,22 +3241,33 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
         `required objects: ${sceneSpec.requiredObjects.join(", ") || "none"}`,
         `forbidden objects: ${sceneSpec.forbiddenObjects.join(", ") || "none"}`,
         ...sceneSpec.actionMoments.map(moment => `action beat: ${moment}`),
-        ...sceneSpec.continuityRequirementsFromPreviousPage.map(requirement => `previous-page continuity: ${requirement}`),
+        ...sceneSpec.continuityRequirementsFromPreviousPage.map(
+          requirement => `previous-page continuity: ${requirement}`
+        ),
       ].join(" | ");
     };
 
-    const buildContinuityConstraintLayer = (sceneSpec?: IllustrationSceneSpec) => [
-      strictCategoryAwareIdentityInstruction,
-      CHARACTER_COLOUR_LOCK,
-      CHARACTER_LOCK_INSTRUCTION,
-      sceneSpec?.requiredObjects?.length ? `MANDATORY OBJECT PRESENCE: show these exact recurring objects if story-relevant: ${sceneSpec.requiredObjects.join(", ")}` : "",
-      sceneSpec?.forbiddenObjects?.length ? `FORBIDDEN VISUAL ELEMENTS: do not show ${sceneSpec.forbiddenObjects.join(", ")}` : "",
-      "CHARACTER CONTINUITY: same face shape, hair, age impression, clothing design, and silhouette across the entire book",
-      "NO LATE-PAGE DRIFT: never change haircut length, fringe/bangs, eyebrow shape, eye colour, nose shape, jawline, signature clothing print, jewelry, or age impression unless the story explicitly states a transformation",
-      "IDENTITY ANCHOR: if a character appears again, render them as the exact same person from earlier pages, not a lookalike or a newly interpreted variant",
-      "PROP CONTINUITY: recurring objects must keep the same design language, shape, colors, markings, and scale across pages",
-      "SCENE ACCURACY: depict the concrete page action, not a generic magical or atmospheric substitute",
-    ].filter(Boolean).join(" | ");
+    const buildContinuityConstraintLayer = (
+      sceneSpec?: IllustrationSceneSpec
+    ) =>
+      [
+        strictCategoryAwareIdentityInstruction,
+        CHARACTER_COLOUR_LOCK,
+        CHARACTER_LOCK_INSTRUCTION,
+        sceneSpec?.requiredObjects?.length
+          ? `MANDATORY OBJECT PRESENCE: show these exact recurring objects if story-relevant: ${sceneSpec.requiredObjects.join(", ")}`
+          : "",
+        sceneSpec?.forbiddenObjects?.length
+          ? `FORBIDDEN VISUAL ELEMENTS: do not show ${sceneSpec.forbiddenObjects.join(", ")}`
+          : "",
+        "CHARACTER CONTINUITY: same face shape, hair, age impression, clothing design, and silhouette across the entire book",
+        "NO LATE-PAGE DRIFT: never change haircut length, fringe/bangs, eyebrow shape, eye colour, nose shape, jawline, signature clothing print, jewelry, or age impression unless the story explicitly states a transformation",
+        "IDENTITY ANCHOR: if a character appears again, render them as the exact same person from earlier pages, not a lookalike or a newly interpreted variant",
+        "PROP CONTINUITY: recurring objects must keep the same design language, shape, colors, markings, and scale across pages",
+        "SCENE ACCURACY: depict the concrete page action, not a generic magical or atmospheric substitute",
+      ]
+        .filter(Boolean)
+        .join(" | ");
 
     const assembleIllustrationPrompt = (options: {
       purpose: string;
@@ -2701,9 +3275,11 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       featuredCharacterNames?: string[];
       extraLayers?: Array<string | null | undefined>;
     }): string => {
-      const featuredNames = options.featuredCharacterNames && options.featuredCharacterNames.length > 0
-        ? options.featuredCharacterNames
-        : options.sceneSpec?.featuredCharacters;
+      const featuredNames =
+        options.featuredCharacterNames &&
+        options.featuredCharacterNames.length > 0
+          ? options.featuredCharacterNames
+          : options.sceneSpec?.featuredCharacters;
       return [
         buildGlobalStyleLayer(),
         `PURPOSE: ${options.purpose}`,
@@ -2714,48 +3290,72 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
         NO_TEXT_CONSTRAINT,
         NEGATIVE_PROMPT_GUARDRAILS,
         ...((options.extraLayers ?? []).filter(Boolean) as string[]),
-      ].filter(Boolean).join(" | ");
+      ]
+        .filter(Boolean)
+        .join(" | ");
     };
 
     // Generate cover image  uses STYLE_LOCK + full charAnchorBlock for maximum consistency
     // The cover sets the visual "contract" for the whole book; all page illustrations
     // must match the style established here.
     let coverImageUrl: string | null | undefined = null;
-    const descSnippet = description ? description.substring(0, 120) : "an epic adventure";
+    const descSnippet = description
+      ? description.substring(0, 120)
+      : "an epic adventure";
     // Cover-specific framing note added on top of the global style lock
-    const coverFramingNote = {
-      fairy_tale: "full-scene establishing shot, magical landscape with characters in foreground",
-      comic: "iconic hero pose, full-body shot, dramatic background",
-      crime_mystery: "atmospheric establishing shot, moody cityscape or interior",
-      fantasy_scifi: "epic wide-angle establishing shot, otherworldly environment",
-      romance: "intimate two-shot or single-character portrait, emotional expression",
-      horror_thriller: "ominous establishing shot, dark environment, sense of dread",
-    }[category] || "dramatic establishing shot, professional book cover composition";
+    const coverFramingNote =
+      {
+        fairy_tale:
+          "full-scene establishing shot, magical landscape with characters in foreground",
+        comic: "iconic hero pose, full-body shot, dramatic background",
+        crime_mystery:
+          "atmospheric establishing shot, moody cityscape or interior",
+        fantasy_scifi:
+          "epic wide-angle establishing shot, otherworldly environment",
+        romance:
+          "intimate two-shot or single-character portrait, emotional expression",
+        horror_thriller:
+          "ominous establishing shot, dark environment, sense of dread",
+      }[category] ||
+      "dramatic establishing shot, professional book cover composition";
     const coverScenePrompt = buildScenePrompt({
       blueprint: visualBlueprint,
       sceneSpec: {
         pageNumber: 0,
         sceneSummary: `Cover scene for "${title}". ${descSnippet}`,
-        narrativeBeat: "Establish the central premise and lead character with a coherent environment.",
+        narrativeBeat:
+          "Establish the central premise and lead character with a coherent environment.",
         location: "cover illustration scene",
         environment: coverFramingNote,
         timeOfDay: "match the story premise",
-        lighting: "match the locked global style and remain physically coherent",
+        lighting:
+          "match the locked global style and remain physically coherent",
         physics: "credible scale, shadows, and environment logic",
         camera: coverFramingNote,
-        composition: "cover composition with fully visible hero subject and readable silhouette",
-        continuityFromPrevious: "Set the canonical visual contract for the rest of the book.",
-        branchDelta: "Do not show text; emphasize the core story hook visually.",
+        composition:
+          "cover composition with fully visible hero subject and readable silhouette",
+        continuityFromPrevious:
+          "Set the canonical visual contract for the rest of the book.",
+        branchDelta:
+          "Do not show text; emphasize the core story hook visually.",
         mustShow: [descSnippet],
-        explicitExclusions: ["text", "letters", "captions", "logos", "author names"],
-        characters: canonicalCharacterProfiles.slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length))).map((profile) => ({
-          name: profile.name,
-          action: "hero cover pose",
-          pose: "confident, readable pose",
-          framing: "fully visible",
-          visibility: "fully visible",
-        })),
-        recurringObjects: recurringObjects.slice(0, 2).map((object) => ({
+        explicitExclusions: [
+          "text",
+          "letters",
+          "captions",
+          "logos",
+          "author names",
+        ],
+        characters: canonicalCharacterProfiles
+          .slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length)))
+          .map(profile => ({
+            name: profile.name,
+            action: "hero cover pose",
+            pose: "confident, readable pose",
+            framing: "fully visible",
+            visibility: "fully visible",
+          })),
+        recurringObjects: recurringObjects.slice(0, 2).map(object => ({
           name: object.name,
           state: "canonical cover appearance",
           visibility: "visible if relevant",
@@ -2768,7 +3368,12 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
         "cover",
         [
           buildSceneIdentityPriorityBlock(
-            canonicalCharacterProfiles.slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length))).map((profile) => profile.name)
+            canonicalCharacterProfiles
+              .slice(
+                0,
+                Math.max(1, Math.min(2, canonicalCharacterProfiles.length))
+              )
+              .map(profile => profile.name)
           ),
           coverScenePrompt,
           `book cover illustration for a gamebook`,
@@ -2776,10 +3381,17 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
           charPhotos.length > 0
             ? `CRITICAL FACE IDENTITY: The character(s) depicted on this cover MUST be visually recognisable as the EXACT SAME individuals from their reference photos. Preserve without any modification: exact face shape, skin tone, hair colour, hair style, eye colour, nose shape, jawline, eyebrow thickness. Do NOT genericise, idealise, or redesign any facial feature.`
             : null,
-        ].filter(Boolean).join(" | "),
+        ]
+          .filter(Boolean)
+          .join(" | "),
         getCharacterReferenceImages(
-          canonicalCharacterProfiles.slice(0, Math.max(1, Math.min(2, canonicalCharacterProfiles.length))).map((profile) => profile.name)
-        ),
+          canonicalCharacterProfiles
+            .slice(
+              0,
+              Math.max(1, Math.min(2, canonicalCharacterProfiles.length))
+            )
+            .map(profile => profile.name)
+        )
       );
       if (coverResult.url) {
         coverImageUrl = coverResult.url;
@@ -2814,348 +3426,453 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       }
     };
 
-    await db.update(books).set({ generationStep: `Generating ${totalPages} illustrations in parallel…` }).where(eq(books.id, bookId));
+    await db
+      .update(books)
+      .set({
+        generationStep: `Generating ${totalPages} illustrations in parallel…`,
+      })
+      .where(eq(books.id, bookId));
 
     // Type for per-page image results
-    type PageImageResult = { pageNumber: number; imageUrl: string | null; panels: string[] | null };
+    type PageImageResult = {
+      pageNumber: number;
+      imageUrl: string | null;
+      panels: string[] | null;
+    };
 
     // Launch all image generation tasks concurrently (bounded by semaphore)
-    const imageGenTasks = storyData.pages.map(page => async (): Promise<PageImageResult> => {
-      await acquireSemaphore();
-      let imageUrl: string | null = null;
-      let panels: string[] | null = null;
-      try {
-        const pageSceneSpec =
-          sceneSpecsByPageNumber.get(page.pageNumber) ||
-          sceneSpecFallback({
-            pageNumber: page.pageNumber,
-            narrative: page.content,
-            previousScene: undefined,
-            blueprint: visualBlueprint,
-          });
-
-        if (isComic) {
-          // COMIC: generate THREE independent panel images per page.
-          // This replaces the old "single composite + fetch + sharp crop" pipeline,
-          // which caused both OOM spikes and inaccurate crop boundaries.
-
-          // Step 1: Extract 3 panel descriptions using LLM for narration + dialogue metadata
-          type PanelDialogue = { narration: string; dialogue: string | null; speaker: string | null };
-          let panelDialogue: PanelDialogue[] = [];
-          try {
-            const dialogueResp = await invokeLLM({
-              messages: [
-                { role: "system" as const, content: "You are a comic book writer. Always respond with valid JSON only. UNICODE RULE: NEVER strip or replace special characters. Preserve all Unicode exactly as written (Turkish, German, French, Spanish, Cyrillic, Chinese, Japanese, Arabic)." },
-                {
-                  role: "system" as const,
-                  content:
-                    `LANGUAGE LOCK (MANDATORY): narration and dialogue for every comic panel must be written entirely in ${language}. Never switch to English unless ${language} is English.`,
-                },
-                { role: "user" as const, content: `Split this comic page content into exactly 3 panels. Characters: ${charNames || "none"}.\n\nTARGET LANGUAGE: ${language}\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description","dialogue":"spoken words only, no character name prefix, max 6 words, or null","speaker":"character name or null"}]}\n\nCRITICAL RULES:\n- narration and dialogue MUST stay entirely in ${language}; never switch to English unless ${language} is English.\n- dialogue must be raw spoken words only. NEVER prefix with character name (e.g. never write "Alex: Let's go" — write only "Let's go").\n- preserve the same story facts, tone, and continuity from the source page.` },
-              ],
-              response_format: { type: "json_object" },
-            });
-            const rawDlg = dialogueResp.choices[0]?.message?.content || "{}";
-            const dlgContent = typeof rawDlg === "string" ? rawDlg : JSON.stringify(rawDlg);
-            const dlgData = JSON.parse(repairJSON(dlgContent));
-            if (Array.isArray(dlgData.panels) && dlgData.panels.length === 3) {
-              panelDialogue = dlgData.panels;
-            }
-          } catch (dlgErr) {
-            console.error("[Books] Panel dialogue extraction failed:", dlgErr);
-          }
-
-          // Build narration summaries for panel-specific prompts
-          // IMPORTANT: speech bubble text is stored in panelDialogue[] and rendered as React overlay
-          // by ComicPageLayout. It must NOT be embedded in the image prompt (NO_TEXT_CONSTRAINT).
-          const p1 = panelDialogue[0];
-          const p2 = panelDialogue[1];
-          const p3 = panelDialogue[2];
-          const p1Narr = p1?.narration ?? page.content.substring(0, 80);
-          const p2Narr = p2?.narration ?? page.content.substring(80, 160);
-          const p3Narr = p3?.narration ?? page.content.substring(160, 240);
-          // NOTE: dialogue is intentionally NOT included in the image prompt.
-          // Speech bubbles are rendered as React overlays by ComicPageLayout.
-
-          const pageCharacterNames = pageSceneSpec.characters.map((character) => character.name);
-
-          // Extract which characters are mentioned in each panel's narration/dialogue.
-          // Fall back to the characters already present in this page's scene spec instead of
-          // "all book characters", which makes panel prompts noisy and weakens identity locks.
-          const extractMentionedCharacters = (text: string): string[] => {
-            const mentioned = new Set<string>();
-            for (const char of characterCards) {
-              const nameRegex = new RegExp(`\\b${char.name}\\b`, 'i');
-              if (nameRegex.test(text)) {
-                mentioned.add(char.name);
-              }
-            }
-            return mentioned.size > 0
-              ? Array.from(mentioned)
-              : pageCharacterNames.length > 0
-                ? pageCharacterNames
-                : canonicalCharacterProfiles.slice(0, 1).map((profile) => profile.name);
-          };
-
-          const combineCharacterMentions = (narration: string, dialogue?: string | null, speaker?: string | null) => {
-            const names = new Set<string>(extractMentionedCharacters(narration));
-            if (dialogue) {
-              for (const name of extractMentionedCharacters(dialogue)) {
-                names.add(name);
-              }
-            }
-            if (speaker && canonicalCharacterProfiles.some((profile) => profile.name === speaker)) {
-              names.add(speaker);
-            }
-            return Array.from(names);
-          };
-
-          const p1Chars = combineCharacterMentions(p1Narr, p1?.dialogue ?? null, p1?.speaker ?? null);
-          const p2Chars = combineCharacterMentions(p2Narr, p2?.dialogue ?? null, p2?.speaker ?? null);
-          const p3Chars = combineCharacterMentions(p3Narr, p3?.dialogue ?? null, p3?.speaker ?? null);
-
-          // Build filtered character anchor blocks for each panel
-          // ENHANCED: Explicit character count enforcement, negative prompts, visual distinctness
-          const buildFilteredCharAnchor = (charNames: string[]): string => {
-            const relevantChars = canonicalCharacterProfiles.filter(c => charNames.includes(c.name));
-            if (relevantChars.length === 0) return charAnchorBlock;
-            
-            const charDescriptions = relevantChars.map((c, idx) => {
-              const distinctMarker = relevantChars.length > 1
-                ? ` [CHARACTER ${idx + 1}/${relevantChars.length} - MUST BE VISUALLY COMPLETELY DIFFERENT]`
-                : "";
-              return formatCompactCanonicalProfile(c, distinctMarker);
-            }).join(" || ");
-            const charList = relevantChars.map(c => c.name).join(", ");
-            return [
-              `PANEL CHARACTERS: ${charDescriptions}`,
-              relevantChars.some(c => photoRefByName.has(c.name))
-                ? `PHOTO REFERENCES (EXACT FACIAL MATCH): ${relevantChars.filter(c => photoRefByName.has(c.name)).map(c => c.name).join(", ")}. Render EXACTLY as photographed.`
-                : "",
-              `CHARACTER COUNT: Render EXACTLY ${relevantChars.length} distinct character(s). EXACTLY ${relevantChars.length}.`,
-              relevantChars.length > 1
-                ? `MANDATORY VISUAL CONTRAST: Each of these ${relevantChars.length} characters (${charList}) MUST look COMPLETELY DIFFERENT. Different hair, body shape, face, clothing, skin tone. ZERO similarity.`
-                : "",
-              `CRITICAL RULES: NEVER duplicate. NEVER show same person twice. NEVER blend. NEVER lookalikes. Each character is unique.`,
-            ].filter(Boolean).join(" | ");
-          };
-
-          const p1CharAnchor = buildFilteredCharAnchor(p1Chars);
-          const p2CharAnchor = buildFilteredCharAnchor(p2Chars);
-          const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
-          type PanelLayout = "hero-top" | "support-left" | "support-right";
-          type ComicPanelData = { imageUrl: string; narration: string; dialogue: string | null; speaker: string | null; bubbleType: string | null; position: string | null };
-          const panelData: ComicPanelData[] = [];
-          const buildComicPanelSceneSpec = (
-            panelCharacters: string[],
-            narration: string,
-            layout: PanelLayout,
-          ): SceneSpec => {
-            const existingCharacters = pageSceneSpec.characters.filter((character) =>
-              panelCharacters.includes(character.name),
-            );
-            const panelSpecificCharacters =
-              existingCharacters.length > 0
-                ? existingCharacters
-                : panelCharacters.map((name) => ({
-                    name,
-                    action: "active in the scene",
-                    pose: layout === "hero-top" ? "dynamic establishing pose" : "focused comic panel pose",
-                    framing: layout === "hero-top" ? "clearly readable within a wide hero panel" : "fully visible inside a supporting panel",
-                    visibility: "fully visible and unobstructed",
-                  }));
-
-            return {
-              ...pageSceneSpec,
-              sceneSummary: narration,
-              narrativeBeat: narration,
-              lighting:
-                layout === "hero-top"
-                  ? pageSceneSpec.lighting || "dramatic comic-book establishing lighting"
-                  : pageSceneSpec.lighting || "focused comic-book panel lighting",
-              composition:
-                layout === "hero-top"
-                  ? "single wide comic hero panel; complete action readable within panel bounds"
-                  : "single comic supporting panel; keep the full action readable inside the frame",
-              camera:
-                layout === "hero-top"
-                  ? "wide cinematic establishing view"
-                  : layout === "support-left"
-                    ? "medium close-up comic panel"
-                    : "medium action comic panel",
-              characters: panelSpecificCharacters,
-            };
-          };
-
-          const buildPanelPrompt = (
-            panelCharacters: string[],
-            narration: string,
-            filteredAnchor: string,
-            layout: PanelLayout,
-          ) => {
-            const panelSceneSpec = buildComicPanelSceneSpec(panelCharacters, narration, layout);
-            const panelRefs = selectReferenceImages({
-              sceneSpec: panelSceneSpec,
+    const imageGenTasks = storyData.pages.map(
+      page => async (): Promise<PageImageResult> => {
+        await acquireSemaphore();
+        let imageUrl: string | null = null;
+        let panels: string[] | null = null;
+        try {
+          const pageSceneSpec =
+            sceneSpecsByPageNumber.get(page.pageNumber) ||
+            sceneSpecFallback({
+              pageNumber: page.pageNumber,
+              narrative: page.content,
+              previousScene: undefined,
               blueprint: visualBlueprint,
-              portraitRefs: portraitReferenceMap,
-              photoRefs: photoRefByName,
-            }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
+            });
 
-            const layoutInstruction =
-              layout === "hero-top"
-                ? "Render ONE standalone comic hero panel image only. Compose it as a wide establishing panel with the full action entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art."
-                : layout === "support-left"
-                  ? "Render ONE standalone comic support panel image only. Compose it as the LEFT supporting panel of a page, keeping the full subject entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art."
-                  : "Render ONE standalone comic support panel image only. Compose it as the RIGHT supporting panel of a page, keeping the full subject entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art.";
+          if (isComic) {
+            // COMIC: generate THREE independent panel images per page.
+            // This replaces the old "single composite + fetch + sharp crop" pipeline,
+            // which caused both OOM spikes and inaccurate crop boundaries.
 
-            const prompt = [
-              buildSceneIdentityPriorityBlock(panelCharacters),
-              buildScenePrompt({
-                blueprint: visualBlueprint,
-                sceneSpec: panelSceneSpec,
-                pageKind: "comic",
-              }),
-              layoutInstruction,
-              `PANEL STORY BEAT: ${narration}`,
-              filteredAnchor,
-              "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL comic panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
-              "NO SPONTANEOUS WARDROBE CHANGES: keep each named character in the exact same canonical outfit, accessories, tie, watch, hairstyle, and silhouette unless the narrative explicitly states a transformation.",
-              CHARACTER_COLOUR_LOCK,
-              STRUCTURED_IDENTITY_BLOCK || undefined,
-              CHARACTER_LOCK_INSTRUCTION,
-              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image. Every interior comic panel must look like it belongs to the same book as the cover.",
-            ].filter(Boolean).join(" | ");
-
-            return { panelRefs, prompt };
-          };
-
-          const comicPanels = [
-            {
-              stage: `page-${page.pageNumber}-panel-top`,
-              narration: p1Narr,
-              dialogue: p1?.dialogue ?? null,
-              speaker: p1?.speaker ?? null,
-              characters: p1Chars,
-              anchor: p1CharAnchor,
-              layout: "hero-top" as const,
-              position: "top-right",
-            },
-            {
-              stage: `page-${page.pageNumber}-panel-left`,
-              narration: p2Narr,
-              dialogue: p2?.dialogue ?? null,
-              speaker: p2?.speaker ?? null,
-              characters: p2Chars,
-              anchor: p2CharAnchor,
-              layout: "support-left" as const,
-              position: "top-left",
-            },
-            {
-              stage: `page-${page.pageNumber}-panel-right`,
-              narration: p3Narr,
-              dialogue: p3?.dialogue ?? null,
-              speaker: p3?.speaker ?? null,
-              characters: p3Chars,
-              anchor: p3CharAnchor,
-              layout: "support-right" as const,
-              position: "top-right",
-            },
-          ];
-
-          for (const panel of comicPanels) {
-            const { panelRefs, prompt } = buildPanelPrompt(
-              panel.characters,
-              panel.narration,
-              panel.anchor,
-              panel.layout,
-            );
-            const fallbackPanelUrl =
-              panelRefs[0]?.url ||
-              getCharacterReferenceImages(panel.characters)[0]?.url ||
-              coverImageUrl ||
-              Array.from(illustratedPortraitsMap.values())[0]?.url ||
-              null;
-
+            // Step 1: Extract 3 panel descriptions using LLM for narration + dialogue metadata
+            type PanelDialogue = {
+              narration: string;
+              dialogue: string | null;
+              speaker: string | null;
+              bubbleType: "speech" | "shout" | null;
+            };
+            let panelDialogue: PanelDialogue[] = [];
             try {
-              const panelResult = await generateImageWithRefCheck(
-                panel.stage,
-                prompt,
-                panelRefs.length > 0 ? panelRefs : getCharacterReferenceImages(panel.characters),
+              const dialogueResp = await invokeLLM({
+                messages: [
+                  {
+                    role: "system" as const,
+                    content:
+                      "You are a comic book writer. Always respond with valid JSON only. UNICODE RULE: NEVER strip or replace special characters. Preserve all Unicode exactly as written (Turkish, German, French, Spanish, Cyrillic, Chinese, Japanese, Arabic).",
+                  },
+                  {
+                    role: "system" as const,
+                    content: `LANGUAGE LOCK (MANDATORY): narration and dialogue for every comic panel must be written entirely in ${language}. Never switch to English unless ${language} is English.`,
+                  },
+                  {
+                    role: "user" as const,
+                    content: `Split this comic page content into exactly 3 consecutive panels. Characters: ${charNames || "none"}.\n\nTARGET LANGUAGE: ${language}\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description for the caption/status box","dialogue":"direct spoken words only, no character name prefix, max 10 words, or null","speaker":"character name or null","bubbleType":"speech | shout | null"}]}\n\nCRITICAL RULES:\n- narration and dialogue MUST stay entirely in ${language}; never switch to English unless ${language} is English.\n- the 3 panels must feel like setup -> escalation -> consequence, not three paraphrases of the same moment.\n- dialogue must be raw spoken words only. NEVER prefix with character name (e.g. never write "Alex: Let's go" - write only "Let's go").\n- ONLY use dialogue when a character is audibly speaking to another character, a group, or an enemy. If nobody is being addressed aloud, set dialogue=null, speaker=null, bubbleType=null and put the information into narration instead.\n- internal thoughts, silent reactions, hesitation, self-motivation, and scene-setting belong in narration/status-box text, not in dialogue.\n- use bubbleType="shout" only for clearly yelled or alarmed lines; otherwise use "speech". If dialogue is null, bubbleType must be null.\n- vary the action and staging across panels; do not repeat the same generic line or pose.\n- preserve the same story facts, tone, and continuity from the source page.`,
+                  },
+                ],
+                response_format: { type: "json_object" },
+              });
+              const rawDlg = dialogueResp.choices[0]?.message?.content || "{}";
+              const dlgContent =
+                typeof rawDlg === "string" ? rawDlg : JSON.stringify(rawDlg);
+              const dlgData = JSON.parse(repairJSON(dlgContent));
+              if (
+                Array.isArray(dlgData.panels) &&
+                dlgData.panels.length === 3
+              ) {
+                panelDialogue = dlgData.panels.map((panel: any) => {
+                  const dialogue =
+                    typeof panel?.dialogue === "string" &&
+                    panel.dialogue.trim().length > 0
+                      ? panel.dialogue.trim()
+                      : null;
+                  return {
+                    narration:
+                      typeof panel?.narration === "string"
+                        ? panel.narration.trim()
+                        : "",
+                    dialogue,
+                    speaker:
+                      dialogue &&
+                      typeof panel?.speaker === "string" &&
+                      panel.speaker.trim().length > 0
+                        ? panel.speaker.trim()
+                        : null,
+                    bubbleType: dialogue
+                      ? panel?.bubbleType === "shout"
+                        ? "shout"
+                        : "speech"
+                      : null,
+                  };
+                });
+              }
+            } catch (dlgErr) {
+              console.error(
+                "[Books] Panel dialogue extraction failed:",
+                dlgErr
               );
-              if (panelResult.url) {
+            }
+
+            // Build narration summaries for panel-specific prompts
+            // IMPORTANT: speech bubble text is stored in panelDialogue[] and rendered as React overlay
+            // by ComicPageLayout. It must NOT be embedded in the image prompt (NO_TEXT_CONSTRAINT).
+            const p1 = panelDialogue[0];
+            const p2 = panelDialogue[1];
+            const p3 = panelDialogue[2];
+            const p1Narr = p1?.narration ?? page.content.substring(0, 80);
+            const p2Narr = p2?.narration ?? page.content.substring(80, 160);
+            const p3Narr = p3?.narration ?? page.content.substring(160, 240);
+            // NOTE: dialogue is intentionally NOT included in the image prompt.
+            // Speech bubbles are rendered as React overlays by ComicPageLayout.
+
+            const pageCharacterNames = pageSceneSpec.characters.map(
+              character => character.name
+            );
+
+            // Extract which characters are mentioned in each panel's narration/dialogue.
+            // Fall back to the characters already present in this page's scene spec instead of
+            // "all book characters", which makes panel prompts noisy and weakens identity locks.
+            const extractMentionedCharacters = (text: string): string[] => {
+              const mentioned = new Set<string>();
+              for (const char of characterCards) {
+                const nameRegex = new RegExp(`\\b${char.name}\\b`, "i");
+                if (nameRegex.test(text)) {
+                  mentioned.add(char.name);
+                }
+              }
+              return mentioned.size > 0
+                ? Array.from(mentioned)
+                : pageCharacterNames.length > 0
+                  ? pageCharacterNames
+                  : canonicalCharacterProfiles
+                      .slice(0, 1)
+                      .map(profile => profile.name);
+            };
+
+            const combineCharacterMentions = (
+              narration: string,
+              dialogue?: string | null,
+              speaker?: string | null
+            ) => {
+              const names = new Set<string>(
+                extractMentionedCharacters(narration)
+              );
+              if (dialogue) {
+                for (const name of extractMentionedCharacters(dialogue)) {
+                  names.add(name);
+                }
+              }
+              if (
+                speaker &&
+                canonicalCharacterProfiles.some(
+                  profile => profile.name === speaker
+                )
+              ) {
+                names.add(speaker);
+              }
+              return Array.from(names);
+            };
+
+            const p1Chars = combineCharacterMentions(
+              p1Narr,
+              p1?.dialogue ?? null,
+              p1?.speaker ?? null
+            );
+            const p2Chars = combineCharacterMentions(
+              p2Narr,
+              p2?.dialogue ?? null,
+              p2?.speaker ?? null
+            );
+            const p3Chars = combineCharacterMentions(
+              p3Narr,
+              p3?.dialogue ?? null,
+              p3?.speaker ?? null
+            );
+
+            // Build filtered character anchor blocks for each panel
+            // ENHANCED: Explicit character count enforcement, negative prompts, visual distinctness
+            const buildFilteredCharAnchor = (charNames: string[]): string => {
+              const relevantChars = canonicalCharacterProfiles.filter(c =>
+                charNames.includes(c.name)
+              );
+              if (relevantChars.length === 0) return charAnchorBlock;
+
+              const charDescriptions = relevantChars
+                .map((c, idx) => {
+                  const distinctMarker =
+                    relevantChars.length > 1
+                      ? ` [CHARACTER ${idx + 1}/${relevantChars.length} - MUST BE VISUALLY COMPLETELY DIFFERENT]`
+                      : "";
+                  return formatCompactCanonicalProfile(c, distinctMarker);
+                })
+                .join(" || ");
+              const charList = relevantChars.map(c => c.name).join(", ");
+              return [
+                `PANEL CHARACTERS: ${charDescriptions}`,
+                relevantChars.some(c => photoRefByName.has(c.name))
+                  ? `PHOTO REFERENCES (EXACT FACIAL MATCH): ${relevantChars
+                      .filter(c => photoRefByName.has(c.name))
+                      .map(c => c.name)
+                      .join(", ")}. Render EXACTLY as photographed.`
+                  : "",
+                `CHARACTER COUNT: Render EXACTLY ${relevantChars.length} distinct character(s). EXACTLY ${relevantChars.length}.`,
+                relevantChars.length > 1
+                  ? `MANDATORY VISUAL CONTRAST: Each of these ${relevantChars.length} characters (${charList}) MUST look COMPLETELY DIFFERENT. Different hair, body shape, face, clothing, skin tone. ZERO similarity.`
+                  : "",
+                `CRITICAL RULES: NEVER duplicate. NEVER show same person twice. NEVER blend. NEVER lookalikes. Each character is unique.`,
+              ]
+                .filter(Boolean)
+                .join(" | ");
+            };
+
+            const p1CharAnchor = buildFilteredCharAnchor(p1Chars);
+            const p2CharAnchor = buildFilteredCharAnchor(p2Chars);
+            const p3CharAnchor = buildFilteredCharAnchor(p3Chars);
+            type PanelLayout = "hero-top" | "support-left" | "support-right";
+            type ComicPanelData = {
+              imageUrl: string;
+              narration: string;
+              dialogue: string | null;
+              speaker: string | null;
+              bubbleType: string | null;
+              position: string | null;
+            };
+            const panelData: ComicPanelData[] = [];
+            const buildComicPanelSceneSpec = (
+              panelCharacters: string[],
+              narration: string,
+              layout: PanelLayout
+            ): SceneSpec => {
+              const existingCharacters = pageSceneSpec.characters.filter(
+                character => panelCharacters.includes(character.name)
+              );
+              const panelSpecificCharacters =
+                existingCharacters.length > 0
+                  ? existingCharacters
+                  : panelCharacters.map(name => ({
+                      name,
+                      action: "active in the scene",
+                      pose:
+                        layout === "hero-top"
+                          ? "dynamic establishing pose"
+                          : "focused comic panel pose",
+                      framing:
+                        layout === "hero-top"
+                          ? "clearly readable within a wide hero panel"
+                          : "fully visible inside a supporting panel",
+                      visibility: "fully visible and unobstructed",
+                    }));
+
+              return {
+                ...pageSceneSpec,
+                sceneSummary: narration,
+                narrativeBeat: narration,
+                lighting:
+                  layout === "hero-top"
+                    ? pageSceneSpec.lighting ||
+                      "dramatic comic-book establishing lighting"
+                    : pageSceneSpec.lighting ||
+                      "focused comic-book panel lighting",
+                composition:
+                  layout === "hero-top"
+                    ? "single wide comic hero panel; complete action readable within panel bounds"
+                    : "single comic supporting panel; keep the full action readable inside the frame",
+                camera:
+                  layout === "hero-top"
+                    ? "wide cinematic establishing view"
+                    : layout === "support-left"
+                      ? "medium close-up comic panel"
+                      : "medium action comic panel",
+                characters: panelSpecificCharacters,
+              };
+            };
+
+            const buildPanelPrompt = (
+              panelCharacters: string[],
+              narration: string,
+              filteredAnchor: string,
+              layout: PanelLayout
+            ) => {
+              const panelSceneSpec = buildComicPanelSceneSpec(
+                panelCharacters,
+                narration,
+                layout
+              );
+              const panelRefs = selectReferenceImages({
+                sceneSpec: panelSceneSpec,
+                blueprint: visualBlueprint,
+                portraitRefs: portraitReferenceMap,
+                photoRefs: photoRefByName,
+              }).filter(
+                (
+                  img
+                ): img is {
+                  url?: string;
+                  mimeType?: string;
+                  b64Json?: string;
+                } => !!img?.url || !!img?.b64Json
+              );
+
+              const layoutInstruction =
+                layout === "hero-top"
+                  ? "Render ONE standalone comic hero panel image only. Compose it as a wide establishing panel with the full action entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art."
+                  : layout === "support-left"
+                    ? "Render ONE standalone comic support panel image only. Compose it as the LEFT supporting panel of a page, keeping the full subject entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art."
+                    : "Render ONE standalone comic support panel image only. Compose it as the RIGHT supporting panel of a page, keeping the full subject entirely inside frame. Do NOT include gutters, neighboring panels, captions, speech bubbles, or any text baked into the art.";
+
+              const prompt = [
+                buildSceneIdentityPriorityBlock(panelCharacters),
+                buildScenePrompt({
+                  blueprint: visualBlueprint,
+                  sceneSpec: panelSceneSpec,
+                  pageKind: "comic",
+                }),
+                layoutInstruction,
+                `PANEL STORY BEAT: ${narration}`,
+                filteredAnchor,
+                "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL comic panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
+                "NO SPONTANEOUS WARDROBE CHANGES: keep each named character in the exact same canonical outfit, accessories, tie, watch, hairstyle, and silhouette unless the narrative explicitly states a transformation.",
+                CHARACTER_COLOUR_LOCK,
+                STRUCTURED_IDENTITY_BLOCK || undefined,
+                CHARACTER_LOCK_INSTRUCTION,
+                "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image. Every interior comic panel must look like it belongs to the same book as the cover.",
+              ]
+                .filter(Boolean)
+                .join(" | ");
+
+              return { panelRefs, prompt };
+            };
+
+            const comicPanels = [
+              {
+                stage: `page-${page.pageNumber}-panel-top`,
+                narration: p1Narr,
+                dialogue: p1?.dialogue ?? null,
+                speaker: p1?.speaker ?? null,
+                bubbleType: p1?.bubbleType ?? null,
+                characters: p1Chars,
+                anchor: p1CharAnchor,
+                layout: "hero-top" as const,
+                position: "top-right",
+              },
+              {
+                stage: `page-${page.pageNumber}-panel-left`,
+                narration: p2Narr,
+                dialogue: p2?.dialogue ?? null,
+                speaker: p2?.speaker ?? null,
+                bubbleType: p2?.bubbleType ?? null,
+                characters: p2Chars,
+                anchor: p2CharAnchor,
+                layout: "support-left" as const,
+                position: "top-left",
+              },
+              {
+                stage: `page-${page.pageNumber}-panel-right`,
+                narration: p3Narr,
+                dialogue: p3?.dialogue ?? null,
+                speaker: p3?.speaker ?? null,
+                bubbleType: p3?.bubbleType ?? null,
+                characters: p3Chars,
+                anchor: p3CharAnchor,
+                layout: "support-right" as const,
+                position: "top-right",
+              },
+            ];
+
+            for (const panel of comicPanels) {
+              const { panelRefs, prompt } = buildPanelPrompt(
+                panel.characters,
+                panel.narration,
+                panel.anchor,
+                panel.layout
+              );
+              const fallbackPanelUrl =
+                panelRefs[0]?.url ||
+                getCharacterReferenceImages(panel.characters)[0]?.url ||
+                coverImageUrl ||
+                Array.from(illustratedPortraitsMap.values())[0]?.url ||
+                null;
+
+              try {
+                const panelResult = await generateImageWithRefCheck(
+                  panel.stage,
+                  prompt,
+                  panelRefs.length > 0
+                    ? panelRefs
+                    : getCharacterReferenceImages(panel.characters)
+                );
+                if (panelResult.url) {
+                  panelData.push({
+                    imageUrl: panelResult.url,
+                    narration: panel.narration,
+                    dialogue: panel.dialogue,
+                    speaker: panel.speaker,
+                    bubbleType: panel.bubbleType,
+                    position: panel.position,
+                  });
+                  continue;
+                }
+              } catch (panelErr) {
+                console.error(
+                  `[Books] Comic panel generation failed for page ${page.pageNumber} (${panel.stage}):`,
+                  panelErr
+                );
+              }
+
+              if (fallbackPanelUrl) {
                 panelData.push({
-                  imageUrl: panelResult.url,
+                  imageUrl: fallbackPanelUrl,
                   narration: panel.narration,
                   dialogue: panel.dialogue,
                   speaker: panel.speaker,
-                  bubbleType: "speech",
+                  bubbleType: panel.bubbleType,
                   position: panel.position,
                 });
-                continue;
+                console.warn(
+                  `[Books] Page ${page.pageNumber}: used fallback panel placeholder for ${panel.stage}`
+                );
               }
-            } catch (panelErr) {
-              console.error(`[Books] Comic panel generation failed for page ${page.pageNumber} (${panel.stage}):`, panelErr);
             }
 
-            if (fallbackPanelUrl) {
-              panelData.push({
-                imageUrl: fallbackPanelUrl,
-                narration: panel.narration,
-                dialogue: panel.dialogue,
-                speaker: panel.speaker,
-                bubbleType: "speech",
-                position: panel.position,
-              });
-              console.warn(`[Books] Page ${page.pageNumber}: used fallback panel placeholder for ${panel.stage}`);
-            }
-          }
-
-          // Store full ComicPanel objects (not plain string URLs) so React overlay can render speech bubbles
-          panels = panelData.length > 0 ? (panelData as unknown as string[]) : null;
-          imageUrl = null; // panels stored separately
-
-        } else if (category === "fairy_tale") {
-          // FAIRY TALE: one illustration per page (10 pages = 10 illustrations) 
-          const fairyRefs = selectReferenceImages({
-            sceneSpec: pageSceneSpec,
-            blueprint: visualBlueprint,
-            portraitRefs: portraitReferenceMap,
-            photoRefs: photoRefByName,
-          }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
-          const imgResult = await generateImageWithRefCheck(
-            `page-${page.pageNumber}`,
-            [
-              buildSceneIdentityPriorityBlock(pageSceneSpec.characters.map((character) => character.name)),
-              buildScenePrompt({
-                blueprint: visualBlueprint,
-                sceneSpec: pageSceneSpec,
-                pageKind: "page",
-              }),
-              CHARACTER_COLOUR_LOCK,
-              STRUCTURED_IDENTITY_BLOCK || undefined,
-              CHARACTER_LOCK_INSTRUCTION,
-                          "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover",
-              "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
-            ].filter(Boolean).join(" | "),
-            fairyRefs.length > 0 ? fairyRefs : undefined,
-          );
-          imageUrl = imgResult.url ?? null;
-
-        } else if (isOtherGenre) {
-          // OTHER GENRES: images only at branch pages, up to branchImageCount
-          // Spec: normal = 8 branch images, thick = 12 branch images
-          // Only isBranchPage pages get illustrations; all other pages are text-only.
-          if (branchPageNumbers.has(page.pageNumber)) {
-            const branchRefs = selectReferenceImages({
+            // Store full ComicPanel objects (not plain string URLs) so React overlay can render speech bubbles
+            panels =
+              panelData.length > 0 ? (panelData as unknown as string[]) : null;
+            imageUrl = null; // panels stored separately
+          } else if (category === "fairy_tale") {
+            // FAIRY TALE: one illustration per page (10 pages = 10 illustrations)
+            const fairyRefs = selectReferenceImages({
               sceneSpec: pageSceneSpec,
               blueprint: visualBlueprint,
               portraitRefs: portraitReferenceMap,
               photoRefs: photoRefByName,
-            }).filter((img): img is { url?: string; mimeType?: string; b64Json?: string } => !!img?.url || !!img?.b64Json);
+            }).filter(
+              (
+                img
+              ): img is { url?: string; mimeType?: string; b64Json?: string } =>
+                !!img?.url || !!img?.b64Json
+            );
             const imgResult = await generateImageWithRefCheck(
-              `page-${page.pageNumber}-branch`,
+              `page-${page.pageNumber}`,
               [
-                buildSceneIdentityPriorityBlock(pageSceneSpec.characters.map((character) => character.name)),
+                buildSceneIdentityPriorityBlock(
+                  pageSceneSpec.characters.map(character => character.name)
+                ),
                 buildScenePrompt({
                   blueprint: visualBlueprint,
                   sceneSpec: pageSceneSpec,
@@ -3164,28 +3881,79 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                 CHARACTER_COLOUR_LOCK,
                 STRUCTURED_IDENTITY_BLOCK || undefined,
                 CHARACTER_LOCK_INSTRUCTION,
-                              "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
+                "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover",
                 "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
-              ].filter(Boolean).join(" | "),
-              branchRefs.length > 0 ? branchRefs : undefined,
+              ]
+                .filter(Boolean)
+                .join(" | "),
+              fairyRefs.length > 0 ? fairyRefs : undefined
             );
             imageUrl = imgResult.url ?? null;
-            console.log(`[Books] Branch image generated for page ${page.pageNumber}`);
+          } else if (isOtherGenre) {
+            // OTHER GENRES: images only at branch pages, up to branchImageCount
+            // Spec: normal = 8 branch images, thick = 12 branch images
+            // Only isBranchPage pages get illustrations; all other pages are text-only.
+            if (branchPageNumbers.has(page.pageNumber)) {
+              const branchRefs = selectReferenceImages({
+                sceneSpec: pageSceneSpec,
+                blueprint: visualBlueprint,
+                portraitRefs: portraitReferenceMap,
+                photoRefs: photoRefByName,
+              }).filter(
+                (
+                  img
+                ): img is {
+                  url?: string;
+                  mimeType?: string;
+                  b64Json?: string;
+                } => !!img?.url || !!img?.b64Json
+              );
+              const imgResult = await generateImageWithRefCheck(
+                `page-${page.pageNumber}-branch`,
+                [
+                  buildSceneIdentityPriorityBlock(
+                    pageSceneSpec.characters.map(character => character.name)
+                  ),
+                  buildScenePrompt({
+                    blueprint: visualBlueprint,
+                    sceneSpec: pageSceneSpec,
+                    pageKind: "page",
+                  }),
+                  CHARACTER_COLOUR_LOCK,
+                  STRUCTURED_IDENTITY_BLOCK || undefined,
+                  CHARACTER_LOCK_INSTRUCTION,
+                  "STYLE CONTINUITY: Match the exact art style, colour palette, lighting, and illustration technique of the book cover image  every interior page must look like it belongs to the same book as the cover.",
+                  "same character appearance as all other illustrations in this book. CRITICAL: characters' faces, hair colour, hair style, eyebrow colour, skin tone, and clothing MUST match their reference photos and character cards EXACTLY  do NOT alter any facial features or clothing between pages",
+                ]
+                  .filter(Boolean)
+                  .join(" | "),
+                branchRefs.length > 0 ? branchRefs : undefined
+              );
+              imageUrl = imgResult.url ?? null;
+              console.log(
+                `[Books] Branch image generated for page ${page.pageNumber}`
+              );
+            }
+            // Non-branch pages: imageUrl stays null (text-only)
           }
-          // Non-branch pages: imageUrl stays null (text-only)
+        } catch (e) {
+          const errMsg = e instanceof Error ? e.message : String(e);
+          imageFailures.push({ pageNumber: page.pageNumber, error: errMsg });
+          console.error(
+            `[Books] Image generation failed for page ${page.pageNumber}:`,
+            e
+          );
+        } finally {
+          releaseSemaphore();
         }
-      } catch (e) {
-        const errMsg = e instanceof Error ? e.message : String(e);
-        imageFailures.push({ pageNumber: page.pageNumber, error: errMsg });
-        console.error(`[Books] Image generation failed for page ${page.pageNumber}:`, e);
-      } finally {
-        releaseSemaphore();
+        return { pageNumber: page.pageNumber, imageUrl, panels };
       }
-      return { pageNumber: page.pageNumber, imageUrl, panels };
-    });
+    );
 
     // Run all image generation tasks concurrently (bounded by semaphore)
-    const pageImageResults: PageImageResult[] = await Promise.all(imageGenTasks.map(task => task()));
+    const pageImageResults: PageImageResult[] = await Promise.all(
+      imageGenTasks.map(task => task())
+    );
 
     // Build a lookup from pageNumber image result
     const imageResultByPage = new Map<number, PageImageResult>();
@@ -3195,39 +3963,61 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
 
     // Enforce required illustration counts to avoid shipping "ready" books without images.
     if (category === "fairy_tale") {
-      const generatedFairy = illustratedStoryPages.filter((p) => !!imageResultByPage.get(p.pageNumber)?.imageUrl).length;
+      const generatedFairy = illustratedStoryPages.filter(
+        p => !!imageResultByPage.get(p.pageNumber)?.imageUrl
+      ).length;
       const expectedIllustratedPages = illustratedStoryPages.length;
       const minRequired = Math.floor(expectedIllustratedPages * 0.75); // allow up to 25% image failures
       if (generatedFairy < minRequired) {
-        const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Fairy tale illustration shortfall: expected ${expectedIllustratedPages}, got ${generatedFairy} (min ${minRequired})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        const failureInfo = imageFailures
+          .slice(0, 3)
+          .map(f => `p${f.pageNumber}: ${f.error}`)
+          .join(" | ");
+        throw new Error(
+          `Fairy tale illustration shortfall: expected ${expectedIllustratedPages}, got ${generatedFairy} (min ${minRequired})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`
+        );
       }
     }
 
     if (category === "comic") {
-      const generatedComic = illustratedStoryPages.filter((p) => {
+      const generatedComic = illustratedStoryPages.filter(p => {
         const panels = imageResultByPage.get(p.pageNumber)?.panels;
         return Array.isArray(panels) && panels.length >= 3;
       }).length;
       const expectedIllustratedPages = illustratedStoryPages.length;
       if (generatedComic < expectedIllustratedPages) {
-        const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Comic panel shortfall: expected ${expectedIllustratedPages} pages with panels, got ${generatedComic}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        const failureInfo = imageFailures
+          .slice(0, 3)
+          .map(f => `p${f.pageNumber}: ${f.error}`)
+          .join(" | ");
+        throw new Error(
+          `Comic panel shortfall: expected ${expectedIllustratedPages} pages with panels, got ${generatedComic}${failureInfo ? `; sample failures: ${failureInfo}` : ""}`
+        );
       }
     }
 
     if (isOtherGenre && branchImageCount > 0) {
-      const generatedBranch = Array.from(branchPageNumbers).filter((n) => !!imageResultByPage.get(n)?.imageUrl).length;
+      const generatedBranch = Array.from(branchPageNumbers).filter(
+        n => !!imageResultByPage.get(n)?.imageUrl
+      ).length;
       const minBranch = Math.floor(branchImageCount * 0.75); // allow up to 25% image failures
       if (generatedBranch < minBranch) {
-        const failureInfo = imageFailures.slice(0, 3).map((f) => `p${f.pageNumber}: ${f.error}`).join(" | ");
-        throw new Error(`Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch} (min ${minBranch})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`);
+        const failureInfo = imageFailures
+          .slice(0, 3)
+          .map(f => `p${f.pageNumber}: ${f.error}`)
+          .join(" | ");
+        throw new Error(
+          `Branch illustration shortfall: expected ${branchImageCount}, got ${generatedBranch} (min ${minBranch})${failureInfo ? `; sample failures: ${failureInfo}` : ""}`
+        );
       }
     }
 
     // Sequential DB insertion (preserves order, gets correct IDs)
     const insertedPageIds: Record<number, number> = {};
-    await db.update(books).set({ generationStep: "Saving pages to library…" }).where(eq(books.id, bookId));
+    await db
+      .update(books)
+      .set({ generationStep: "Saving pages to library…" })
+      .where(eq(books.id, bookId));
     for (const page of storyData.pages) {
       const result = imageResultByPage.get(page.pageNumber);
       const imageUrl = result?.imageUrl ?? null;
@@ -3251,7 +4041,12 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       const insertedPage = await db
         .select()
         .from(bookPages)
-        .where(and(eq(bookPages.bookId, bookId), eq(bookPages.pageNumber, page.pageNumber)))
+        .where(
+          and(
+            eq(bookPages.bookId, bookId),
+            eq(bookPages.pageNumber, page.pageNumber)
+          )
+        )
         .limit(1);
 
       if (insertedPage[0]) {
@@ -3268,8 +4063,12 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
         await db
           .update(bookPages)
           .set({
-            nextPageIdA: page.nextPageA ? insertedPageIds[page.nextPageA] : null,
-            nextPageIdB: page.nextPageB ? insertedPageIds[page.nextPageB] : null,
+            nextPageIdA: page.nextPageA
+              ? insertedPageIds[page.nextPageA]
+              : null,
+            nextPageIdB: page.nextPageB
+              ? insertedPageIds[page.nextPageB]
+              : null,
           })
           .where(eq(bookPages.id, pageId));
       }
@@ -3277,10 +4076,12 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
 
     // Update book status to ready  persist character cards + illustration style lock + portrait URLs
     // Build portraitUrls mapping from illustratedPortraits array
-    const portraitUrlsMap = characterCards.map((char, idx) => ({
-      characterName: char.name,
-      url: illustratedPortraitsMap.get(char.name)?.url || null,
-    })).filter(p => p.url);
+    const portraitUrlsMap = characterCards
+      .map((char, idx) => ({
+        characterName: char.name,
+        url: illustratedPortraitsMap.get(char.name)?.url || null,
+      }))
+      .filter(p => p.url);
 
     await db
       .update(books)
@@ -3300,12 +4101,17 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
     console.log(
       `[Books] Book ${bookId} generation complete. Character cards saved: ${characterCards.length}. Portraits generated: ${portraitUrlsMap.length}. Readable path length: ${pageCount}. Graph pages: ${storyData.pages.length}.`
     );
-
   } catch (error) {
     console.error("[Books] Generation failed:", error);
     await db
       .update(books)
-      .set({ status: "failed", generationStep: error instanceof Error ? error.message.slice(0, 240) : "Generation failed" })
+      .set({
+        status: "failed",
+        generationStep:
+          error instanceof Error
+            ? error.message.slice(0, 240)
+            : "Generation failed",
+      })
       .where(eq(books.id, bookId));
     // Clean up any uploaded character photos on failure
     if (bookData.uploadedKeys?.length) {
@@ -3333,7 +4139,11 @@ export const booksRouter = router({
           message: `Invalid length "${input.length}" for category "${input.category}".`,
         });
       }
-      return computeTotalCost(input.category, input.length, input.characterPhotoCount);
+      return computeTotalCost(
+        input.category,
+        input.length,
+        input.characterPhotoCount
+      );
     }),
 
   // Create and generate a book
@@ -3341,37 +4151,65 @@ export const booksRouter = router({
     .input(
       z.object({
         title: z.string().min(1).max(120).trim(),
-        category: z.enum(["fairy_tale", "comic", "crime_mystery", "fantasy_scifi", "romance", "horror_thriller"]),
+        category: z.enum([
+          "fairy_tale",
+          "comic",
+          "crime_mystery",
+          "fantasy_scifi",
+          "romance",
+          "horror_thriller",
+        ]),
         length: z.enum(["thin", "normal", "thick"]),
         bookLanguage: z.string().max(10).default("en"),
         description: z.string().max(5000).default(""),
-        characters: z.array(
-          z.object({
-            name: z.string().min(1).max(60).trim(),
-            photoBase64: z.string().optional(),
-            photoMimeType: z.string().optional(),
-            photoUrl: z.string().url().max(2000).optional(),
-          })
-        ).max(10).default([]),
+        characters: z
+          .array(
+            z.object({
+              name: z.string().min(1).max(60).trim(),
+              photoBase64: z.string().optional(),
+              photoMimeType: z.string().optional(),
+              photoUrl: z.string().url().max(2000).optional(),
+            })
+          )
+          .max(10)
+          .default([]),
         safetyChecked: z.boolean().default(true),
       })
     )
     .mutation(async ({ ctx, input }) => {
       // Check user status before any DB call
       if (ctx.user.status === "suspended" || ctx.user.accountLocked) {
-        throw new TRPCError({ code: "FORBIDDEN", message: ctx.user.accountLocked ? "Account locked due to payment issue. Please contact support." : "Account suspended" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: ctx.user.accountLocked
+            ? "Account locked due to payment issue. Please contact support."
+            : "Account suspended",
+        });
       }
 
       const db = await getDb();
       if (!db) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
       }
 
       // Content moderation check
-      const blockedTerms = ["hate speech", "explicit sexual", "extreme violence", "self-harm", "propaganda", "racism"];
+      const blockedTerms = [
+        "hate speech",
+        "explicit sexual",
+        "extreme violence",
+        "self-harm",
+        "propaganda",
+        "racism",
+      ];
       const descLower = input.description.toLowerCase();
       if (blockedTerms.some(term => descLower.includes(term))) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Content violates safety guidelines" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Content violates safety guidelines",
+        });
       }
 
       if (!isLengthAllowedForCategory(input.category, input.length)) {
@@ -3382,14 +4220,27 @@ export const booksRouter = router({
       }
 
       // Calculate cost always read from shared/pricing.ts (source of truth: shared/pricing.csv)
-      const charPhotos = input.characters.filter(c => c.photoBase64 || c.photoUrl).length;
-      const { total } = computeTotalCost(input.category, input.length, charPhotos);
+      const charPhotos = input.characters.filter(
+        c => c.photoBase64 || c.photoUrl
+      ).length;
+      const { total } = computeTotalCost(
+        input.category,
+        input.length,
+        charPhotos
+      );
 
       // Check balance
-      const walletRows = await db.select().from(wallets).where(eq(wallets.userId, ctx.user.id)).limit(1);
+      const walletRows = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.userId, ctx.user.id))
+        .limit(1);
       const balance = walletRows[0]?.balance ?? 0;
       if (balance < total) {
-        throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Insufficient credits" });
+        throw new TRPCError({
+          code: "PAYMENT_REQUIRED",
+          message: "Insufficient credits",
+        });
       }
 
       // Deduct credits
@@ -3397,14 +4248,18 @@ export const booksRouter = router({
         ctx.user.id,
         -total,
         "spend_generate",
-        `Generated book: ${input.title}`,
+        `Generated book: ${input.title}`
       );
 
       // Upload character photos
       // Validate all character photo uploads before touching S3
       for (const char of input.characters) {
         if (char.photoBase64 && char.photoMimeType) {
-          const err = validateUpload(char.photoBase64, char.photoMimeType, "characterPhoto");
+          const err = validateUpload(
+            char.photoBase64,
+            char.photoMimeType,
+            "characterPhoto"
+          );
           if (err) {
             throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
           }
@@ -3456,7 +4311,11 @@ export const booksRouter = router({
 
       // Get the book id from MySQL insertId
       const bookId = (bookInsertResult as any).insertId as number;
-      if (!bookId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create book record" });
+      if (!bookId)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create book record",
+        });
 
       // Insert characters
       for (let i = 0; i < characterData.length; i++) {
@@ -3477,12 +4336,15 @@ export const booksRouter = router({
       });
 
       // Create a generation job record for tracking / retry UI
-      const [jobInsertResult] = await db.insert(generationJobs).values({ bookId });
+      const [jobInsertResult] = await db
+        .insert(generationJobs)
+        .values({ bookId });
       const jobId = (jobInsertResult as any)?.insertId as number | undefined;
 
       // Mark job as generating and start background work
       if (jobId) {
-        await db.update(generationJobs)
+        await db
+          .update(generationJobs)
           .set({ status: "generating", startedAt: new Date() })
           .where(eq(generationJobs.id, jobId));
       }
@@ -3507,7 +4369,11 @@ export const booksRouter = router({
           async (bid, data) => {
             await generateBookContent(bid, data);
             // Notify user when done
-            const updatedBook = await db.select().from(books).where(eq(books.id, bid)).limit(1);
+            const updatedBook = await db
+              .select()
+              .from(books)
+              .where(eq(books.id, bid))
+              .limit(1);
             if (updatedBook[0]?.status === "ready") {
               await createNotification(
                 userId,
@@ -3526,10 +4392,12 @@ export const booksRouter = router({
 
   // Get user's library
   myLibrary: protectedProcedure
-    .input(z.object({
-      search: z.string().max(120).optional(),
-      category: z.string().max(50).optional(),
-    }))
+    .input(
+      z.object({
+        search: z.string().max(120).optional(),
+        category: z.string().max(50).optional(),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return [];
@@ -3568,8 +4436,10 @@ export const booksRouter = router({
             // Purchasers who already own the book still see it (userBooks row intact).
             // We exclude books where status=deleted AND the viewer is the author.
             sql`NOT (${books.status} = 'deleted' AND ${books.authorId} = ${ctx.user.id})`,
-            input.category ? eq(books.category, input.category as any) : undefined,
-            input.search ? like(books.title, `%${input.search}%`) : undefined,
+            input.category
+              ? eq(books.category, input.category as any)
+              : undefined,
+            input.search ? like(books.title, `%${input.search}%`) : undefined
           )
         )
         .orderBy(desc(books.createdAt));
@@ -3579,7 +4449,10 @@ export const booksRouter = router({
         .filter(r => r.book.status === "failed")
         .map(r => r.book.id);
 
-      const jobErrors: Record<number, { errorMessage: string | null; attempts: number }> = {};
+      const jobErrors: Record<
+        number,
+        { errorMessage: string | null; attempts: number }
+      > = {};
       if (failedBookIds.length > 0) {
         const jobs = await db
           .select({
@@ -3592,15 +4465,25 @@ export const booksRouter = router({
           .orderBy(desc(generationJobs.createdAt));
         // Keep only the latest job per book
         for (const j of jobs) {
-          if (!jobErrors[j.bookId]) jobErrors[j.bookId] = { errorMessage: j.errorMessage, attempts: j.attempts };
+          if (!jobErrors[j.bookId])
+            jobErrors[j.bookId] = {
+              errorMessage: j.errorMessage,
+              attempts: j.attempts,
+            };
         }
       }
 
       return query.map(row => ({
         ...row,
         isCompleted: !!row.completedAt,
-        jobError: row.book.status === "failed" ? (jobErrors[row.book.id]?.errorMessage ?? null) : null,
-        jobAttempts: row.book.status === "failed" ? (jobErrors[row.book.id]?.attempts ?? 0) : 0,
+        jobError:
+          row.book.status === "failed"
+            ? (jobErrors[row.book.id]?.errorMessage ?? null)
+            : null,
+        jobAttempts:
+          row.book.status === "failed"
+            ? (jobErrors[row.book.id]?.attempts ?? 0)
+            : 0,
       }));
     }),
 
@@ -3645,11 +4528,19 @@ export const booksRouter = router({
       const owned = await db
         .select()
         .from(userBooks)
-        .where(and(eq(userBooks.userId, ctx.user.id), eq(userBooks.bookId, input.bookId)))
+        .where(
+          and(
+            eq(userBooks.userId, ctx.user.id),
+            eq(userBooks.bookId, input.bookId)
+          )
+        )
         .limit(1);
 
       if (!owned[0]) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "You don't own this book" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You don't own this book",
+        });
       }
 
       const pages = await db
@@ -3658,14 +4549,18 @@ export const booksRouter = router({
         .where(eq(bookPages.bookId, input.bookId))
         .orderBy(bookPages.pageNumber);
 
-      const pageById = new Map(pages.map((page) => [page.id, page]));
+      const pageById = new Map(pages.map(page => [page.id, page]));
       const incomingPageIds = new Set<number>();
       for (const page of pages) {
         if (page.nextPageIdA) incomingPageIds.add(page.nextPageIdA);
         if (page.nextPageIdB) incomingPageIds.add(page.nextPageIdB);
       }
       const routePageNumberById = new Map<number, number>();
-      const visitPage = (pageId: number, depth: number, active: Set<number>) => {
+      const visitPage = (
+        pageId: number,
+        depth: number,
+        active: Set<number>
+      ) => {
         if (active.has(pageId)) return;
         const existingDepth = routePageNumberById.get(pageId);
         if (existingDepth && existingDepth >= depth) return;
@@ -3677,29 +4572,43 @@ export const booksRouter = router({
         if (page.nextPageIdB) visitPage(page.nextPageIdB, depth + 1, active);
         active.delete(pageId);
       };
-      const rootPages = pages.filter((page) => !incomingPageIds.has(page.id));
+      const rootPages = pages.filter(page => !incomingPageIds.has(page.id));
       for (const rootPage of rootPages) {
         visitPage(rootPage.id, 1, new Set<number>());
       }
-      const pagesWithRouteNumber = pages.map((page) => ({
+      const pagesWithRouteNumber = pages.map(page => ({
         ...page,
         routePageNumber: routePageNumberById.get(page.id) ?? page.pageNumber,
       }));
 
       // Fetch character cards and portrait URLs for the Characters panel in Reader
       const bookRow = await db
-        .select({ characterCards: books.characterCards, portraitUrls: books.portraitUrls })
+        .select({
+          characterCards: books.characterCards,
+          portraitUrls: books.portraitUrls,
+        })
         .from(books)
         .where(eq(books.id, input.bookId))
         .limit(1);
 
-      type CharacterCard = { name: string; appearance: string; voice: string; role: string; photoUrl?: string; portraitUrl?: string };
+      type CharacterCard = {
+        name: string;
+        appearance: string;
+        voice: string;
+        role: string;
+        photoUrl?: string;
+        portraitUrl?: string;
+      };
       type PortraitUrl = { characterName: string; url: string };
-      const characterCards = (bookRow[0]?.characterCards as CharacterCard[] | null) ?? [];
-      const portraitUrls = (bookRow[0]?.portraitUrls as PortraitUrl[] | null) ?? [];
+      const characterCards =
+        (bookRow[0]?.characterCards as CharacterCard[] | null) ?? [];
+      const portraitUrls =
+        (bookRow[0]?.portraitUrls as PortraitUrl[] | null) ?? [];
 
       // Build a map of character name , portrait URL for easy lookup
-      const portraitMap = new Map(portraitUrls.map(p => [p.characterName, p.url]));
+      const portraitMap = new Map(
+        portraitUrls.map(p => [p.characterName, p.url])
+      );
 
       // Inject portrait URLs into character cards
       const enrichedCards = characterCards.map(card => ({
@@ -3725,20 +4634,30 @@ export const booksRouter = router({
 
       if (!book[0]) {
         // Avoid noisy NOT_FOUND polling errors on stale cards, treat as pending unknown.
-        return { status: "pending" as const, totalPages: 0, generationStep: null };
+        return {
+          status: "pending" as const,
+          totalPages: 0,
+          generationStep: null,
+        };
       }
 
-      return { status: book[0].status, totalPages: book[0].totalPages, generationStep: book[0].generationStep ?? null };
+      return {
+        status: book[0].status,
+        totalPages: book[0].totalPages,
+        generationStep: book[0].generationStep ?? null,
+      };
     }),
 
   // Store listing
   storeListing: publicProcedure
-    .input(z.object({
-      search: z.string().max(120).optional(),
-      category: z.string().max(50).optional(),
-      limit: z.number().int().min(1).max(100).default(20),
-      offset: z.number().int().min(0).default(0),
-    }))
+    .input(
+      z.object({
+        search: z.string().max(120).optional(),
+        category: z.string().max(50).optional(),
+        limit: z.number().int().min(1).max(100).default(20),
+        offset: z.number().int().min(0).default(0),
+      })
+    )
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) {
@@ -3751,7 +4670,8 @@ export const booksRouter = router({
         eq(books.status, "ready"),
       ];
 
-      if (input.category) conditions.push(eq(books.category, input.category as any));
+      if (input.category)
+        conditions.push(eq(books.category, input.category as any));
       if (input.search) {
         const searchPattern = `%${input.search}%`;
         const searchCondition = or(
@@ -3792,15 +4712,23 @@ export const booksRouter = router({
         let discountedPrice = row.book.storePrice;
         if (campaign && discountedPrice) {
           if (campaign.discountType === "percent") {
-            discountedPrice = Math.ceil(discountedPrice * (1 - campaign.discountValue / 100));
+            discountedPrice = Math.ceil(
+              discountedPrice * (1 - campaign.discountValue / 100)
+            );
           } else {
-            discountedPrice = Math.max(1, discountedPrice - campaign.discountValue);
+            discountedPrice = Math.max(
+              1,
+              discountedPrice - campaign.discountValue
+            );
           }
         }
 
         return {
           ...row,
-          authorName: row.authorDeleted === "deleted" ? "[Deleted Author]" : row.authorName,
+          authorName:
+            row.authorDeleted === "deleted"
+              ? "[Deleted Author]"
+              : row.authorName,
           discountedPrice,
           hasCampaign: !!campaign,
         };
@@ -3809,16 +4737,23 @@ export const booksRouter = router({
 
   // Publish book to store
   publish: protectedProcedure
-    .input(z.object({
-      bookId: z.number().int().positive(),
-      price: z.number().int().min(1).max(10000),
-    }))
+    .input(
+      z.object({
+        bookId: z.number().int().positive(),
+        price: z.number().int().min(1).max(10000),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       if (ctx.user.status === "suspended" || ctx.user.accountLocked) {
-        throw new TRPCError({ code: "FORBIDDEN", message: ctx.user.accountLocked ? "Account locked due to payment issue. Please contact support." : "Account suspended." });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: ctx.user.accountLocked
+            ? "Account locked due to payment issue. Please contact support."
+            : "Account suspended.",
+        });
       }
 
       const book = await db
@@ -3848,7 +4783,12 @@ export const booksRouter = router({
     .input(z.object({ bookId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.status === "suspended" || ctx.user.accountLocked) {
-        throw new TRPCError({ code: "FORBIDDEN", message: ctx.user.accountLocked ? "Account locked due to payment issue. Please contact support." : "Account suspended" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: ctx.user.accountLocked
+            ? "Account locked due to payment issue. Please contact support."
+            : "Account suspended",
+        });
       }
 
       const db = await getDb();
@@ -3858,7 +4798,12 @@ export const booksRouter = router({
       const existing = await db
         .select()
         .from(userBooks)
-        .where(and(eq(userBooks.userId, ctx.user.id), eq(userBooks.bookId, input.bookId)))
+        .where(
+          and(
+            eq(userBooks.userId, ctx.user.id),
+            eq(userBooks.bookId, input.bookId)
+          )
+        )
         .limit(1);
 
       if (existing[0]) {
@@ -3868,7 +4813,13 @@ export const booksRouter = router({
       const bookData = await db
         .select()
         .from(books)
-        .where(and(eq(books.id, input.bookId), eq(books.isPublished, true), eq(books.isDelisted, false)))
+        .where(
+          and(
+            eq(books.id, input.bookId),
+            eq(books.isPublished, true),
+            eq(books.isDelisted, false)
+          )
+        )
         .limit(1);
 
       if (!bookData[0]) throw new TRPCError({ code: "NOT_FOUND" });
@@ -3877,7 +4828,10 @@ export const booksRouter = router({
       const listPrice = bookData[0].storePrice;
 
       // Get campaign discount
-      const activeCampaigns = await db.select().from(campaigns).where(eq(campaigns.isActive, true));
+      const activeCampaigns = await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.isActive, true));
       const campaign = activeCampaigns.find(c => {
         const cats = c.targetCategories as string[];
         return cats.includes(bookData[0].category);
@@ -3886,7 +4840,9 @@ export const booksRouter = router({
       let buyerPrice = listPrice;
       if (campaign) {
         if (campaign.discountType === "percent") {
-          buyerPrice = Math.ceil(listPrice * (1 - campaign.discountValue / 100));
+          buyerPrice = Math.ceil(
+            listPrice * (1 - campaign.discountValue / 100)
+          );
         } else {
           buyerPrice = Math.max(1, listPrice - campaign.discountValue);
         }
@@ -3896,16 +4852,35 @@ export const booksRouter = router({
       const authorEarning = Math.floor(listPrice * 0.3);
 
       // Check buyer balance
-      const buyerWallet = await db.select().from(wallets).where(eq(wallets.userId, ctx.user.id)).limit(1);
+      const buyerWallet = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.userId, ctx.user.id))
+        .limit(1);
       if ((buyerWallet[0]?.balance ?? 0) < buyerPrice) {
-        throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Insufficient credits" });
+        throw new TRPCError({
+          code: "PAYMENT_REQUIRED",
+          message: "Insufficient credits",
+        });
       }
 
       // Deduct from buyer
-      await adjustCredits(ctx.user.id, -buyerPrice, "spend_buy", `Purchased: ${bookData[0].title}`, String(input.bookId));
+      await adjustCredits(
+        ctx.user.id,
+        -buyerPrice,
+        "spend_buy",
+        `Purchased: ${bookData[0].title}`,
+        String(input.bookId)
+      );
 
       // Credit author
-      await adjustCredits(bookData[0].authorId, authorEarning, "earn_sale", `Sale of: ${bookData[0].title}`, String(input.bookId));
+      await adjustCredits(
+        bookData[0].authorId,
+        authorEarning,
+        "earn_sale",
+        `Sale of: ${bookData[0].title}`,
+        String(input.bookId)
+      );
 
       // Add to buyer's library
       await db.insert(userBooks).values({
@@ -3922,7 +4897,11 @@ export const booksRouter = router({
         .where(eq(books.id, input.bookId));
 
       // Notify author
-      const authorProfile = await db.select().from(profiles).where(eq(profiles.userId, bookData[0].authorId)).limit(1);
+      const authorProfile = await db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, bookData[0].authorId))
+        .limit(1);
       await createNotification(
         bookData[0].authorId,
         "book_sold",
@@ -3957,12 +4936,14 @@ export const booksRouter = router({
 
   // Save reading progress
   saveProgress: protectedProcedure
-    .input(z.object({
-      bookId: z.number(),
-      currentPageId: z.number(),
-      branchPath: z.string(),
-      isEndingNode: z.boolean().optional(),
-    }))
+    .input(
+      z.object({
+        bookId: z.number(),
+        currentPageId: z.number(),
+        branchPath: z.string(),
+        isEndingNode: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -3972,12 +4953,19 @@ export const booksRouter = router({
       const existing = await db
         .select()
         .from(readingProgress)
-        .where(and(eq(readingProgress.userId, ctx.user.id), eq(readingProgress.bookId, input.bookId)))
+        .where(
+          and(
+            eq(readingProgress.userId, ctx.user.id),
+            eq(readingProgress.bookId, input.bookId)
+          )
+        )
         .limit(1);
 
       // Only stamp completedAt once (idempotent)
       const shouldComplete = input.isEndingNode && !existing[0]?.completedAt;
-      const completedAt = shouldComplete ? new Date() : (existing[0]?.completedAt ?? undefined);
+      const completedAt = shouldComplete
+        ? new Date()
+        : (existing[0]?.completedAt ?? undefined);
 
       if (existing[0]) {
         await db
@@ -3987,7 +4975,12 @@ export const booksRouter = router({
             branchPath: input.branchPath,
             ...(shouldComplete ? { completedAt } : {}),
           })
-          .where(and(eq(readingProgress.userId, ctx.user.id), eq(readingProgress.bookId, input.bookId)));
+          .where(
+            and(
+              eq(readingProgress.userId, ctx.user.id),
+              eq(readingProgress.bookId, input.bookId)
+            )
+          );
       } else {
         await db.insert(readingProgress).values({
           userId: ctx.user.id,
@@ -4000,8 +4993,13 @@ export const booksRouter = router({
 
       // If this is a new completion, refresh author stats cache (fire-and-forget)
       if (shouldComplete) {
-        const [bookRow] = await db.select({ authorId: books.authorId }).from(books).where(eq(books.id, input.bookId)).limit(1);
-        if (bookRow) refreshAuthorStats(bookRow.authorId, db).catch(console.error);
+        const [bookRow] = await db
+          .select({ authorId: books.authorId })
+          .from(books)
+          .where(eq(books.id, input.bookId))
+          .limit(1);
+        if (bookRow)
+          refreshAuthorStats(bookRow.authorId, db).catch(console.error);
       }
 
       return { success: true, completed: !!shouldComplete };
@@ -4019,7 +5017,12 @@ export const booksRouter = router({
       const result = await db
         .select()
         .from(readingProgress)
-        .where(and(eq(readingProgress.userId, ctx.user.id), eq(readingProgress.bookId, input.bookId)))
+        .where(
+          and(
+            eq(readingProgress.userId, ctx.user.id),
+            eq(readingProgress.bookId, input.bookId)
+          )
+        )
         .limit(1);
 
       return result[0] ?? null;
@@ -4027,10 +5030,12 @@ export const booksRouter = router({
 
   // Leaderboard data
   leaderboard: publicProcedure
-    .input(z.object({
-      search: z.string().max(120).optional(),
-      category: z.string().max(50).optional(),
-    }))
+    .input(
+      z.object({
+        search: z.string().max(120).optional(),
+        category: z.string().max(50).optional(),
+      })
+    )
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) {
@@ -4047,7 +5052,8 @@ export const booksRouter = router({
         eq(books.status, "ready"),
       ];
 
-      if (input.category) conditions.push(eq(books.category, input.category as any));
+      if (input.category)
+        conditions.push(eq(books.category, input.category as any));
       if (input.search) {
         conditions.push(
           or(
@@ -4068,19 +5074,55 @@ export const booksRouter = router({
         .where(and(...conditions));
 
       const [bestSellers, newArrivals, mostPopular] = await Promise.all([
-        db.select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl, authorId: books.authorId, prevRank: profiles.lastBestSellerRank })
-          .from(books).leftJoin(profiles, eq(books.authorId, profiles.userId))
-          .where(and(...conditions)).orderBy(desc(books.purchaseCount)).limit(20),
-        db.select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl, authorId: books.authorId, prevRank: profiles.lastNewArrivalRank })
-          .from(books).leftJoin(profiles, eq(books.authorId, profiles.userId))
-          .where(and(...conditions)).orderBy(desc(books.createdAt)).limit(20),
-        db.select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl, authorId: books.authorId, prevRank: profiles.lastMostPopularRank })
-          .from(books).leftJoin(profiles, eq(books.authorId, profiles.userId))
-          .where(and(...conditions)).orderBy(desc(books.reviewCount)).limit(20),
+        db
+          .select({
+            book: books,
+            authorName: profiles.authorName,
+            authorAvatar: profiles.avatarUrl,
+            authorId: books.authorId,
+            prevRank: profiles.lastBestSellerRank,
+          })
+          .from(books)
+          .leftJoin(profiles, eq(books.authorId, profiles.userId))
+          .where(and(...conditions))
+          .orderBy(desc(books.purchaseCount))
+          .limit(20),
+        db
+          .select({
+            book: books,
+            authorName: profiles.authorName,
+            authorAvatar: profiles.avatarUrl,
+            authorId: books.authorId,
+            prevRank: profiles.lastNewArrivalRank,
+          })
+          .from(books)
+          .leftJoin(profiles, eq(books.authorId, profiles.userId))
+          .where(and(...conditions))
+          .orderBy(desc(books.createdAt))
+          .limit(20),
+        db
+          .select({
+            book: books,
+            authorName: profiles.authorName,
+            authorAvatar: profiles.avatarUrl,
+            authorId: books.authorId,
+            prevRank: profiles.lastMostPopularRank,
+          })
+          .from(books)
+          .leftJoin(profiles, eq(books.authorId, profiles.userId))
+          .where(and(...conditions))
+          .orderBy(desc(books.reviewCount))
+          .limit(20),
       ]);
 
       // Compute rank deltas and annotate results
-      const annotate = (rows: typeof bestSellers, rankField: "lastBestSellerRank" | "lastNewArrivalRank" | "lastMostPopularRank") =>
+      const annotate = (
+        rows: typeof bestSellers,
+        rankField:
+          | "lastBestSellerRank"
+          | "lastNewArrivalRank"
+          | "lastMostPopularRank"
+      ) =>
         rows.map((row, idx) => {
           const currentRank = idx + 1;
           const prevRank = row.prevRank ?? null;
@@ -4097,13 +5139,28 @@ export const booksRouter = router({
         const now = new Date();
         const updates: Promise<any>[] = [];
         bestSellers.forEach((row, idx) => {
-          updates.push(db.update(profiles).set({ lastBestSellerRank: idx + 1, lastRankSnapshotAt: now }).where(eq(profiles.userId, row.authorId)));
+          updates.push(
+            db
+              .update(profiles)
+              .set({ lastBestSellerRank: idx + 1, lastRankSnapshotAt: now })
+              .where(eq(profiles.userId, row.authorId))
+          );
         });
         newArrivals.forEach((row, idx) => {
-          updates.push(db.update(profiles).set({ lastNewArrivalRank: idx + 1, lastRankSnapshotAt: now }).where(eq(profiles.userId, row.authorId)));
+          updates.push(
+            db
+              .update(profiles)
+              .set({ lastNewArrivalRank: idx + 1, lastRankSnapshotAt: now })
+              .where(eq(profiles.userId, row.authorId))
+          );
         });
         mostPopular.forEach((row, idx) => {
-          updates.push(db.update(profiles).set({ lastMostPopularRank: idx + 1, lastRankSnapshotAt: now }).where(eq(profiles.userId, row.authorId)));
+          updates.push(
+            db
+              .update(profiles)
+              .set({ lastMostPopularRank: idx + 1, lastRankSnapshotAt: now })
+              .where(eq(profiles.userId, row.authorId))
+          );
         });
         await Promise.allSettled(updates);
       };
@@ -4120,14 +5177,27 @@ export const booksRouter = router({
             previousRank: r.prevRank ?? null,
           }));
         await Promise.allSettled([
-          dispatchLeaderboardNotifications({ listType: "bestSellers", rankedItems: toItems(annotatedBestSellers) }),
-          dispatchLeaderboardNotifications({ listType: "newArrivals", rankedItems: toItems(annotatedNewArrivals) }),
-          dispatchLeaderboardNotifications({ listType: "mostPopular", rankedItems: toItems(annotatedMostPopular) }),
+          dispatchLeaderboardNotifications({
+            listType: "bestSellers",
+            rankedItems: toItems(annotatedBestSellers),
+          }),
+          dispatchLeaderboardNotifications({
+            listType: "newArrivals",
+            rankedItems: toItems(annotatedNewArrivals),
+          }),
+          dispatchLeaderboardNotifications({
+            listType: "mostPopular",
+            rankedItems: toItems(annotatedMostPopular),
+          }),
         ]);
       };
       dispatchNotifs().catch(() => {});
 
-      return { bestSellers: annotatedBestSellers, newArrivals: annotatedNewArrivals, mostPopular: annotatedMostPopular };
+      return {
+        bestSellers: annotatedBestSellers,
+        newArrivals: annotatedNewArrivals,
+        mostPopular: annotatedMostPopular,
+      };
     }),
 
   // Get author profile (public)
@@ -4182,7 +5252,12 @@ export const booksRouter = router({
         )
         .where(sql`${readingProgress.completedAt} IS NOT NULL`);
 
-      const stats = statsResult[0] ?? { totalBooks: 0, totalSales: 0, totalReviews: 0, avgRating: 0 };
+      const stats = statsResult[0] ?? {
+        totalBooks: 0,
+        totalSales: 0,
+        totalReviews: 0,
+        avgRating: 0,
+      };
       const totalCompletions = Number(completionsResult[0]?.total ?? 0);
 
       return {
@@ -4208,10 +5283,20 @@ export const booksRouter = router({
 
       // Get books with per-book completion count
       const bookRows = await db
-        .select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl })
+        .select({
+          book: books,
+          authorName: profiles.authorName,
+          authorAvatar: profiles.avatarUrl,
+        })
         .from(books)
         .leftJoin(profiles, eq(books.authorId, profiles.userId))
-        .where(and(eq(books.authorId, input.userId), eq(books.isPublished, true), eq(books.isDelisted, false)))
+        .where(
+          and(
+            eq(books.authorId, input.userId),
+            eq(books.isPublished, true),
+            eq(books.isDelisted, false)
+          )
+        )
         .orderBy(desc(books.createdAt));
 
       if (bookRows.length === 0) return [];
@@ -4233,7 +5318,9 @@ export const booksRouter = router({
         )
         .groupBy(readingProgress.bookId);
 
-      const completionMap = new Map(completionCounts.map(c => [c.bookId, Number(c.completedReaders)]));
+      const completionMap = new Map(
+        completionCounts.map(c => [c.bookId, Number(c.completedReaders)])
+      );
 
       return bookRows.map(row => ({
         ...row,
@@ -4258,7 +5345,13 @@ export const booksRouter = router({
         .from(books)
         .leftJoin(users, eq(books.authorId, users.id))
         .leftJoin(profiles, eq(books.authorId, profiles.userId))
-        .where(and(eq(books.id, input.id), eq(books.isPublished, true), eq(books.isDelisted, false)))
+        .where(
+          and(
+            eq(books.id, input.id),
+            eq(books.isPublished, true),
+            eq(books.isDelisted, false)
+          )
+        )
         .limit(1);
 
       if (!result[0]) throw new TRPCError({ code: "NOT_FOUND" });
@@ -4270,21 +5363,27 @@ export const booksRouter = router({
         .where(eq(campaigns.isActive, true));
 
       const bookCategory = result[0].book.category ?? "";
-      const matchingCampaign = activeCampaigns.find(c => {
-        const targets = Array.isArray(c.targetCategories)
-          ? c.targetCategories as string[]
-          : [];
-        return targets.includes(bookCategory) || targets.includes("all");
-      }) ?? null;
+      const matchingCampaign =
+        activeCampaigns.find(c => {
+          const targets = Array.isArray(c.targetCategories)
+            ? (c.targetCategories as string[])
+            : [];
+          return targets.includes(bookCategory) || targets.includes("all");
+        }) ?? null;
 
       let discountedPrice: number | null = null;
       const bookData = result[0];
       const storePrice = bookData.book.storePrice ?? 0;
       if (matchingCampaign) {
         if (matchingCampaign.discountType === "percent") {
-          discountedPrice = Math.round(storePrice * (1 - matchingCampaign.discountValue / 100));
+          discountedPrice = Math.round(
+            storePrice * (1 - matchingCampaign.discountValue / 100)
+          );
         } else {
-          discountedPrice = Math.max(0, storePrice - matchingCampaign.discountValue);
+          discountedPrice = Math.max(
+            0,
+            storePrice - matchingCampaign.discountValue
+          );
         }
       }
 
@@ -4300,32 +5399,54 @@ export const booksRouter = router({
     .input(z.object({ bookId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.status === "suspended" || ctx.user.accountLocked) {
-        throw new TRPCError({ code: "FORBIDDEN", message: ctx.user.accountLocked ? "Account locked due to payment issue. Please contact support." : "Account suspended" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: ctx.user.accountLocked
+            ? "Account locked due to payment issue. Please contact support."
+            : "Account suspended",
+        });
       }
 
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const bookRows = await db.select().from(books).where(eq(books.id, input.bookId)).limit(1);
+      const bookRows = await db
+        .select()
+        .from(books)
+        .where(eq(books.id, input.bookId))
+        .limit(1);
       const book = bookRows[0];
       if (!book) throw new TRPCError({ code: "NOT_FOUND" });
-      if (book.authorId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      if (book.authorId !== ctx.user.id)
+        throw new TRPCError({ code: "FORBIDDEN" });
       if (book.status !== "failed") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Book is not in failed state." });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Book is not in failed state.",
+        });
       }
 
       // Reset book status and create a new job
-      await db.update(books).set({ status: "generating" }).where(eq(books.id, input.bookId));
-      const [jobInsertResult] = await db.insert(generationJobs).values({ bookId: input.bookId });
+      await db
+        .update(books)
+        .set({ status: "generating" })
+        .where(eq(books.id, input.bookId));
+      const [jobInsertResult] = await db
+        .insert(generationJobs)
+        .values({ bookId: input.bookId });
       const jobId = (jobInsertResult as any)?.insertId as number | undefined;
       if (jobId) {
-        await db.update(generationJobs)
+        await db
+          .update(generationJobs)
           .set({ status: "generating", startedAt: new Date() })
           .where(eq(generationJobs.id, jobId));
       }
 
       // Fetch characters for regeneration
-      const chars = await db.select().from(bookCharacters).where(eq(bookCharacters.bookId, input.bookId));
+      const chars = await db
+        .select()
+        .from(bookCharacters)
+        .where(eq(bookCharacters.bookId, input.bookId));
 
       // Start regeneration via lease-based worker (double-processing safe)
       if (jobId) {
@@ -4341,15 +5462,24 @@ export const booksRouter = router({
             length: book.length,
             description: book.description ?? "",
             language: book.bookLanguage,
-            characters: chars.map(c => ({ name: c.name, photoUrl: c.photoUrl ?? undefined })),
+            characters: chars.map(c => ({
+              name: c.name,
+              photoUrl: c.photoUrl ?? undefined,
+            })),
           },
           db,
           async (bid, data) => {
             await generateBookContent(bid, data);
-            const updatedBook = await db.select().from(books).where(eq(books.id, bookIdForClosure)).limit(1);
+            const updatedBook = await db
+              .select()
+              .from(books)
+              .where(eq(books.id, bookIdForClosure))
+              .limit(1);
             if (updatedBook[0]?.status === "ready") {
               await createNotification(
-                userId, "book_ready", "Book Regeneration Complete!",
+                userId,
+                "book_ready",
+                "Book Regeneration Complete!",
                 `Your book "${bookTitle}" has been regenerated successfully.`,
                 `/reader/${bookIdForClosure}`
               );
@@ -4358,48 +5488,59 @@ export const booksRouter = router({
         ).catch(console.error);
       }
 
-      return { bookId: input.bookId, jobId: jobId ?? null, status: "generating" };
+      return {
+        bookId: input.bookId,
+        jobId: jobId ?? null,
+        status: "generating",
+      };
     }),
 
   // Public: get admin-curated featured gamebooks; falls back to top 8 by purchaseCount
-  getFeatured: publicProcedure
-    .query(async () => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  getFeatured: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Try admin-curated featured books first
-      const featured = await db
-        .select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl })
-        .from(books)
-        .leftJoin(profiles, eq(books.authorId, profiles.userId))
-        .where(
-          and(
-            eq(books.isFeatured, true),
-            eq(books.isPublished, true),
-            eq(books.isDelisted, false),
-            eq(books.status, "ready"),
-          )
+    // Try admin-curated featured books first
+    const featured = await db
+      .select({
+        book: books,
+        authorName: profiles.authorName,
+        authorAvatar: profiles.avatarUrl,
+      })
+      .from(books)
+      .leftJoin(profiles, eq(books.authorId, profiles.userId))
+      .where(
+        and(
+          eq(books.isFeatured, true),
+          eq(books.isPublished, true),
+          eq(books.isDelisted, false),
+          eq(books.status, "ready")
         )
-        .orderBy(asc(books.featuredOrder))
-        .limit(12);
+      )
+      .orderBy(asc(books.featuredOrder))
+      .limit(12);
 
-      if (featured.length > 0) return featured;
+    if (featured.length > 0) return featured;
 
-      // Fallback: top 8 by purchaseCount
-      return db
-        .select({ book: books, authorName: profiles.authorName, authorAvatar: profiles.avatarUrl })
-        .from(books)
-        .leftJoin(profiles, eq(books.authorId, profiles.userId))
-        .where(
-          and(
-            eq(books.isPublished, true),
-            eq(books.isDelisted, false),
-            eq(books.status, "ready"),
-          )
+    // Fallback: top 8 by purchaseCount
+    return db
+      .select({
+        book: books,
+        authorName: profiles.authorName,
+        authorAvatar: profiles.avatarUrl,
+      })
+      .from(books)
+      .leftJoin(profiles, eq(books.authorId, profiles.userId))
+      .where(
+        and(
+          eq(books.isPublished, true),
+          eq(books.isDelisted, false),
+          eq(books.status, "ready")
         )
-        .orderBy(desc(books.purchaseCount))
-        .limit(8);
-    }),
+      )
+      .orderBy(desc(books.purchaseCount))
+      .limit(8);
+  }),
 
   /**
    * deleteBook  author-only soft-delete.
@@ -4421,8 +5562,13 @@ export const booksRouter = router({
         .where(eq(books.id, input.bookId))
         .limit(1);
 
-      if (!book) throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
-      if (book.authorId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the author can delete this book" });
+      if (!book)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Book not found" });
+      if (book.authorId !== ctx.user.id)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the author can delete this book",
+        });
       if (book.status === "deleted") return { success: true }; // already deleted
 
       await db
@@ -4430,8 +5576,9 @@ export const booksRouter = router({
         .set({ status: "deleted", isDelisted: true })
         .where(eq(books.id, input.bookId));
 
-      console.log(`[Books] Book ${input.bookId} soft-deleted by author ${ctx.user.id}`);
+      console.log(
+        `[Books] Book ${input.bookId} soft-deleted by author ${ctx.user.id}`
+      );
       return { success: true };
     }),
 });
-

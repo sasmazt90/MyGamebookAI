@@ -12,6 +12,7 @@
  * and an SVG speech bubble if dialogue was extracted for that panel.
  */
 
+import { getComicTextFontStack } from "@/lib/comicTypography";
 import { cn } from "@/lib/utils";
 
 // âââ Types ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
@@ -49,15 +50,18 @@ export function ComicPageLayout({
   const topPanel = panels[0];
   const bottomLeftPanel = panels[1];
   const bottomRightPanel = panels[2];
+  const pageFontFamily = getComicTextFontStack(
+    ...panels.flatMap(panel => [panel?.narration, panel?.dialogue])
+  );
 
   return (
     <div
       className={cn(
         "bg-white text-black rounded-xl overflow-hidden shadow-2xl border-4 border-black",
         "flex flex-col",
-        className,
+        className
       )}
-      style={{ fontFamily: "'Bangers', 'Impact', 'Arial Black', sans-serif" }}
+      style={{ fontFamily: pageFontFamily }}
     >
       {/* Top hero panel */}
       <div className="border-b-4 border-black" style={{ minHeight: "42%" }}>
@@ -66,7 +70,10 @@ export function ComicPageLayout({
 
       {/* Bottom row: two supporting panels */}
       <div className="grid grid-cols-2" style={{ minHeight: "38%" }}>
-        <ComicPanelCell panel={bottomLeftPanel} borderClass="border-r-4 border-black" />
+        <ComicPanelCell
+          panel={bottomLeftPanel}
+          borderClass="border-r-4 border-black"
+        />
         <ComicPanelCell panel={bottomRightPanel} />
       </div>
 
@@ -101,7 +108,7 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
         className={cn(
           "relative flex items-center justify-center bg-gray-100",
           wide ? "h-48 md:h-64" : "h-40 md:h-52",
-          borderClass,
+          borderClass
         )}
       >
         <span className="text-gray-400 text-xs italic">No image</span>
@@ -110,6 +117,10 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
   }
 
   const hasBubble = !!panel.dialogue;
+  const panelFontFamily = getComicTextFontStack(
+    panel.narration,
+    panel.dialogue
+  );
 
   return (
     <div className={cn("relative overflow-hidden group", borderClass)}>
@@ -119,7 +130,7 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
         alt="Comic panel"
         className={cn(
           "w-full object-cover block bg-white",
-          wide ? "h-56 md:h-80" : "h-44 md:h-64",
+          wide ? "h-56 md:h-80" : "h-44 md:h-64"
         )}
         style={{ imageRendering: "auto" }}
       />
@@ -132,13 +143,17 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
           type={panel.bubbleType ?? "speech"}
           position={(() => {
             const raw = panel.position ?? "top-right";
-            if (panel.narration && (raw === "bottom-left" || raw === "bottom-right")) {
+            if (
+              panel.narration &&
+              (raw === "bottom-left" || raw === "bottom-right")
+            ) {
               return raw.replace("bottom-", "top-") as typeof raw;
             }
             return raw;
           })()}
           hasCaption={!!panel.narration}
           wide={wide}
+          fontFamily={panelFontFamily}
         />
       )}
 
@@ -152,17 +167,22 @@ function ComicPanelCell({ panel, borderClass, wide }: ComicPanelCellProps) {
             letterSpacing: "0.01em",
             maxHeight: wide ? "4.5rem" : "3.8rem",
             overflow: "hidden",
+            fontFamily: panelFontFamily,
           }}
         >
           <span
-            className="font-bold uppercase tracking-wide"
-            style={{
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            } as React.CSSProperties}
-          >{panel.narration}</span>
+            className="font-bold tracking-wide"
+            style={
+              {
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              } as React.CSSProperties
+            }
+          >
+            {panel.narration}
+          </span>
         </div>
       )}
 
@@ -197,6 +217,7 @@ interface SpeechBubbleProps {
   type?: "speech" | "thought" | "shout" | null;
   position?: BubblePosition;
   wide?: boolean;
+  fontFamily?: string;
   /** True when a narration caption strip is rendered at the bottom of the panel */
   hasCaption?: boolean;
 }
@@ -208,12 +229,21 @@ interface SpeechBubbleProps {
  * - "thought" â cloud-like bubble with small circles as tail
  * - "shout"   â spiky starburst / jagged outline
  */
-function SpeechBubble({ text, speaker, type = "speech", position = "top-right", wide, hasCaption }: SpeechBubbleProps) {
+function SpeechBubble({
+  text,
+  speaker,
+  type = "speech",
+  position = "top-right",
+  wide,
+  hasCaption,
+  fontFamily,
+}: SpeechBubbleProps) {
   const bubbleType = type ?? "speech";
 
   // Strip leading "Name: " prefix the LLM may bake into dialogue, then clamp
   const cleanText = stripSpeakerPrefix(text.trim());
-  const displayText = cleanText.length > 90 ? cleanText.slice(0, 87) + "â¦" : cleanText;
+  const displayText =
+    cleanText.length > 90 ? cleanText.slice(0, 87) + "â¦" : cleanText;
 
   // Resolve corner coordinates from position
   const inset = wide ? 10 : 7;
@@ -221,11 +251,23 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
   const pos = position ?? "top-right";
   // Extra clearance when a narration caption strip sits at the bottom of the panel
   // (caption ~28-36px tall + 8px gap = safe bottom offset)
-  const captionClearance = hasCaption ? (wide ? 52 : 44) : (wide ? 36 : 32);
-  if (pos === "top-left")    { posStyle.top = inset;              posStyle.left  = inset; }
-  if (pos === "top-right")   { posStyle.top = inset;              posStyle.right = inset; }
-  if (pos === "bottom-left") { posStyle.bottom = captionClearance; posStyle.left  = inset; }
-  if (pos === "bottom-right"){ posStyle.bottom = captionClearance; posStyle.right = inset; }
+  const captionClearance = hasCaption ? (wide ? 52 : 44) : wide ? 36 : 32;
+  if (pos === "top-left") {
+    posStyle.top = inset;
+    posStyle.left = inset;
+  }
+  if (pos === "top-right") {
+    posStyle.top = inset;
+    posStyle.right = inset;
+  }
+  if (pos === "bottom-left") {
+    posStyle.bottom = captionClearance;
+    posStyle.left = inset;
+  }
+  if (pos === "bottom-right") {
+    posStyle.bottom = captionClearance;
+    posStyle.right = inset;
+  }
 
   // Shared container positioning â max-width scales with text length
   const containerStyle: React.CSSProperties = {
@@ -240,7 +282,13 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
   if (bubbleType === "thought") {
     return (
       <div style={containerStyle}>
-        <ThoughtBubble text={displayText} speaker={speaker} wide={wide} position={pos} />
+        <ThoughtBubble
+          text={displayText}
+          speaker={speaker}
+          wide={wide}
+          position={pos}
+          fontFamily={fontFamily}
+        />
       </div>
     );
   }
@@ -248,7 +296,13 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
   if (bubbleType === "shout") {
     return (
       <div style={containerStyle}>
-        <ShoutBubble text={displayText} speaker={speaker} wide={wide} position={pos} />
+        <ShoutBubble
+          text={displayText}
+          speaker={speaker}
+          wide={wide}
+          position={pos}
+          fontFamily={fontFamily}
+        />
       </div>
     );
   }
@@ -256,7 +310,13 @@ function SpeechBubble({ text, speaker, type = "speech", position = "top-right", 
   // Default: speech bubble
   return (
     <div style={containerStyle}>
-      <RegularSpeechBubble text={displayText} speaker={speaker} wide={wide} position={pos} />
+      <RegularSpeechBubble
+        text={displayText}
+        speaker={speaker}
+        wide={wide}
+        position={pos}
+        fontFamily={fontFamily}
+      />
     </div>
   );
 }
@@ -268,6 +328,7 @@ interface BubbleVariantProps {
   speaker?: string;
   wide?: boolean;
   position?: BubblePosition;
+  fontFamily?: string;
 }
 
 /**
@@ -318,10 +379,13 @@ function scaledMaxWidth(text: string, wide: boolean | undefined): string {
  *
  * Returns { v: vertical, h: horizontal } in px.
  */
-function scaledPadding(text: string, wide: boolean | undefined): { v: number; h: number } {
+function scaledPadding(
+  text: string,
+  wide: boolean | undefined
+): { v: number; h: number } {
   const len = text.length;
-  if (len <= 15) return wide ? { v: 4, h: 7 }  : { v: 3, h: 5 };
-  if (len <= 30) return wide ? { v: 5, h: 8 }  : { v: 4, h: 7 };
+  if (len <= 15) return wide ? { v: 4, h: 7 } : { v: 3, h: 5 };
+  if (len <= 30) return wide ? { v: 5, h: 8 } : { v: 4, h: 7 };
   if (len <= 45) return wide ? { v: 6, h: 10 } : { v: 5, h: 8 };
   if (len <= 60) return wide ? { v: 7, h: 11 } : { v: 6, h: 9 };
   return wide ? { v: 8, h: 12 } : { v: 7, h: 10 };
@@ -351,7 +415,8 @@ function tailProps(pos: BubblePosition, outer: boolean): React.CSSProperties {
         position: "absolute",
         bottom: offset,
         right: outer ? 18 : 19 + innerOffset,
-        width: 0, height: 0,
+        width: 0,
+        height: 0,
         borderLeft: `6px solid transparent`,
         borderRight: `6px solid transparent`,
         borderTop: `${size}px solid ${color}`,
@@ -362,7 +427,8 @@ function tailProps(pos: BubblePosition, outer: boolean): React.CSSProperties {
         position: "absolute",
         bottom: offset,
         left: outer ? 18 : 19 + innerOffset,
-        width: 0, height: 0,
+        width: 0,
+        height: 0,
         borderLeft: `6px solid transparent`,
         borderRight: `6px solid transparent`,
         borderTop: `${size}px solid ${color}`,
@@ -372,7 +438,8 @@ function tailProps(pos: BubblePosition, outer: boolean): React.CSSProperties {
         position: "absolute",
         top: offset,
         right: outer ? 18 : 19 + innerOffset,
-        width: 0, height: 0,
+        width: 0,
+        height: 0,
         borderLeft: `6px solid transparent`,
         borderRight: `6px solid transparent`,
         borderBottom: `${size}px solid ${color}`,
@@ -382,7 +449,8 @@ function tailProps(pos: BubblePosition, outer: boolean): React.CSSProperties {
         position: "absolute",
         top: offset,
         left: outer ? 18 : 19 + innerOffset,
-        width: 0, height: 0,
+        width: 0,
+        height: 0,
         borderLeft: `6px solid transparent`,
         borderRight: `6px solid transparent`,
         borderBottom: `${size}px solid ${color}`,
@@ -394,7 +462,13 @@ function tailProps(pos: BubblePosition, outer: boolean): React.CSSProperties {
  * Returns the three trailing dot positions for thought bubbles,
  * pointing toward the character corner.
  */
-type DotSpec = { v: string; vVal: number; h: string; hVal: number; size: number };
+type DotSpec = {
+  v: string;
+  vVal: number;
+  h: string;
+  hVal: number;
+  size: number;
+};
 
 function thoughtDots(pos: BubblePosition): DotSpec[] {
   // Dots trail AWAY from the bubble corner toward the character (panel center).
@@ -402,32 +476,38 @@ function thoughtDots(pos: BubblePosition): DotSpec[] {
     case "top-left":
       return [
         { v: "bottom", vVal: -10, h: "right", hVal: 14, size: 7 },
-        { v: "bottom", vVal: -18, h: "right", hVal: 8,  size: 5 },
-        { v: "bottom", vVal: -24, h: "right", hVal: 3,  size: 3 },
+        { v: "bottom", vVal: -18, h: "right", hVal: 8, size: 5 },
+        { v: "bottom", vVal: -24, h: "right", hVal: 3, size: 3 },
       ];
     case "top-right":
     default:
       return [
         { v: "bottom", vVal: -10, h: "left", hVal: 14, size: 7 },
-        { v: "bottom", vVal: -18, h: "left", hVal: 8,  size: 5 },
-        { v: "bottom", vVal: -24, h: "left", hVal: 3,  size: 3 },
+        { v: "bottom", vVal: -18, h: "left", hVal: 8, size: 5 },
+        { v: "bottom", vVal: -24, h: "left", hVal: 3, size: 3 },
       ];
     case "bottom-left":
       return [
         { v: "top", vVal: -10, h: "right", hVal: 14, size: 7 },
-        { v: "top", vVal: -18, h: "right", hVal: 8,  size: 5 },
-        { v: "top", vVal: -24, h: "right", hVal: 3,  size: 3 },
+        { v: "top", vVal: -18, h: "right", hVal: 8, size: 5 },
+        { v: "top", vVal: -24, h: "right", hVal: 3, size: 3 },
       ];
     case "bottom-right":
       return [
         { v: "top", vVal: -10, h: "left", hVal: 14, size: 7 },
-        { v: "top", vVal: -18, h: "left", hVal: 8,  size: 5 },
-        { v: "top", vVal: -24, h: "left", hVal: 3,  size: 3 },
+        { v: "top", vVal: -18, h: "left", hVal: 8, size: 5 },
+        { v: "top", vVal: -24, h: "left", hVal: 3, size: 3 },
       ];
   }
 }
 
-function RegularSpeechBubble({ text, speaker, wide, position = "top-right" }: BubbleVariantProps) {
+function RegularSpeechBubble({
+  text,
+  speaker,
+  wide,
+  position = "top-right",
+  fontFamily,
+}: BubbleVariantProps) {
   const fontSize = scaledFontSize(text, wide);
   const pos = position ?? "top-right";
   // Extra bottom padding only when tail is at the bottom
@@ -446,7 +526,7 @@ function RegularSpeechBubble({ text, speaker, wide, position = "top-right" }: Bu
         paddingBottom: !isBottom ? tailClearance : pad.v,
         paddingTop: isBottom ? tailClearance : pad.v,
         position: "relative",
-        fontFamily: "'Bangers', 'Impact', sans-serif",
+        fontFamily: fontFamily ?? getComicTextFontStack(text),
         fontSize,
         lineHeight: 1.25,
         letterSpacing: "0.03em",
@@ -463,7 +543,13 @@ function RegularSpeechBubble({ text, speaker, wide, position = "top-right" }: Bu
   );
 }
 
-function ThoughtBubble({ text, speaker, wide, position = "top-right" }: BubbleVariantProps) {
+function ThoughtBubble({
+  text,
+  speaker,
+  wide,
+  position = "top-right",
+  fontFamily,
+}: BubbleVariantProps) {
   const fontSize = scaledFontSize(text, wide);
   const pos = position ?? "top-right";
   const dots = thoughtDots(pos);
@@ -474,8 +560,11 @@ function ThoughtBubble({ text, speaker, wide, position = "top-right" }: BubbleVa
           background: "white",
           border: "2.5px solid black",
           borderRadius: "50%",
-          padding: (() => { const p = scaledPadding(text, wide); return `${p.v}px ${p.h}px`; })(),
-          fontFamily: "'Bangers', 'Impact', sans-serif",
+          padding: (() => {
+            const p = scaledPadding(text, wide);
+            return `${p.v}px ${p.h}px`;
+          })(),
+          fontFamily: fontFamily ?? getComicTextFontStack(text),
           fontSize,
           lineHeight: 1.25,
           color: "#111",
@@ -506,7 +595,7 @@ function ThoughtBubble({ text, speaker, wide, position = "top-right" }: BubbleVa
   );
 }
 
-function ShoutBubble({ text, speaker, wide }: BubbleVariantProps) {
+function ShoutBubble({ text, speaker, wide, fontFamily }: BubbleVariantProps) {
   // Shout bubbles get a slight boost (+1.5) over regular for extra impact
   const fontSize = scaledFontSize(text, wide) + 1.5;
   // Spiky starburst via CSS clip-path
@@ -516,8 +605,11 @@ function ShoutBubble({ text, speaker, wide }: BubbleVariantProps) {
         position: "relative",
         background: "#FFF176",
         border: "3px solid black",
-        padding: (() => { const p = scaledPadding(text, wide); return `${p.v + 2}px ${p.h + 2}px`; })(),
-        fontFamily: "'Bangers', 'Impact', sans-serif",
+        padding: (() => {
+          const p = scaledPadding(text, wide);
+          return `${p.v + 2}px ${p.h + 2}px`;
+        })(),
+        fontFamily: fontFamily ?? getComicTextFontStack(text),
         fontSize,
         lineHeight: 1.2,
         color: "#111",
