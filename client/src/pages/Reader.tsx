@@ -476,24 +476,22 @@ export default function Reader() {
   const nextPageHasChoices = !!(
     nextPage?.choiceA != null || nextPage?.choiceB != null
   );
-  const shouldShiftChoicePageToRight =
-    effectiveSpreadMode && currentPageHasChoices && currentPageIndex > 0;
-  const spreadLeftPageIndex = shouldShiftChoicePageToRight
-    ? currentPageIndex - 1
-    : currentPageIndex;
-  const spreadRightPageIndex = shouldShiftChoicePageToRight
-    ? currentPageIndex
+  const shouldMaskRightContinuationPage =
+    effectiveSpreadMode && currentPageHasChoices;
+  const spreadLeftPageIndex = currentPageIndex;
+  const spreadRightPageIndex = shouldMaskRightContinuationPage
+    ? -1
     : currentPageIndex + 1;
   const spreadLeftPage = pages[spreadLeftPageIndex];
-  const spreadRightPage = pages[spreadRightPageIndex];
+  const spreadRightPage =
+    spreadRightPageIndex >= 0 ? pages[spreadRightPageIndex] : undefined;
   const spreadLeftRoutePageNumber = parseRoutePageNumber(
     spreadLeftPage,
     Math.max(1, spreadLeftPageIndex + 1)
   );
-  const spreadRightRoutePageNumber = parseRoutePageNumber(
-    spreadRightPage,
-    spreadLeftRoutePageNumber + 1
-  );
+  const spreadRightRoutePageNumber = spreadRightPage
+    ? parseRoutePageNumber(spreadRightPage, spreadLeftRoutePageNumber + 1)
+    : undefined;
   const visibleChoicePage =
     effectiveSpreadMode && nextPageHasChoices && !currentPageHasChoices
       ? nextPage
@@ -505,7 +503,9 @@ export default function Reader() {
   const visibleChoicePageIndex =
     visibleChoicePage === nextPage ? currentPageIndex + 1 : currentPageIndex;
   const visibleChoiceSide = effectiveSpreadMode
-    ? "right"
+    ? currentPageHasChoices
+      ? "left"
+      : "right"
     : visibleChoicePage === nextPage
       ? "right"
       : "left";
@@ -524,6 +524,7 @@ export default function Reader() {
   const comicChoiceFontFamily = getComicTextFontStack(
     ...visibleChoiceOptions.map(choice => choice.text ?? "")
   );
+  const choiceContinuationPrompt = t("reader.makeChoiceToContinue");
   const pageNavigationIndices = hasNonLinearGraph
     ? []
     : effectiveSpreadMode
@@ -1241,6 +1242,19 @@ export default function Reader() {
                     })()}
                     leftPageNumber={spreadLeftRoutePageNumber}
                     rightPageNumber={spreadRightRoutePageNumber}
+                    rightPlaceholder={
+                      shouldMaskRightContinuationPage ? (
+                        <div className="text-center text-[#2D1B69] max-w-sm space-y-4">
+                          <BookOpen className="w-14 h-14 mx-auto opacity-40" />
+                          <p
+                            className="text-lg font-bold leading-snug"
+                            style={{ fontFamily: comicChoiceFontFamily }}
+                          >
+                            {choiceContinuationPrompt}
+                          </p>
+                        </div>
+                      ) : undefined
+                    }
                     leftChoiceSlot={
                       hasChoices && visibleChoiceSide === "left" ? (
                         <div className="space-y-3">
@@ -1661,7 +1675,16 @@ export default function Reader() {
                       <div className="absolute bottom-4 right-6 text-xs text-gray-500">
                         {spreadRightRoutePageNumber}
                       </div>
-                      {spreadRightPage ? (
+                      {shouldMaskRightContinuationPage ? (
+                        <div className="flex items-center justify-center h-full min-h-[420px]">
+                          <div className="text-center text-gray-500 max-w-xs">
+                            <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                            <p className="text-base font-semibold italic text-[#2D1B69]">
+                              {choiceContinuationPrompt}
+                            </p>
+                          </div>
+                        </div>
+                      ) : spreadRightPage ? (
                         <>
                           {spreadRightPage.imageUrl && (
                             <div

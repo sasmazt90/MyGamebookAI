@@ -19,6 +19,8 @@ interface ComicSpreadLayoutProps {
   rightPanels: ComicPanel[];
   leftPageNumber?: number;
   rightPageNumber?: number;
+  leftPlaceholder?: React.ReactNode;
+  rightPlaceholder?: React.ReactNode;
   leftChoiceSlot?: React.ReactNode;
   rightChoiceSlot?: React.ReactNode;
   leftEndSlot?: React.ReactNode;
@@ -31,6 +33,8 @@ export function ComicSpreadLayout({
   rightPanels,
   leftPageNumber,
   rightPageNumber,
+  leftPlaceholder,
+  rightPlaceholder,
   leftChoiceSlot,
   rightChoiceSlot,
   leftEndSlot,
@@ -50,6 +54,7 @@ export function ComicSpreadLayout({
         <ComicPageLayout
           panels={leftPanels}
           pageNumber={leftPageNumber}
+          placeholder={leftPlaceholder}
           choiceSlot={leftChoiceSlot}
           endSlot={leftEndSlot}
           className="h-full"
@@ -61,6 +66,7 @@ export function ComicSpreadLayout({
         <ComicPageLayout
           panels={rightPanels}
           pageNumber={rightPageNumber}
+          placeholder={rightPlaceholder}
           choiceSlot={rightChoiceSlot}
           endSlot={rightEndSlot}
           className="h-full"

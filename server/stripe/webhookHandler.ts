@@ -10,6 +10,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2026-02-25.clover",
 });
 
+const NOOP_EVENT_TYPES = new Set<string>(["checkout.session.expired"]);
+
 /**
  * Register the Stripe webhook route on the Express app.
  * Must be registered BEFORE express.json() middleware.
@@ -226,6 +228,18 @@ export function registerStripeWebhook(app: Express) {
         }
       }
       // ──────────────────────────────────────────────────────────────────────────
+
+      if (NOOP_EVENT_TYPES.has(event.type)) {
+        console.log(`[Stripe Webhook] No-op event acknowledged: ${event.type}`);
+      } else if (
+        event.type !== "checkout.session.completed" &&
+        event.type !== "charge.refunded" &&
+        event.type !== "charge.dispute.created"
+      ) {
+        console.log(
+          `[Stripe Webhook] Unsupported event acknowledged without action: ${event.type}`
+        );
+      }
 
       res.json({ received: true });
     }

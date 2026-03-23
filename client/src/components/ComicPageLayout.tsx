@@ -31,6 +31,8 @@ interface ComicPageLayoutProps {
   panels: ComicPanel[];
   /** Optional: page number shown in the corner */
   pageNumber?: number;
+  /** Optional: replaces the panel grid with a guarded placeholder page */
+  placeholder?: React.ReactNode;
   /** Optional: A/B choice buttons rendered below the grid */
   choiceSlot?: React.ReactNode;
   /** Optional: end-of-book slot */
@@ -43,6 +45,7 @@ interface ComicPageLayoutProps {
 export function ComicPageLayout({
   panels,
   pageNumber,
+  placeholder,
   choiceSlot,
   endSlot,
   className,
@@ -63,19 +66,27 @@ export function ComicPageLayout({
       )}
       style={{ fontFamily: pageFontFamily }}
     >
-      {/* Top hero panel */}
-      <div className="border-b-4 border-black" style={{ minHeight: "42%" }}>
-        <ComicPanelCell panel={topPanel} wide />
-      </div>
+      {placeholder ? (
+        <div className="flex-1 min-h-[620px] bg-[#FFFDE7] flex items-center justify-center px-8 py-12">
+          {placeholder}
+        </div>
+      ) : (
+        <>
+          {/* Top hero panel */}
+          <div className="border-b-4 border-black" style={{ minHeight: "42%" }}>
+            <ComicPanelCell panel={topPanel} wide />
+          </div>
 
-      {/* Bottom row: two supporting panels */}
-      <div className="grid grid-cols-2" style={{ minHeight: "38%" }}>
-        <ComicPanelCell
-          panel={bottomLeftPanel}
-          borderClass="border-r-4 border-black"
-        />
-        <ComicPanelCell panel={bottomRightPanel} />
-      </div>
+          {/* Bottom row: two supporting panels */}
+          <div className="grid grid-cols-2" style={{ minHeight: "38%" }}>
+            <ComicPanelCell
+              panel={bottomLeftPanel}
+              borderClass="border-r-4 border-black"
+            />
+            <ComicPanelCell panel={bottomRightPanel} />
+          </div>
+        </>
+      )}
 
       {/* ââ Footer: page number + choices ââââââââââââââââââââââââââââââ */}
       {(pageNumber != null || choiceSlot || endSlot) && (

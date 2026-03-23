@@ -158,6 +158,7 @@ export type TranslationKey =
   | "reader.musicOn" | "reader.musicOff" | "reader.mute" | "reader.unmute"
   | "reader.storyMap" | "reader.by"
   | "reader.characters" | "reader.noCharacters"
+  | "reader.makeChoiceToContinue"
   | "reader.prev" | "reader.next";
 
 type Translations = Record<TranslationKey, string>;
@@ -469,6 +470,7 @@ const en: Translations = {
   "reader.by": "by",
   "reader.characters": "Characters",
   "reader.noCharacters": "No character information available for this book.",
+  "reader.makeChoiceToContinue": "Make your choice to continue the story.",
   "reader.prev": "Prev",
   "reader.next": "Next",
 };
@@ -693,6 +695,7 @@ const de: Partial<Translations> = {
   "reader.by": "von",
   "reader.characters": "Charaktere",
   "reader.noCharacters": "Keine Charakterinformationen für dieses Buch verfügbar.",
+  "reader.makeChoiceToContinue": "Triff deine Wahl, damit die Geschichte weitergeht.",
   "reader.prev": "Zurück",
   "reader.next": "Weiter",
 };
@@ -915,6 +918,7 @@ const tr: Partial<Translations> = {
   "reader.by": "yazan",
   "reader.characters": "Karakterler",
   "reader.noCharacters": "Bu kitap için karakter bilgisi mevcut değil.",
+  "reader.makeChoiceToContinue": "Hikayenin devam etmesi için seçiminizi yapın.",
   "reader.prev": "Önceki",
   "reader.next": "Sonraki",
 };
@@ -1084,6 +1088,7 @@ const fr: Partial<Translations> = {
   "reader.by": "par",
   "reader.characters": "Personnages",
   "reader.noCharacters": "Aucune information sur les personnages disponible pour ce livre.",
+  "reader.makeChoiceToContinue": "Faites votre choix pour continuer l'histoire.",
   "reader.prev": "Précédent",
   "reader.next": "Suivant",
 };

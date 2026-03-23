@@ -1,6 +1,14 @@
 {
     "rewrites": [
           {
+                  "source": "/api/stripe/webhook",
+                  "destination": "https://mygamebookai-production.up.railway.app/api/stripe/webhook"
+          },
+          {
+                  "source": "/api/stripe/webhook/",
+                  "destination": "https://mygamebookai-production.up.railway.app/api/stripe/webhook"
+          },
+          {
                   "source": "/api/trpc/:path*",
                   "destination": "https://mygamebookai-production.up.railway.app/api/trpc/:path*"
           },
