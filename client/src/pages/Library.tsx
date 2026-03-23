@@ -191,12 +191,16 @@ export default function Library() {
     { search: search || undefined, category: categoryFilter || undefined },
     { enabled: isAuthenticated }
   );
+  const publishedBadgeText = (() => {
+    const label = t("library.publishedBadge" as any);
+    return label && label !== "library.publishedBadge" ? label : "Published";
+  })();
 
   // Auto-refresh for generating books
   useEffect(() => {
     const hasGenerating = books?.some(item => item.book.status === "generating");
     if (!hasGenerating) return;
-    const timer = setInterval(() => refetch(), 10000);
+    const timer = setInterval(() => refetch(), 5000);
     return () => clearInterval(timer);
   }, [books, refetch]);
 
@@ -315,7 +319,7 @@ export default function Library() {
                   {item.book.isPublished && (
                     <div className="absolute top-2 right-2">
                       <Badge className="bg-[#7C3AED]/80 text-white text-xs">
-                        <Store className="w-3 h-3 mr-1" /> {t("library.published" as any) || "Published"}
+                        <Store className="w-3 h-3 mr-1" /> {publishedBadgeText}
                       </Badge>
                     </div>
                   )}

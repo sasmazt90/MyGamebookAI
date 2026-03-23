@@ -2375,6 +2375,106 @@ All topology fields must remain identical to the scaffold.`,
       choiceB: translateGenericChoiceFallback(page.choiceB, language, "B"),
     }));
 
+    type ComicPanelPlan = {
+      narration: string;
+      action: string;
+      dialogue: string | null;
+      speaker: string | null;
+      bubbleType: "speech" | "shout" | null;
+      characters: string[];
+      position: "top-left" | "top-right" | null;
+    };
+
+    const comicPanelPlanByPageNum = new Map<number, ComicPanelPlan[]>();
+    const comicSelfTalkPatterns =
+      language === "tr"
+        ? [
+            /\b(?:h[ıi]zlanmal[ıi]y[ıi]m|yapmal[ıi]y[ıi]m|almal[ıi]y[ıi]m|bulmal[ıi]y[ıi]m|kaçmal[ıi]y[ıi]m|düşünmeliyim|değerlendirmeliyim|ilerlemeliyim|seçmeliyim|yazmal[ıi]y[ıi]m|olmal[ıi]y[ıi]m|zorunday[ıi]m|ne yapmal[ıi]y[ıi]m)\b/i,
+          ]
+        : [
+            /\b(?:i need to|i must|i should|what should i do|there'?s no turning back|i have to)\b/i,
+          ];
+
+    function shouldSuppressComicDialogue(
+      panel: Pick<
+        ComicPanelPlan,
+        "dialogue" | "speaker" | "characters" | "action" | "narration"
+      >
+    ): boolean {
+      if (!panel.dialogue) return false;
+      const otherCharacters = panel.characters.filter(
+        name => !panel.speaker || name !== panel.speaker
+      );
+      const rhetoricalSelfQuestion = /\?$/.test(panel.dialogue.trim());
+      const externalTargetHint =
+        /\b(?:enemy|opponent|crowd|guard|police|attacker|villain|ally|team|soldier|civilian|monster|creature|witness|group|audience|father|mother|child|rakip|düşman|kalabalık|polis|saldırgan|müttefik|takım|asker|sivil|yaratık)\b/i.test(
+          `${panel.action} ${panel.narration}`
+        );
+      return (
+        comicSelfTalkPatterns.some(pattern => pattern.test(panel.dialogue!)) ||
+        (otherCharacters.length === 0 &&
+          (rhetoricalSelfQuestion || !externalTargetHint))
+      );
+    }
+
+    function normaliseComicPanelPlans(
+      rawPanels: unknown
+    ): ComicPanelPlan[] | null {
+      if (!Array.isArray(rawPanels) || rawPanels.length !== 3) return null;
+      const normalized = rawPanels.map((rawPanel, index) => {
+        const panel = rawPanel as Record<string, unknown>;
+        const dialogue =
+          typeof panel?.dialogue === "string" && panel.dialogue.trim().length > 0
+            ? panel.dialogue.trim()
+            : null;
+        const characters = Array.isArray(panel?.characters)
+          ? panel.characters
+              .map(value => String(value ?? "").trim())
+              .filter(Boolean)
+          : [];
+        const speaker =
+          dialogue &&
+          typeof panel?.speaker === "string" &&
+          panel.speaker.trim().length > 0
+            ? panel.speaker.trim()
+            : null;
+        const normalizedPanel: ComicPanelPlan = {
+          narration:
+            typeof panel?.narration === "string"
+              ? stripInlineChoiceLabels(panel.narration.trim())
+              : "",
+          action:
+            typeof panel?.action === "string" && panel.action.trim().length > 0
+              ? stripInlineChoiceLabels(panel.action.trim())
+              : typeof panel?.narration === "string"
+                ? stripInlineChoiceLabels(panel.narration.trim())
+                : `Panel ${index + 1} action`,
+          dialogue,
+          speaker,
+          bubbleType: dialogue
+            ? panel?.bubbleType === "shout"
+              ? "shout"
+              : "speech"
+            : null,
+          characters,
+          position:
+            panel?.position === "top-left" || panel?.position === "top-right"
+              ? panel.position
+              : null,
+        };
+        if (shouldSuppressComicDialogue(normalizedPanel)) {
+          normalizedPanel.dialogue = null;
+          normalizedPanel.speaker = null;
+          normalizedPanel.bubbleType = null;
+        }
+        return normalizedPanel;
+      });
+
+      return normalized.every(panel => panel.narration || panel.action)
+        ? normalized
+        : null;
+    }
+
     // Step 4: Per-page expansion pass
     // For non-comic categories, enrich each page's content with a dedicated
     // LLM call that injects: character cards + the last 3 pages of context.
@@ -2537,32 +2637,69 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
                 content: `You are a veteran comic-book writer scripting a ${category.replace(/_/g, " ")} interactive comic in ${language}.${characterCardBlock}
 
 COMIC PAGE WRITING RULES:
-- Rewrite each page into a compact synopsis that can be split into EXACTLY 3 consecutive comic panels.
-- The page must contain a clear three-beat escalation: setup, confrontation, consequence.
-- Use concrete action, changing staging, and cause/effect progression. Avoid static mood-only description.
-- Avoid repetitive filler lines and empty urgency phrases. Every sentence must advance plot, reveal character, or sharpen conflict.
-- Spoken dialogue should only exist when a character is audibly addressing another character, a group, or an enemy. Internal thoughts, hesitation, and solo self-talk should stay in scene narration/status-box material instead.
-- Most pages should include interaction with another person, creature, crowd, or opposing force. If the protagonist is alone, the environment itself must actively pressure them.
-- If this is page 1, write a true opening scene. If this is not page 1, continue the existing action without restarting the premise.
-- If this is a branch page, end with a vivid unresolved dilemma and let the UI buttons carry the actual A/B options.${contextBlock}${branchContext}
+- Return EXACTLY 3 consecutive comic panels: setup, escalation, consequence.
+- Maintain strict cause/effect continuity across the 3 panels and from the previous page context.
+- Every panel must depict a concrete story beat, not a generic mood pose.
+- Narration captions must be short status-box prose in ${language}, written in past tense. Never use present tense scene summary prose.
+- If ${language} is Turkish, narration must read like natural di'li geçmiş zaman comic captions.
+- Dialogue is allowed ONLY when a character is audibly addressing another character, a group, or an enemy.
+- Internal thoughts, hesitation, self-motivation, solo self-talk, and rhetorical questions must stay in narration, not dialogue.
+- If the protagonist is alone or not clearly addressing anyone, set dialogue to null.
+- Dialogue and narration must describe the SAME moment. Never let the speech bubble say one thing while the caption describes a different beat.
+- Avoid repetitive filler lines and empty urgency phrases. No generic self-talk like "Hızlanmalıyım", "Ne yapmalıyım?", or "Bunu yapmalıyım!" in speech bubbles.
+- Most pages should include interaction with another person, creature, crowd, ally, victim, or opposing force. If the protagonist is alone, the environment itself must actively pressure them.
+- If this is page 1, write a true opening scene with a clear inciting incident and immediate goal. Do not start with random disconnected action.
+- If this is not page 1, continue the existing action without restarting the premise.
+- If this is a branch page, panel 3 must end on a vivid unresolved dilemma and let the UI buttons carry the actual A/B options.${contextBlock}${branchContext}
 
 UNICODE RULE (MANDATORY): NEVER strip, normalize, or replace special characters. Preserve ALL Unicode exactly as written in ${language}.`,
               },
               {
                 role: "user" as const,
-                content: `Rewrite this comic page outline in ${language} as a compact 3-beat comic-page synopsis:
+                content: `Rewrite this comic page outline in ${language} as a structured 3-panel comic page.
 
 Page ${page.pageNumber} outline: ${page.content}${page.isBranchPage ? `\n\nThis is a choice page. Keep the prose open-ended and DO NOT print "Choice A" or "Choice B" inside the story text.` : ""}${page.isEnding ? "\n\nThis is an ending page. The third beat must land as a satisfying final image or decisive outcome." : ""}
 
-Write ONLY prose in ${language}. Use either exactly 3 short sentences or 1 short paragraph that clearly implies 3 consecutive panels. Do not label panel numbers.`,
+Return valid JSON only:
+{"pageSynopsis":"","panels":[{"action":"","narration":"","dialogue":null,"speaker":null,"bubbleType":"speech | shout | null","characters":[""],"position":"top-left | top-right | null"}]}
+
+Rules:
+- pageSynopsis: one compact paragraph in ${language} summarizing the page's 3-beat flow.
+- panels: exactly 3 items.
+- action: the concrete visual beat for that panel in ${language}.
+- narration: one short caption sentence in ${language}, past tense, matching the same panel beat.
+- dialogue: direct spoken words only, max 8 words, or null.
+- speaker: character name or null.
+- bubbleType: "speech", "shout", or null.
+- characters: only the characters visibly present in that panel.
+- position: top-left or top-right when dialogue exists; otherwise null.
+- Never write internal monologue or self-talk as dialogue.
+- Never let narration and dialogue contradict each other.`,
               },
             ],
+            response_format: { type: "json_object" },
           });
 
-          const expanded = expandResp.choices[0]?.message?.content;
-          if (typeof expanded === "string" && expanded.trim().length > 40) {
-            storyData.pages[i].content = expanded.trim();
-            comicExpandedByPageNum.set(page.pageNumber, expanded.trim());
+          const rawExpand = expandResp.choices[0]?.message?.content || "{}";
+          const expandContent =
+            typeof rawExpand === "string"
+              ? rawExpand
+              : JSON.stringify(rawExpand);
+          const expandData = JSON.parse(repairJSON(expandContent));
+          const panelPlans = normaliseComicPanelPlans(expandData?.panels);
+          const synopsisFromPanels =
+            panelPlans?.map(panel => panel.action || panel.narration).join(" ") ||
+            "";
+          const pageSynopsis =
+            typeof expandData?.pageSynopsis === "string"
+              ? stripInlineChoiceLabels(expandData.pageSynopsis.trim())
+              : "";
+
+          if (panelPlans && (pageSynopsis || synopsisFromPanels).length > 40) {
+            const expanded = pageSynopsis || synopsisFromPanels;
+            storyData.pages[i].content = expanded;
+            comicExpandedByPageNum.set(page.pageNumber, expanded);
+            comicPanelPlanByPageNum.set(page.pageNumber, panelPlans);
           } else {
             comicExpandedByPageNum.set(page.pageNumber, page.content);
           }
@@ -2693,6 +2830,94 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
       content: stripInlineChoiceLabels(page.content ?? ""),
     }));
 
+    type ComicPanelPlanLegacy = ComicPanelPlan;
+
+    const comicSelfTalkPatternsLegacy =
+      language === "tr"
+        ? [
+            /\b(?:h[ıi]zlanmal[ıi]y[ıi]m|yapmal[ıi]y[ıi]m|almal[ıi]y[ıi]m|bulmal[ıi]y[ıi]m|ka[çc]mal[ıi]y[ıi]m|d[üu][şs][üu]nmeliyim|de[ğg]erlendirmeliyim|ilerlemeliyim|se[çc]meliyim|yazmal[ıi]y[ıi]m|olmal[ıi]y[ıi]m|zorunday[ıi]m|ne yapmal[ıi]y[ıi]m)\b/i,
+          ]
+        : [
+            /\b(?:i need to|i must|i should|what should i do|there'?s no turning back|i have to)\b/i,
+          ];
+
+    const shouldSuppressComicDialogueLegacy = (
+      panel: Pick<
+        ComicPanelPlanLegacy,
+        "dialogue" | "speaker" | "characters" | "action" | "narration"
+      >
+    ): boolean => {
+      if (!panel.dialogue) return false;
+      const otherCharacters = panel.characters.filter(
+        name => !panel.speaker || name !== panel.speaker
+      );
+      const externalTargetHint =
+        /\b(?:enemy|opponent|crowd|guard|police|attacker|villain|ally|team|soldier|civilian|monster|creature|witness|group|audience|father|mother|child|rakip|düşman|kalabalık|polis|saldırgan|müttefik|takım|asker|sivil|yaratık)\b/i.test(
+          `${panel.action} ${panel.narration}`
+        );
+      return (
+        comicSelfTalkPatternsLegacy.some(pattern =>
+          pattern.test(panel.dialogue!)
+        ) ||
+        (otherCharacters.length === 0 && !externalTargetHint)
+      );
+    };
+
+    const normaliseComicPanelPlansLegacy = (
+      rawPanels: unknown
+    ): ComicPanelPlanLegacy[] | null => {
+      if (!Array.isArray(rawPanels) || rawPanels.length !== 3) return null;
+      const normalized = rawPanels.map((rawPanel, index) => {
+        const panel = rawPanel as Record<string, unknown>;
+        const dialogue =
+          typeof panel?.dialogue === "string" && panel.dialogue.trim().length > 0
+            ? panel.dialogue.trim()
+            : null;
+        const characters = Array.isArray(panel?.characters)
+          ? panel.characters
+              .map(value => String(value ?? "").trim())
+              .filter(Boolean)
+          : [];
+        const speaker =
+          dialogue &&
+          typeof panel?.speaker === "string" &&
+          panel.speaker.trim().length > 0
+            ? panel.speaker.trim()
+            : null;
+        const normalizedPanel: ComicPanelPlanLegacy = {
+          narration:
+            typeof panel?.narration === "string"
+              ? stripInlineChoiceLabels(panel.narration.trim())
+              : "",
+          action:
+            typeof panel?.action === "string" && panel.action.trim().length > 0
+              ? stripInlineChoiceLabels(panel.action.trim())
+              : typeof panel?.narration === "string"
+                ? stripInlineChoiceLabels(panel.narration.trim())
+                : `Panel ${index + 1} action`,
+          dialogue,
+          speaker,
+          bubbleType: dialogue
+            ? panel?.bubbleType === "shout"
+              ? "shout"
+              : "speech"
+            : null,
+          characters,
+          position:
+            panel?.position === "top-left" || panel?.position === "top-right"
+              ? panel.position
+              : null,
+        };
+        if (shouldSuppressComicDialogueLegacy(normalizedPanel)) {
+          normalizedPanel.dialogue = null;
+          normalizedPanel.speaker = null;
+          normalizedPanel.bubbleType = null;
+        }
+        return normalizedPanel;
+      });
+      return normalized;
+    };
+
     const plannedIllustratedPageNumbers = new Set<number>(
       isOtherGenre
         ? storyData.pages
@@ -2703,6 +2928,35 @@ Write ONLY the narrative prose  no JSON, no page numbers, no labels.`,
     );
 
     let recurringObjects: RecurringObjectProfile[] = [];
+    const CONCURRENCY_LIMIT = isComic ? 2 : isOtherGenre ? 1 : 2;
+    const totalPages = storyData.pages.length;
+    const imageFailures: Array<{ pageNumber: number; error: string }> = [];
+    let totalIllustrationsToGenerate = 0;
+    let completedIllustrations = 0;
+    let progressWriteQueue: Promise<void> = Promise.resolve();
+    const queueGenerationStepWrite = (message: string) => {
+      progressWriteQueue = progressWriteQueue
+        .catch(() => undefined)
+        .then(async () => {
+          await db
+            .update(books)
+            .set({ generationStep: message })
+            .where(eq(books.id, bookId));
+        });
+      return progressWriteQueue;
+    };
+    const markIllustrationProgress = async (increment = 1) => {
+      completedIllustrations = Math.min(
+        totalIllustrationsToGenerate,
+        completedIllustrations + increment
+      );
+      await queueGenerationStepWrite(
+        `Generating ${completedIllustrations}/${totalIllustrationsToGenerate} illustrations...`
+      );
+    };
+
+    
+
     try {
       const objectRegistryResponse = await invokeLLM({
         messages: [
@@ -3020,6 +3274,16 @@ Rules:
 
     const illustratedStoryPages = storyData.pages.filter(page =>
       shouldIllustratePage(page.pageNumber)
+    );
+    totalIllustrationsToGenerate =
+      1 +
+      (isComic
+        ? illustratedStoryPages.length * 3
+        : category === "fairy_tale"
+          ? illustratedStoryPages.length
+          : branchPageNumbers.size);
+    await queueGenerationStepWrite(
+      `Generating 0/${totalIllustrationsToGenerate} illustrations...`
     );
     const extractMentionedCharactersFromText = (text: string): string[] => {
       const matches = canonicalCharacterProfiles
@@ -3472,14 +3736,12 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
     } catch (e) {
       console.error("[Books] Cover image generation failed:", e);
     }
+    await markIllustrationProgress();
 
     // Parallel image generation with concurrency limit
     // All pages generate their images concurrently (up to CONCURRENCY_LIMIT at a time).
     // DB insertion happens sequentially afterwards to preserve order and get correct IDs.
-    const CONCURRENCY_LIMIT = isOtherGenre || isComic ? 1 : 2;
-    const totalPages = storyData.pages.length;
-    const imageFailures: Array<{ pageNumber: number; error: string }> = [];
-
+    
     // Semaphore: limits concurrent image generation calls
     let activeCount = 0;
     const waitQueue: Array<() => void> = [];
@@ -3499,12 +3761,9 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
       }
     };
 
-    await db
-      .update(books)
-      .set({
-        generationStep: `Generating ${totalPages} illustrations in parallel…`,
-      })
-      .where(eq(books.id, bookId));
+    await queueGenerationStepWrite(
+      `Generating ${completedIllustrations}/${totalIllustrationsToGenerate} illustrations...`
+    );
 
     // Type for per-page image results
     type PageImageResult = {
@@ -3534,85 +3793,82 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             // This replaces the old "single composite + fetch + sharp crop" pipeline,
             // which caused both OOM spikes and inaccurate crop boundaries.
 
-            // Step 1: Extract 3 panel descriptions using LLM for narration + dialogue metadata
             type PanelDialogue = {
               narration: string;
+              storyBeat: string;
               dialogue: string | null;
               speaker: string | null;
               bubbleType: "speech" | "shout" | null;
+              characters: string[];
+              position: "top-left" | "top-right" | null;
             };
-            let panelDialogue: PanelDialogue[] = [];
-            try {
-              const dialogueResp = await invokeLLM({
-                messages: [
-                  {
-                    role: "system" as const,
-                    content:
-                      "You are a comic book writer. Always respond with valid JSON only. UNICODE RULE: NEVER strip or replace special characters. Preserve all Unicode exactly as written (Turkish, German, French, Spanish, Cyrillic, Chinese, Japanese, Arabic).",
-                  },
-                  {
-                    role: "system" as const,
-                    content: `LANGUAGE LOCK (MANDATORY): narration and dialogue for every comic panel must be written entirely in ${language}. Never switch to English unless ${language} is English.`,
-                  },
-                  {
-                    role: "user" as const,
-                    content: `Split this comic page content into exactly 3 consecutive panels. Characters: ${charNames || "none"}.\n\nTARGET LANGUAGE: ${language}\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"narration":"1-sentence scene description for the caption/status box","dialogue":"direct spoken words only, no character name prefix, max 10 words, or null","speaker":"character name or null","bubbleType":"speech | shout | null"}]}\n\nCRITICAL RULES:\n- narration and dialogue MUST stay entirely in ${language}; never switch to English unless ${language} is English.\n- the 3 panels must feel like setup -> escalation -> consequence, not three paraphrases of the same moment.\n- dialogue must be raw spoken words only. NEVER prefix with character name (e.g. never write "Alex: Let's go" - write only "Let's go").\n- ONLY use dialogue when a character is audibly speaking to another character, a group, or an enemy. If nobody is being addressed aloud, set dialogue=null, speaker=null, bubbleType=null and put the information into narration instead.\n- internal thoughts, silent reactions, hesitation, self-motivation, and scene-setting belong in narration/status-box text, not in dialogue.\n- use bubbleType="shout" only for clearly yelled or alarmed lines; otherwise use "speech". If dialogue is null, bubbleType must be null.\n- vary the action and staging across panels; do not repeat the same generic line or pose.\n- preserve the same story facts, tone, and continuity from the source page.`,
-                  },
-                ],
-                response_format: { type: "json_object" },
-              });
-              const rawDlg = dialogueResp.choices[0]?.message?.content || "{}";
-              const dlgContent =
-                typeof rawDlg === "string" ? rawDlg : JSON.stringify(rawDlg);
-              const dlgData = JSON.parse(repairJSON(dlgContent));
-              if (
-                Array.isArray(dlgData.panels) &&
-                dlgData.panels.length === 3
-              ) {
-                panelDialogue = dlgData.panels.map((panel: any) => {
-                  const dialogue =
-                    typeof panel?.dialogue === "string" &&
-                    panel.dialogue.trim().length > 0
-                      ? panel.dialogue.trim()
-                      : null;
-                  return {
-                    narration:
-                      typeof panel?.narration === "string"
-                        ? panel.narration.trim()
-                        : "",
-                    dialogue,
-                    speaker:
-                      dialogue &&
-                      typeof panel?.speaker === "string" &&
-                      panel.speaker.trim().length > 0
-                        ? panel.speaker.trim()
-                        : null,
-                    bubbleType: dialogue
-                      ? panel?.bubbleType === "shout"
-                        ? "shout"
-                        : "speech"
-                      : null,
-                  };
+            let panelDialogue: PanelDialogue[] =
+              comicPanelPlanByPageNum.get(page.pageNumber)?.map(panel => ({
+                narration: panel.narration,
+                storyBeat: panel.action || panel.narration,
+                dialogue: panel.dialogue,
+                speaker: panel.speaker,
+                bubbleType: panel.bubbleType,
+                characters: panel.characters,
+                position: panel.position,
+              })) ?? [];
+
+            if (panelDialogue.length !== 3) {
+              try {
+                const dialogueResp = await invokeLLM({
+                  messages: [
+                    {
+                      role: "system" as const,
+                      content:
+                        "You are a comic script editor. Always respond with valid JSON only. UNICODE RULE: NEVER strip or replace special characters. Preserve all Unicode exactly as written.",
+                    },
+                    {
+                      role: "system" as const,
+                      content: `LANGUAGE LOCK (MANDATORY): narration and dialogue for every comic panel must be written entirely in ${language}. Narration must be in past tense.`,
+                    },
+                    {
+                      role: "user" as const,
+                      content: `Convert this comic page into exactly 3 consecutive panel beats. Characters: ${charNames || "none"}.\n\nTARGET LANGUAGE: ${language}\n\nPage content: ${page.content}\n\nRespond with JSON:\n{"panels":[{"action":"","narration":"","dialogue":null,"speaker":null,"bubbleType":"speech | shout | null","characters":[""],"position":"top-left | top-right | null"}]}\n\nCRITICAL RULES:\n- narration must be short caption prose in ${language} and written in past tense.\n- the 3 panels must feel like setup -> escalation -> consequence.\n- action and narration must describe the same moment.\n- dialogue must be direct spoken words only and ONLY when a character is audibly addressing another character, a group, or an enemy.\n- internal thoughts, self-motivation, hesitation, rhetorical self-talk, and solo reactions must stay in narration, not dialogue.\n- if nobody is being addressed aloud, set dialogue=null, speaker=null, bubbleType=null.\n- dialogue max 8 words.\n- never repeat the same pose or generic line across panels.`,
+                    },
+                  ],
+                  response_format: { type: "json_object" },
                 });
+                const rawDlg =
+                  dialogueResp.choices[0]?.message?.content || "{}";
+                const dlgContent =
+                  typeof rawDlg === "string"
+                    ? rawDlg
+                    : JSON.stringify(rawDlg);
+                const dlgData = JSON.parse(repairJSON(dlgContent));
+                const fallbackPlans = normaliseComicPanelPlans(dlgData?.panels);
+                if (fallbackPlans) {
+                  panelDialogue = fallbackPlans.map(panel => ({
+                    narration: panel.narration,
+                    storyBeat: panel.action || panel.narration,
+                    dialogue: panel.dialogue,
+                    speaker: panel.speaker,
+                    bubbleType: panel.bubbleType,
+                    characters: panel.characters,
+                    position: panel.position,
+                  }));
+                }
+              } catch (dlgErr) {
+                console.error(
+                  "[Books] Panel dialogue extraction failed:",
+                  dlgErr
+                );
               }
-            } catch (dlgErr) {
-              console.error(
-                "[Books] Panel dialogue extraction failed:",
-                dlgErr
-              );
             }
 
-            // Build narration summaries for panel-specific prompts
-            // IMPORTANT: speech bubble text is stored in panelDialogue[] and rendered as React overlay
-            // by ComicPageLayout. It must NOT be embedded in the image prompt (NO_TEXT_CONSTRAINT).
             const p1 = panelDialogue[0];
             const p2 = panelDialogue[1];
             const p3 = panelDialogue[2];
             const p1Narr = p1?.narration ?? page.content.substring(0, 80);
             const p2Narr = p2?.narration ?? page.content.substring(80, 160);
             const p3Narr = p3?.narration ?? page.content.substring(160, 240);
-            // NOTE: dialogue is intentionally NOT included in the image prompt.
-            // Speech bubbles are rendered as React overlays by ComicPageLayout.
+            const p1Beat = p1?.storyBeat ?? p1Narr;
+            const p2Beat = p2?.storyBeat ?? p2Narr;
+            const p3Beat = p3?.storyBeat ?? p3Narr;
 
             const pageCharacterNames = pageSceneSpec.characters.map(
               character => character.name
@@ -3662,21 +3918,27 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
               return Array.from(names);
             };
 
-            const p1Chars = combineCharacterMentions(
-              p1Narr,
-              p1?.dialogue ?? null,
-              p1?.speaker ?? null
-            );
-            const p2Chars = combineCharacterMentions(
-              p2Narr,
-              p2?.dialogue ?? null,
-              p2?.speaker ?? null
-            );
-            const p3Chars = combineCharacterMentions(
-              p3Narr,
-              p3?.dialogue ?? null,
-              p3?.speaker ?? null
-            );
+            const p1Chars = p1?.characters?.length
+              ? p1.characters
+              : combineCharacterMentions(
+                  p1Beat,
+                  p1?.dialogue ?? null,
+                  p1?.speaker ?? null
+                );
+            const p2Chars = p2?.characters?.length
+              ? p2.characters
+              : combineCharacterMentions(
+                  p2Beat,
+                  p2?.dialogue ?? null,
+                  p2?.speaker ?? null
+                );
+            const p3Chars = p3?.characters?.length
+              ? p3.characters
+              : combineCharacterMentions(
+                  p3Beat,
+                  p3?.dialogue ?? null,
+                  p3?.speaker ?? null
+                );
 
             // Build filtered character anchor blocks for each panel
             // ENHANCED: Explicit character count enforcement, negative prompts, visual distinctness
@@ -3721,6 +3983,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             type ComicPanelData = {
               imageUrl: string;
               narration: string;
+              storyBeat: string;
               dialogue: string | null;
               speaker: string | null;
               bubbleType: string | null;
@@ -3729,7 +3992,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
             const panelData: ComicPanelData[] = [];
             const buildComicPanelSceneSpec = (
               panelCharacters: string[],
-              narration: string,
+              storyBeat: string,
               layout: PanelLayout
             ): SceneSpec => {
               const existingCharacters = pageSceneSpec.characters.filter(
@@ -3754,8 +4017,8 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
 
               return {
                 ...pageSceneSpec,
-                sceneSummary: narration,
-                narrativeBeat: narration,
+                sceneSummary: storyBeat,
+                narrativeBeat: storyBeat,
                 lighting:
                   layout === "hero-top"
                     ? pageSceneSpec.lighting ||
@@ -3778,13 +4041,13 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
 
             const buildPanelPrompt = (
               panelCharacters: string[],
-              narration: string,
+              storyBeat: string,
               filteredAnchor: string,
               layout: PanelLayout
             ) => {
               const panelSceneSpec = buildComicPanelSceneSpec(
                 panelCharacters,
-                narration,
+                storyBeat,
                 layout
               );
               const panelRefs = selectReferenceImages({
@@ -3817,7 +4080,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                   pageKind: "comic",
                 }),
                 layoutInstruction,
-                `PANEL STORY BEAT: ${narration}`,
+                `PANEL STORY BEAT: ${storyBeat}`,
                 filteredAnchor,
                 "IDENTITY CONTINUITY (MANDATORY): The same named character must keep the exact same face identity across ALL comic panels and ALL pages (same facial geometry, eye shape, nose, jawline, hairline, eyebrow shape, skin tone).",
                 "NO SPONTANEOUS WARDROBE CHANGES: keep each named character in the exact same canonical outfit, accessories, tie, watch, hairstyle, and silhouette unless the narrative explicitly states a transformation.",
@@ -3836,42 +4099,45 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
               {
                 stage: `page-${page.pageNumber}-panel-top`,
                 narration: p1Narr,
+                storyBeat: p1Beat,
                 dialogue: p1?.dialogue ?? null,
                 speaker: p1?.speaker ?? null,
                 bubbleType: p1?.bubbleType ?? null,
                 characters: p1Chars,
                 anchor: p1CharAnchor,
                 layout: "hero-top" as const,
-                position: "top-right",
+                position: p1?.position ?? "top-right",
               },
               {
                 stage: `page-${page.pageNumber}-panel-left`,
                 narration: p2Narr,
+                storyBeat: p2Beat,
                 dialogue: p2?.dialogue ?? null,
                 speaker: p2?.speaker ?? null,
                 bubbleType: p2?.bubbleType ?? null,
                 characters: p2Chars,
                 anchor: p2CharAnchor,
                 layout: "support-left" as const,
-                position: "top-left",
+                position: p2?.position ?? "top-left",
               },
               {
                 stage: `page-${page.pageNumber}-panel-right`,
                 narration: p3Narr,
+                storyBeat: p3Beat,
                 dialogue: p3?.dialogue ?? null,
                 speaker: p3?.speaker ?? null,
                 bubbleType: p3?.bubbleType ?? null,
                 characters: p3Chars,
                 anchor: p3CharAnchor,
                 layout: "support-right" as const,
-                position: "top-right",
+                position: p3?.position ?? "top-right",
               },
             ];
 
             for (const panel of comicPanels) {
               const { panelRefs, prompt } = buildPanelPrompt(
                 panel.characters,
-                panel.narration,
+                panel.storyBeat,
                 panel.anchor,
                 panel.layout
               );
@@ -3894,11 +4160,13 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                   panelData.push({
                     imageUrl: panelResult.url,
                     narration: panel.narration,
+                    storyBeat: panel.storyBeat,
                     dialogue: panel.dialogue,
                     speaker: panel.speaker,
                     bubbleType: panel.bubbleType,
                     position: panel.position,
                   });
+                  await markIllustrationProgress();
                   continue;
                 }
               } catch (panelErr) {
@@ -3912,6 +4180,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                 panelData.push({
                   imageUrl: fallbackPanelUrl,
                   narration: panel.narration,
+                  storyBeat: panel.storyBeat,
                   dialogue: panel.dialogue,
                   speaker: panel.speaker,
                   bubbleType: panel.bubbleType,
@@ -3921,6 +4190,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
                   `[Books] Page ${page.pageNumber}: used fallback panel placeholder for ${panel.stage}`
                 );
               }
+              await markIllustrationProgress();
             }
 
             // Store full ComicPanel objects (not plain string URLs) so React overlay can render speech bubbles
@@ -3964,6 +4234,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
               fairyRefs.length > 0 ? fairyRefs : undefined
             );
             imageUrl = imgResult.url ?? null;
+            await markIllustrationProgress();
           } else if (isOtherGenre) {
             // OTHER GENRES: images only at branch pages, up to branchImageCount
             // Spec: normal = 8 branch images, thick = 12 branch images
@@ -4008,6 +4279,7 @@ ${illustratedStoryPages.map(page => `Page ${page.pageNumber}: ${(page.outlineCon
               console.log(
                 `[Books] Branch image generated for page ${page.pageNumber}`
               );
+              await markIllustrationProgress();
             }
             // Non-branch pages: imageUrl stays null (text-only)
           }

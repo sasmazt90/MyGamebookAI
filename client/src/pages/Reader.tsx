@@ -14,8 +14,6 @@ import {
   Home,
   Volume2,
   VolumeX,
-  Music,
-  Music2,
   Trophy,
   GitBranch,
   Maximize,
@@ -246,13 +244,8 @@ function CharactersPanel({
 interface AudioToolbarProps {
   muted: boolean;
   setMuted: (v: boolean) => void;
-  musicEnabled: boolean;
-  setMusicEnabled: (v: boolean) => void;
   volume: number;
   setVolume: (v: number) => void;
-  isPlaying: boolean;
-  startAmbience: () => void;
-  stopAmbience: () => void;
   showTreeMap: boolean;
   onToggleTreeMap: () => void;
   hasChoices: boolean;
@@ -269,13 +262,8 @@ interface AudioToolbarProps {
 function AudioToolbar({
   muted,
   setMuted,
-  musicEnabled,
-  setMusicEnabled,
   volume,
   setVolume,
-  isPlaying,
-  startAmbience,
-  stopAmbience,
   showTreeMap,
   onToggleTreeMap,
   isFullscreen,
@@ -289,13 +277,6 @@ function AudioToolbar({
 }: AudioToolbarProps) {
   const { t } = useLanguage();
   const handleMuteToggle = () => setMuted(!muted);
-
-  const handleMusicToggle = () => {
-    const next = !musicEnabled;
-    setMusicEnabled(next);
-    if (next && !muted) startAmbience();
-    else stopAmbience();
-  };
 
   return (
     <div className="flex items-center gap-2">
@@ -356,42 +337,6 @@ function AudioToolbar({
       )}
 
       {/* Story map toggle - REMOVED */}
-
-      {/* Music toggle */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleMusicToggle}
-        className={cn(
-          "text-xs px-2 py-1 h-8 transition-colors",
-          musicEnabled && !muted
-            ? "text-[#7C3AED] hover:text-purple-400"
-            : "text-gray-500 hover:text-gray-300"
-        )}
-        title={musicEnabled ? "Disable ambient music" : "Enable ambient music"}
-      >
-        {musicEnabled && !muted ? (
-          <Music className="w-4 h-4" />
-        ) : (
-          <Music2 className="w-4 h-4 opacity-40" />
-        )}
-        {isPlaying && !muted && musicEnabled && (
-          <span className="ml-1 flex gap-0.5 items-end h-3">
-            <span
-              className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar1_0.8s_ease-in-out_infinite]"
-              style={{ height: "40%" }}
-            />
-            <span
-              className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar2_0.8s_ease-in-out_infinite_0.15s]"
-              style={{ height: "70%" }}
-            />
-            <span
-              className="w-0.5 bg-[#7C3AED] rounded-full animate-[musicBar3_0.8s_ease-in-out_infinite_0.3s]"
-              style={{ height: "55%" }}
-            />
-          </span>
-        )}
-      </Button>
 
       {/* Mute toggle */}
       <Button
@@ -531,6 +476,24 @@ export default function Reader() {
   const nextPageHasChoices = !!(
     nextPage?.choiceA != null || nextPage?.choiceB != null
   );
+  const shouldShiftChoicePageToRight =
+    effectiveSpreadMode && currentPageHasChoices && currentPageIndex > 0;
+  const spreadLeftPageIndex = shouldShiftChoicePageToRight
+    ? currentPageIndex - 1
+    : currentPageIndex;
+  const spreadRightPageIndex = shouldShiftChoicePageToRight
+    ? currentPageIndex
+    : currentPageIndex + 1;
+  const spreadLeftPage = pages[spreadLeftPageIndex];
+  const spreadRightPage = pages[spreadRightPageIndex];
+  const spreadLeftRoutePageNumber = parseRoutePageNumber(
+    spreadLeftPage,
+    Math.max(1, spreadLeftPageIndex + 1)
+  );
+  const spreadRightRoutePageNumber = parseRoutePageNumber(
+    spreadRightPage,
+    spreadLeftRoutePageNumber + 1
+  );
   const visibleChoicePage =
     effectiveSpreadMode && nextPageHasChoices && !currentPageHasChoices
       ? nextPage
@@ -541,7 +504,11 @@ export default function Reader() {
           : null;
   const visibleChoicePageIndex =
     visibleChoicePage === nextPage ? currentPageIndex + 1 : currentPageIndex;
-  const visibleChoiceSide = visibleChoicePage === nextPage ? "right" : "left";
+  const visibleChoiceSide = effectiveSpreadMode
+    ? "right"
+    : visibleChoicePage === nextPage
+      ? "right"
+      : "left";
   const visibleChoiceOptions = visibleChoicePage
     ? [
         {
@@ -584,41 +551,13 @@ export default function Reader() {
   const {
     muted,
     setMuted,
-    musicEnabled,
-    setMusicEnabled,
     volume,
     setVolume,
-    isPlaying,
     playPageTurn,
-    startAmbience,
     stopAmbience,
     startPageSfx,
     stopPageSfx,
   } = useReaderAudio(bookCategory);
-
-  useEffect(() => {
-    // Only start ambience from page 3 onwards (skip pages 0, 1, 2).
-    // startAmbience has an isPlaying guard so page-turn re-runs are no-ops.
-    // No cleanup return here — stopping on every dep change would kill music mid-page.
-    if (
-      !showCover &&
-      !showBackCover &&
-      !muted &&
-      musicEnabled &&
-      currentPageIndex >= 3
-    )
-      startAmbience();
-    else if (showCover || showBackCover || muted || !musicEnabled)
-      stopAmbience();
-  }, [
-    showCover,
-    showBackCover,
-    currentPageIndex,
-    muted,
-    musicEnabled,
-    startAmbience,
-    stopAmbience,
-  ]);
 
   // Per-page looping SFX: starts/restarts when page changes, stops on cover/back cover
   useEffect(() => {
@@ -935,13 +874,8 @@ export default function Reader() {
         <AudioToolbar
           muted={muted}
           setMuted={setMuted}
-          musicEnabled={musicEnabled}
-          setMusicEnabled={setMusicEnabled}
           volume={volume}
           setVolume={setVolume}
-          isPlaying={isPlaying}
-          startAmbience={startAmbience}
-          stopAmbience={stopAmbience}
           showTreeMap={showTreeMap}
           onToggleTreeMap={() => setShowTreeMap(v => !v)}
           hasChoices={hasChoices}
@@ -1152,12 +1086,12 @@ export default function Reader() {
                   /* -- Comic Spread: Two pages side-by-side -- */
                   <ComicSpreadLayout
                     leftPanels={(() => {
-                      const raw = Array.isArray(currentPage?.panels)
-                        ? (currentPage.panels as unknown[])
+                      const raw = Array.isArray(spreadLeftPage?.panels)
+                        ? (spreadLeftPage.panels as unknown[])
                         : [];
                       const fallback =
-                        typeof currentPage?.imageUrl === "string"
-                          ? currentPage.imageUrl
+                        typeof spreadLeftPage?.imageUrl === "string"
+                          ? spreadLeftPage.imageUrl
                           : "";
                       const normalised = raw.slice(0, 3).map(item => {
                         if (typeof item === "string") {
@@ -1229,12 +1163,12 @@ export default function Reader() {
                       return normalised;
                     })()}
                     rightPanels={(() => {
-                      const raw = Array.isArray(nextPage?.panels)
-                        ? (nextPage.panels as unknown[])
+                      const raw = Array.isArray(spreadRightPage?.panels)
+                        ? (spreadRightPage.panels as unknown[])
                         : [];
                       const fallback =
-                        typeof nextPage?.imageUrl === "string"
-                          ? nextPage.imageUrl
+                        typeof spreadRightPage?.imageUrl === "string"
+                          ? spreadRightPage.imageUrl
                           : "";
                       const normalised = raw.slice(0, 3).map(item => {
                         if (typeof item === "string") {
@@ -1305,8 +1239,8 @@ export default function Reader() {
                       }
                       return normalised;
                     })()}
-                    leftPageNumber={currentRoutePageNumber}
-                    rightPageNumber={nextRoutePageNumber}
+                    leftPageNumber={spreadLeftRoutePageNumber}
+                    rightPageNumber={spreadRightRoutePageNumber}
                     leftChoiceSlot={
                       hasChoices && visibleChoiceSide === "left" ? (
                         <div className="space-y-3">
@@ -1663,15 +1597,15 @@ export default function Reader() {
                     {/* Left page */}
                     <div className="bg-[#F5F0E8] text-[#1A1033] p-8 md:p-10 min-h-[500px] relative border-r border-[#D4C9A8]">
                       <div className="absolute bottom-4 left-6 text-xs text-gray-500">
-                        {currentRoutePageNumber}
+                        {spreadLeftRoutePageNumber}
                       </div>
-                      {currentPage?.imageUrl && (
+                      {spreadLeftPage?.imageUrl && (
                         <div
                           className="mb-6 rounded-lg overflow-hidden"
                           style={{ aspectRatio: "4/3" }}
                         >
                           <img
-                            src={currentPage.imageUrl}
+                            src={spreadLeftPage.imageUrl}
                             alt="Page illustration"
                             style={{
                               width: "100%",
@@ -1684,7 +1618,7 @@ export default function Reader() {
                       )}
                       <div className="prose prose-sm max-w-none">
                         <p className="text-[#2D1B69] leading-relaxed font-serif text-base">
-                          {currentPage?.content || ""}
+                          {spreadLeftPage?.content || ""}
                         </p>
                       </div>
 
@@ -1725,17 +1659,17 @@ export default function Reader() {
                       }
                     >
                       <div className="absolute bottom-4 right-6 text-xs text-gray-500">
-                        {nextRoutePageNumber}
+                        {spreadRightRoutePageNumber}
                       </div>
-                      {nextPage ? (
+                      {spreadRightPage ? (
                         <>
-                          {nextPage.imageUrl && (
+                          {spreadRightPage.imageUrl && (
                             <div
                               className="mb-6 rounded-lg overflow-hidden"
                               style={{ aspectRatio: "4/3" }}
                             >
                               <img
-                                src={nextPage.imageUrl}
+                                src={spreadRightPage.imageUrl}
                                 alt="Page illustration"
                                 style={{
                                   width: "100%",
@@ -1748,7 +1682,7 @@ export default function Reader() {
                           )}
                           <div className="prose prose-sm max-w-none">
                             <p className="text-[#2D1B69] leading-relaxed font-serif text-base">
-                              {nextPage.content}
+                              {spreadRightPage.content}
                             </p>
                           </div>
                         </>

@@ -85,9 +85,20 @@ const PREFS_KEY = "gamebook_audio_prefs";
 function loadPrefs(): AudioPrefs {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
-    if (raw) return JSON.parse(raw) as AudioPrefs;
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AudioPrefs>;
+      return {
+        muted: Boolean(parsed.muted),
+        // Ambient soundtrack is intentionally disabled in Reader for now.
+        musicEnabled: false,
+        volume:
+          typeof parsed.volume === "number" && Number.isFinite(parsed.volume)
+            ? parsed.volume
+            : 0.4,
+      };
+    }
   } catch {}
-  return { muted: false, musicEnabled: true, volume: 0.4 };
+  return { muted: false, musicEnabled: false, volume: 0.4 };
 }
 
 function savePrefs(p: AudioPrefs) {

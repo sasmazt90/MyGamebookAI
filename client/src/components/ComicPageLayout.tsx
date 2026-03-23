@@ -82,7 +82,7 @@ export function ComicPageLayout({
         <div className="border-t-4 border-black bg-[#FFFDE7] px-4 py-4 flex flex-col gap-3 min-h-fit">
           {pageNumber != null && (
             <div className="text-xs font-bold text-gray-500 text-right tracking-widest">
-              â {pageNumber} â
+              Page {pageNumber}
             </div>
           )}
           {choiceSlot}
