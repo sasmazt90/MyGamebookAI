@@ -434,20 +434,14 @@ export default function Reader() {
     const flatNextId = pages[index + 1]?.id;
     return flatNextId != null && page.nextPageIdA !== flatNextId;
   });
-  const effectiveSpreadMode = hasNonLinearGraph
-    ? false
-    : forceSpreadMode
-      ? true
-      : useSpreadMode;
-  const step = hasNonLinearGraph
-    ? 1
-    : isComic
-      ? effectiveSpreadMode
-        ? 2
-        : 1
-      : isFairyTale
-        ? 1
-        : 2;
+  const effectiveSpreadMode = forceSpreadMode ? true : useSpreadMode;
+  const step = isComic
+    ? effectiveSpreadMode
+      ? 2
+      : 1
+    : isFairyTale
+      ? 1
+      : 2;
   const parseRoutePageNumber = useCallback(
     (page?: FlipbookPage | null, fallback = 1) => {
       if (page?.routePageNumber && Number.isFinite(page.routePageNumber)) {
@@ -564,7 +558,7 @@ export default function Reader() {
   useEffect(() => {
     if (showCover || showBackCover) {
       stopPageSfx();
-      return;
+      return () => stopPageSfx();
     }
     const sfxTags = (currentPage?.sfxTags as string[] | null) ?? [];
     if (sfxTags.length > 0) {
@@ -572,6 +566,7 @@ export default function Reader() {
     } else {
       stopPageSfx();
     }
+    return () => stopPageSfx();
   }, [
     currentPageIndex,
     currentPage?.content,
@@ -719,7 +714,7 @@ export default function Reader() {
     onReturnToCover: handleReturnToCover,
     onEnd: handleEndReached,
     step,
-    useExplicitNextPageId: !effectiveSpreadMode,
+    useExplicitNextPageId: true,
   });
 
   // Drag-to-turn corner interaction

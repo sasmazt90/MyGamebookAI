@@ -35,11 +35,11 @@ describe("Stripe products", () => {
     expect(CREDIT_PACKAGES).toHaveLength(3);
   });
 
-  it("has starter, explorer, and creator packages", () => {
+  it("has starter, value, and pro packages", () => {
     const ids = CREDIT_PACKAGES.map(p => p.id);
     expect(ids).toContain("starter");
-    expect(ids).toContain("explorer");
-    expect(ids).toContain("creator");
+    expect(ids).toContain("value");
+    expect(ids).toContain("pro");
   });
 
   it("all packages have positive EUR prices", () => {
@@ -49,9 +49,9 @@ describe("Stripe products", () => {
     }
   });
 
-  it("explorer is the popular package", () => {
-    const explorer = CREDIT_PACKAGES.find(p => p.id === "explorer");
-    expect(explorer?.popular).toBe(true);
+  it("value is the popular package", () => {
+    const value = CREDIT_PACKAGES.find(p => p.id === "value");
+    expect(value?.popular).toBe(true);
   });
 });
 

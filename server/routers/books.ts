@@ -57,6 +57,7 @@ import {
   computeStoryGenerationTargets,
   validateStoryShape,
 } from "../storyGraph";
+import { computeRoutePageNumbers } from "../../shared/readerFlow";
 
 async function imageUrlToBase64DataUrl(url: string): Promise<string> {
   const res = await fetch(url);
@@ -408,15 +409,13 @@ export async function generateBookContent(
       "horror_thriller",
     ].includes(category);
 
-    //  Spec-compliant page and image counts
-    // fairy_tale:        10 pages, 10 page illustrations + 1 cover = 11 total images
-    // comic thin:        10 pages x 3 panels = 30 panel images + 1 cover = 31 total
-    // comic normal:      18 pages x 3 panels = 54 panel images + 1 cover = 55 total
-    // other normal:      80 pages, 8 branch images + 1 cover = 9 total
-    // other thick:       120 pages, 12 branch images + 1 cover = 13 total
+    // Source-of-truth generation targets come from shared/bookGenerationRules.ts.
+    // Reader-visible page count, branch depth plan, and branch illustration count
+    // must stay aligned with that shared config.
     const generationTargets = computeStoryGenerationTargets(category, length);
     const pageCount = generationTargets.readablePathLength;
     const branchCount = generationTargets.branchCount;
+    const targetBranchDepths = generationTargets.targetBranchDepths;
     const branchImageCount = generationTargets.branchImageCount;
     const graphPageCount = generationTargets.graphPageCount;
 
@@ -1803,6 +1802,7 @@ ${comicStructureRules}`;
         description,
         readablePathLength: pageCount,
         branchCount,
+        targetBranchDepths,
         category,
         language,
       });
@@ -2102,6 +2102,7 @@ All topology fields must remain identical to the scaffold.`,
             description,
             readablePathLength: pageCount,
             branchCount,
+            targetBranchDepths,
             category,
             language,
           }),
@@ -4913,33 +4914,13 @@ export const booksRouter = router({
         .where(eq(bookPages.bookId, input.bookId))
         .orderBy(bookPages.pageNumber);
 
-      const pageById = new Map(pages.map(page => [page.id, page]));
-      const incomingPageIds = new Set<number>();
-      for (const page of pages) {
-        if (page.nextPageIdA) incomingPageIds.add(page.nextPageIdA);
-        if (page.nextPageIdB) incomingPageIds.add(page.nextPageIdB);
-      }
-      const routePageNumberById = new Map<number, number>();
-      const visitPage = (
-        pageId: number,
-        depth: number,
-        active: Set<number>
-      ) => {
-        if (active.has(pageId)) return;
-        const existingDepth = routePageNumberById.get(pageId);
-        if (existingDepth && existingDepth >= depth) return;
-        const page = pageById.get(pageId);
-        if (!page) return;
-        routePageNumberById.set(pageId, depth);
-        active.add(pageId);
-        if (page.nextPageIdA) visitPage(page.nextPageIdA, depth + 1, active);
-        if (page.nextPageIdB) visitPage(page.nextPageIdB, depth + 1, active);
-        active.delete(pageId);
-      };
-      const rootPages = pages.filter(page => !incomingPageIds.has(page.id));
-      for (const rootPage of rootPages) {
-        visitPage(rootPage.id, 1, new Set<number>());
-      }
+      const routePageNumberById = computeRoutePageNumbers(
+        pages.map((page) => ({
+          id: page.id,
+          nextPageIdA: page.nextPageIdA,
+          nextPageIdB: page.nextPageIdB,
+        })),
+      );
       const pagesWithRouteNumber = pages.map(page => ({
         ...page,
         routePageNumber: routePageNumberById.get(page.id) ?? page.pageNumber,

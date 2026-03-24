@@ -107,16 +107,16 @@ export default function Credits() {
   const handleBuy = (packageId: string) => {
     setPurchasingId(packageId);
     createCheckout.mutate({
-      packageId: packageId as "starter" | "explorer" | "creator",
+      packageId: packageId as "starter" | "value" | "pro",
       origin: window.location.origin,
     });
   };
 
   // Feature list per package
   const featureMap: Record<string, string[]> = {
-    starter: ["100 credits", "~33 book generations", "No expiry"],
-    explorer: ["300 credits", "~100 book generations", "No expiry", "Best value"],
-    creator: ["700 credits", "~233 book generations", "No expiry", "Save most"],
+    starter: ["100 credits", "Entry pack for premium generations", "No expiry"],
+    value: ["250 credits", "Best balance for regular use", "No expiry", "Best value"],
+    pro: ["500 credits", "Built for high-volume creation", "No expiry"],
   };
 
   return (

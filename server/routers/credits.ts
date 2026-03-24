@@ -4,6 +4,7 @@ import { z } from "zod";
 import { creditTransactions, wallets } from "../../drizzle/schema";
 import { getDb, getWalletByUserId } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
+import { CREDIT_PACKAGES } from "../stripe/products";
 
 export async function adjustCredits(
   userId: number,
@@ -77,10 +78,11 @@ export const creditsRouter = router({
 
   // Stripe packages
   getPackages: protectedProcedure.query(() => {
-    return [
-      { id: "pkg_15", credits: 15, priceEur: 4.99, label: "Starter" },
-      { id: "pkg_45", credits: 45, priceEur: 13.99, label: "Explorer" },
-      { id: "pkg_100", credits: 100, priceEur: 29.99, label: "Creator" },
-    ];
+    return CREDIT_PACKAGES.map((pkg) => ({
+      id: pkg.id,
+      credits: pkg.credits,
+      priceEur: Number((pkg.priceEurCents / 100).toFixed(2)),
+      label: pkg.name,
+    }));
   }),
 });

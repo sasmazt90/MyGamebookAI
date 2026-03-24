@@ -71,8 +71,8 @@ export type TranslationKey =
   | "reader.theEnd" | "reader.restart" | "reader.backToLibrary"
   // Credits
   | "credits.title" | "credits.balance" | "credits.buyMore"
-  | "credits.history" | "credits.package.starter" | "credits.package.explorer"
-  | "credits.package.creator"
+  | "credits.history" | "credits.package.starter" | "credits.package.value"
+  | "credits.package.pro"
   // Onboarding
   | "onboarding.title" | "onboarding.subtitle" | "onboarding.authorName"
   | "onboarding.authorNameHint" | "onboarding.continue" | "onboarding.checking"
@@ -270,8 +270,8 @@ const en: Translations = {
   "credits.buyMore": "Buy More Credits",
   "credits.history": "Transaction History",
   "credits.package.starter": "Starter",
-  "credits.package.explorer": "Explorer",
-  "credits.package.creator": "Creator",
+  "credits.package.value": "Value",
+  "credits.package.pro": "Pro",
   // Onboarding
   "onboarding.title": "Welcome to Gamebook AI!",
   "onboarding.subtitle": "Choose your author name to get started",

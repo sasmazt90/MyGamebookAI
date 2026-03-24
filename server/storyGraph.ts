@@ -16,6 +16,7 @@ export type StoryPage = {
 export type StoryGenerationTargets = {
   readablePathLength: number;
   branchCount: number;
+  targetBranchDepths: number[];
   branchImageCount: number;
   graphPageCount: number;
 };
@@ -448,6 +449,7 @@ export function computeStoryGenerationTargets(category: string, length: string):
   return {
     readablePathLength: rule.readablePathLength,
     branchCount: rule.branchCount,
+    targetBranchDepths: rule.targetBranchDepths,
     branchImageCount: rule.branchImageCount,
     graphPageCount: rule.graphPageCount,
   };
@@ -666,7 +668,11 @@ function buildThemeChoiceLabels(branchPath: string, category?: string, language?
   };
 }
 
-function branchDepths(readablePathLength: number, branchCount: number, category?: string): number[] {
+function branchDepths(
+  readablePathLength: number,
+  branchCount: number,
+  category?: string,
+): number[] {
   if (branchCount <= 0) return [];
   const branchStart = category === "fairy_tale" ? 3 : 4;
   const start = Math.min(Math.max(2, branchStart), Math.max(2, readablePathLength - 3));
@@ -721,6 +727,7 @@ export function buildFallbackStoryGraph(input: {
   description: string;
   readablePathLength: number;
   branchCount: number;
+  targetBranchDepths?: number[];
   category?: string;
   language?: string;
 }): StoryPage[] {
@@ -762,10 +769,14 @@ export function buildFallbackStoryGraph(input: {
   }
 
   const activePaths: ActivePath[] = [{ label: "root", nodes: rootPathNodes }];
-  const depths = branchDepths(input.readablePathLength, input.branchCount, input.category);
+  const depths =
+    input.targetBranchDepths && input.targetBranchDepths.length > 0
+      ? input.targetBranchDepths.slice(0, input.branchCount)
+      : branchDepths(input.readablePathLength, input.branchCount, input.category);
 
   for (let branchIndex = 0; branchIndex < input.branchCount; branchIndex += 1) {
     const targetDepth = depths[branchIndex];
+    if (!targetDepth) continue;
     const candidatePaths = activePaths.filter((path) => {
       const nodeId = path.nodes[targetDepth - 1];
       const node = nodeId ? nodes.get(nodeId) : null;

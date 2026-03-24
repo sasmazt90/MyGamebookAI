@@ -15,6 +15,7 @@ export type PageTurnSoundMode = "storybook" | "comic" | "cinematic";
 export interface BookGenerationRule {
   readablePathLength: number;
   branchCount: number;
+  targetBranchDepths: number[];
   branchImageCount: number;
   graphPageCount: number;
   pageCountLabel: string;
@@ -34,6 +35,41 @@ export interface BookCategoryRule {
   lengths: Partial<Record<SupportedBookLength, BookGenerationRule>>;
 }
 
+type RuleSeed = {
+  readablePathLength: number;
+  targetBranchDepths: number[];
+  branchImageCount: number;
+  pageCountLabel: string;
+  imageCallCount: number;
+  renderedVisualCount: number;
+};
+
+function computeGraphPageCount(
+  readablePathLength: number,
+  targetBranchDepths: number[],
+): number {
+  return targetBranchDepths.reduce(
+    (total, depth) => total + Math.max(0, readablePathLength - depth),
+    readablePathLength,
+  );
+}
+
+function createGenerationRule(seed: RuleSeed): BookGenerationRule {
+  return {
+    readablePathLength: seed.readablePathLength,
+    branchCount: seed.targetBranchDepths.length,
+    targetBranchDepths: seed.targetBranchDepths,
+    branchImageCount: seed.branchImageCount,
+    graphPageCount: computeGraphPageCount(
+      seed.readablePathLength,
+      seed.targetBranchDepths,
+    ),
+    pageCountLabel: seed.pageCountLabel,
+    imageCallCount: seed.imageCallCount,
+    renderedVisualCount: seed.renderedVisualCount,
+  };
+}
+
 export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule> = {
   fairy_tale: {
     allowedLengths: ["thin"],
@@ -43,15 +79,14 @@ export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule
       pageTurnSound: "storybook",
     },
     lengths: {
-      thin: {
+      thin: createGenerationRule({
         readablePathLength: 10,
-        branchCount: 3,
+        targetBranchDepths: [3, 6, 9],
         branchImageCount: 0,
-        graphPageCount: 16,
         pageCountLabel: "10 pages",
         imageCallCount: 11,
         renderedVisualCount: 11,
-      },
+      }),
     },
   },
   comic: {
@@ -62,24 +97,22 @@ export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule
       pageTurnSound: "comic",
     },
     lengths: {
-      thin: {
+      thin: createGenerationRule({
         readablePathLength: 10,
-        branchCount: 3,
+        targetBranchDepths: [4, 8],
         branchImageCount: 0,
-        graphPageCount: 16,
         pageCountLabel: "10 pages",
         imageCallCount: 11,
         renderedVisualCount: 31,
-      },
-      normal: {
+      }),
+      normal: createGenerationRule({
         readablePathLength: 18,
-        branchCount: 5,
+        targetBranchDepths: [4, 8, 12, 16],
         branchImageCount: 0,
-        graphPageCount: 28,
         pageCountLabel: "18 pages",
         imageCallCount: 19,
         renderedVisualCount: 55,
-      },
+      }),
     },
   },
   horror_thriller: {
@@ -90,24 +123,22 @@ export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule
       pageTurnSound: "cinematic",
     },
     lengths: {
-      normal: {
+      normal: createGenerationRule({
         readablePathLength: 80,
-        branchCount: 8,
-        branchImageCount: 8,
-        graphPageCount: 104,
-        pageCountLabel: "~80 pages",
-        imageCallCount: 9,
-        renderedVisualCount: 9,
-      },
-      thick: {
+        targetBranchDepths: [8, 24, 40, 56, 72],
+        branchImageCount: 5,
+        pageCountLabel: "80 pages",
+        imageCallCount: 6,
+        renderedVisualCount: 6,
+      }),
+      thick: createGenerationRule({
         readablePathLength: 120,
-        branchCount: 12,
-        branchImageCount: 12,
-        graphPageCount: 156,
-        pageCountLabel: "~120 pages",
-        imageCallCount: 13,
-        renderedVisualCount: 13,
-      },
+        targetBranchDepths: [8, 20, 32, 44, 56, 68, 80, 92, 104, 116],
+        branchImageCount: 10,
+        pageCountLabel: "120 pages",
+        imageCallCount: 11,
+        renderedVisualCount: 11,
+      }),
     },
   },
   romance: {
@@ -118,24 +149,22 @@ export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule
       pageTurnSound: "cinematic",
     },
     lengths: {
-      normal: {
+      normal: createGenerationRule({
         readablePathLength: 80,
-        branchCount: 8,
-        branchImageCount: 8,
-        graphPageCount: 104,
-        pageCountLabel: "~80 pages",
-        imageCallCount: 9,
-        renderedVisualCount: 9,
-      },
-      thick: {
+        targetBranchDepths: [8, 24, 40, 56, 72],
+        branchImageCount: 5,
+        pageCountLabel: "80 pages",
+        imageCallCount: 6,
+        renderedVisualCount: 6,
+      }),
+      thick: createGenerationRule({
         readablePathLength: 120,
-        branchCount: 12,
-        branchImageCount: 12,
-        graphPageCount: 156,
-        pageCountLabel: "~120 pages",
-        imageCallCount: 13,
-        renderedVisualCount: 13,
-      },
+        targetBranchDepths: [8, 20, 32, 44, 56, 68, 80, 92, 104, 116],
+        branchImageCount: 10,
+        pageCountLabel: "120 pages",
+        imageCallCount: 11,
+        renderedVisualCount: 11,
+      }),
     },
   },
   crime_mystery: {
@@ -146,24 +175,22 @@ export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule
       pageTurnSound: "cinematic",
     },
     lengths: {
-      normal: {
+      normal: createGenerationRule({
         readablePathLength: 80,
-        branchCount: 8,
-        branchImageCount: 8,
-        graphPageCount: 104,
-        pageCountLabel: "~80 pages",
-        imageCallCount: 9,
-        renderedVisualCount: 9,
-      },
-      thick: {
+        targetBranchDepths: [8, 24, 40, 56, 72],
+        branchImageCount: 5,
+        pageCountLabel: "80 pages",
+        imageCallCount: 6,
+        renderedVisualCount: 6,
+      }),
+      thick: createGenerationRule({
         readablePathLength: 120,
-        branchCount: 12,
-        branchImageCount: 12,
-        graphPageCount: 156,
-        pageCountLabel: "~120 pages",
-        imageCallCount: 13,
-        renderedVisualCount: 13,
-      },
+        targetBranchDepths: [8, 20, 32, 44, 56, 68, 80, 92, 104, 116],
+        branchImageCount: 10,
+        pageCountLabel: "120 pages",
+        imageCallCount: 11,
+        renderedVisualCount: 11,
+      }),
     },
   },
   fantasy_scifi: {
@@ -174,24 +201,22 @@ export const BOOK_CATEGORY_RULES: Record<SupportedBookCategory, BookCategoryRule
       pageTurnSound: "cinematic",
     },
     lengths: {
-      normal: {
+      normal: createGenerationRule({
         readablePathLength: 80,
-        branchCount: 8,
-        branchImageCount: 8,
-        graphPageCount: 104,
-        pageCountLabel: "~80 pages",
-        imageCallCount: 9,
-        renderedVisualCount: 9,
-      },
-      thick: {
+        targetBranchDepths: [8, 24, 40, 56, 72],
+        branchImageCount: 5,
+        pageCountLabel: "80 pages",
+        imageCallCount: 6,
+        renderedVisualCount: 6,
+      }),
+      thick: createGenerationRule({
         readablePathLength: 120,
-        branchCount: 12,
-        branchImageCount: 12,
-        graphPageCount: 156,
-        pageCountLabel: "~120 pages",
-        imageCallCount: 13,
-        renderedVisualCount: 13,
-      },
+        targetBranchDepths: [8, 20, 32, 44, 56, 68, 80, 92, 104, 116],
+        branchImageCount: 10,
+        pageCountLabel: "120 pages",
+        imageCallCount: 11,
+        renderedVisualCount: 11,
+      }),
     },
   },
 };

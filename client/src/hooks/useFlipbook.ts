@@ -13,6 +13,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { resolveExplicitForwardPageId } from "@shared/readerFlow";
 
 export type FlipDirection = "forward" | "backward" | null;
 
@@ -105,9 +106,11 @@ export function useFlipbook({
 
   // Preload adjacent pages whenever currentPageIndex changes
   useEffect(() => {
-    const currentPage = pages[currentPageIndex];
-    const nextGraphIndex = useExplicitNextPageId && currentPage?.nextPageIdA != null
-      ? pages.findIndex(page => page.id === currentPage.nextPageIdA)
+    const explicitNextPageId = useExplicitNextPageId
+      ? resolveExplicitForwardPageId(pages, currentPageIndex, step)
+      : null;
+    const nextGraphIndex = explicitNextPageId != null
+      ? pages.findIndex(page => page.id === explicitNextPageId)
       : currentPageIndex + step;
     const prevPage = pages[currentPageIndex - step];
     const nextPage = nextGraphIndex >= 0 ? pages[nextGraphIndex] : pages[currentPageIndex + step];
@@ -146,6 +149,9 @@ export function useFlipbook({
     if (hasChoices) return; // branch-gate: must choose A or B first
 
     const currentPage = pages[currentPageIndex];
+    const explicitNextPageId = useExplicitNextPageId
+      ? resolveExplicitForwardPageId(pages, currentPageIndex, step)
+      : null;
     const isTerminalPage =
       !!currentPage &&
       !currentPage.choiceA &&
@@ -157,8 +163,8 @@ export function useFlipbook({
       return;
     }
 
-    if (useExplicitNextPageId && currentPage?.nextPageIdA) {
-      const explicitIndex = pages.findIndex((page) => page.id === currentPage.nextPageIdA);
+    if (explicitNextPageId != null) {
+      const explicitIndex = pages.findIndex((page) => page.id === explicitNextPageId);
       if (explicitIndex >= 0) {
         animate("forward", () => onGoTo(explicitIndex, "forward"));
         return;

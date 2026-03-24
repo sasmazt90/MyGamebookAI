@@ -24,6 +24,11 @@ import {
   SOUND_LIBRARY_CSV_URL,
   type SoundEntry,
 } from "@shared/soundLibrary";
+import {
+  clearManagedAudioTimeout,
+  scheduleManagedAudioPlay,
+  stopManagedAudio,
+} from "@shared/audioPlayback";
 
 // ---------------------------------------------------------------------------
 // Google Sound Library — CSV loader + keyword matcher
@@ -353,6 +358,8 @@ export function useReaderAudio(category: BookCategory) {
   const pageSfxRef = useRef<HTMLAudioElement | null>(null);
   // Cancellation counter: incremented on every startPageSfx call so stale async callbacks abort
   const pageSfxCallId = useRef(0);
+  const pageTurnCallId = useRef(0);
+  const pageTurnTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep category ref in sync
   useEffect(() => {
@@ -396,17 +403,24 @@ export function useReaderAudio(category: BookCategory) {
     // Invalidate any in-flight startPageSfx async load
     pageSfxCallId.current++;
     if (pageSfxRef.current) {
-      pageSfxRef.current.pause();
-      pageSfxRef.current.currentTime = 0;
+      stopManagedAudio(pageSfxRef.current);
       pageSfxRef.current = null;
+    }
+  }, []);
+
+  const stopPageTurnSfx = useCallback(() => {
+    pageTurnCallId.current++;
+    clearManagedAudioTimeout(pageTurnTimeoutRef);
+    if (sfxAudioRef.current) {
+      stopManagedAudio(sfxAudioRef.current);
+      sfxAudioRef.current = null;
     }
   }, []);
 
   const startPageSfx = useCallback((sfxTags: string[], pageContent = "") => {
     // Stop and clean up any previous page SFX first
     if (pageSfxRef.current) {
-      pageSfxRef.current.pause();
-      pageSfxRef.current.currentTime = 0;
+      stopManagedAudio(pageSfxRef.current);
       pageSfxRef.current = null;
     }
     if (muted || sfxTags.length === 0) return;
@@ -436,6 +450,7 @@ export function useReaderAudio(category: BookCategory) {
 
   const playPageTurn = useCallback((sfxTags?: string[], pageContent = "") => {
     if (muted) return;
+    stopPageTurnSfx();
 
     try {
       const ctx = getCtx();
@@ -498,28 +513,33 @@ export function useReaderAudio(category: BookCategory) {
   } // end if (false) — skip synthesised sounds for all categories
     // 3. Google Sound Library SFX — play after page flip animation
     if (sfxTags && sfxTags.length > 0) {
+      const thisCallId = ++pageTurnCallId.current;
       loadSoundLibrary().then(entries => {
+        if (thisCallId !== pageTurnCallId.current) return;
         const url = findBestSound(entries, pageContent, sfxTags, categoryRef.current);
         if (!url) return;
         try {
           if (sfxAudioRef.current) {
-            sfxAudioRef.current.pause();
+            stopManagedAudio(sfxAudioRef.current);
             sfxAudioRef.current = null;
           }
           const audio = new Audio(url);
           audio.volume = Math.min(1, volume * 1.1);
           audio.crossOrigin = "anonymous";
           sfxAudioRef.current = audio;
-          setTimeout(() => {
-            if (sfxAudioRef.current === audio) {
-              audio.play().catch(() => {});
-            }
-          }, 320);
+          scheduleManagedAudioPlay({
+            audio,
+            delayMs: 320,
+            playTokenRef: pageTurnCallId,
+            token: thisCallId,
+            timeoutRef: pageTurnTimeoutRef,
+            isStillCurrent: () => sfxAudioRef.current === audio,
+          });
         } catch {}
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [muted, volume]);
+  }, [muted, stopPageTurnSfx, volume]);
 
   // ---------------------------------------------------------------------------
   // Ambience start / stop
@@ -662,10 +682,7 @@ export function useReaderAudio(category: BookCategory) {
     if (muted || !musicEnabled) {
       if (isPlaying) stopAmbience();
       // Stop one-shot SFX
-      if (sfxAudioRef.current) {
-        sfxAudioRef.current.pause();
-        sfxAudioRef.current = null;
-      }
+      stopPageTurnSfx();
       // Pause (not reset) page SFX so it can resume if unmuted
       if (pageSfxRef.current) {
         pageSfxRef.current.pause();
@@ -678,7 +695,7 @@ export function useReaderAudio(category: BookCategory) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [muted, musicEnabled]);
+  }, [muted, musicEnabled, stopPageTurnSfx]);
 
   // Update master gain when volume changes without restarting
   useEffect(() => {
@@ -715,12 +732,9 @@ export function useReaderAudio(category: BookCategory) {
   useEffect(() => {
     return () => {
       stopAmbienceNodes();
-      if (sfxAudioRef.current) {
-        sfxAudioRef.current.pause();
-        sfxAudioRef.current = null;
-      }
+      stopPageTurnSfx();
       if (pageSfxRef.current) {
-        pageSfxRef.current.pause();
+        stopManagedAudio(pageSfxRef.current);
         pageSfxRef.current = null;
       }
       try {
@@ -728,7 +742,7 @@ export function useReaderAudio(category: BookCategory) {
       } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stopPageTurnSfx]);
 
   // ---------------------------------------------------------------------------
   // Setters that also persist
